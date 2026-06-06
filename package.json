@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.1.6",
+  "version": "0.1.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -23,12 +23,13 @@
     "bb:web": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode web",
     "bb:android-build": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode android-build",
     "bb:android-dev": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode android-dev",
-    "bb:doctor": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode doctor"
+    "bb:doctor": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode doctor",
+    "supabase:doctor": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-doctor.ps1",
+    "bb:supabase": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode supabase-doctor"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
     "expo": "~56.0.9",
-    "expo-dev-client": "~56.0.19",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",

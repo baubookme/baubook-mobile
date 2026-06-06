@@ -16,7 +16,8 @@ const setupSteps = [
   'Android: .\\baubook.ps1 -Mode android-build',
   'Dopo la build: .\\baubook.ps1 -Mode android-dev',
   'Git: inizializza repository e primo commit pulito.',
-  'Supabase: crea progetto e lancia 0001_initial_schema.sql.',
+  'Supabase: crea progetto baubook-beta e compila .env.',
+  'Supabase check: .\\baubook.ps1 -Mode supabase-doctor',
 ];
 
 export function ProfileScreen() {
@@ -27,7 +28,7 @@ export function ProfileScreen() {
       <SectionHeader
         eyebrow="Setup sviluppatore"
         title="BauBook! è pronto per essere collegato ai servizi"
-        description="Questa pagina e' una checklist tecnica interna. Da ora il flusso stabile e': browser per UI, Development Build per Android."
+        description="Questa pagina e' una checklist tecnica interna. Da ora il flusso stabile e': browser per UI, Development Build per Android, Supabase managed per backend."
       />
 
       <AppCard tone="warm">

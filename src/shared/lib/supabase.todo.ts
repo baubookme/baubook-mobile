@@ -1,11 +1,17 @@
-// Milestone 2: quando installiamo @supabase/supabase-js, questo diventerà supabase.ts.
-// npm install @supabase/supabase-js react-native-url-polyfill
-// import 'react-native-url-polyfill/auto';
-// import { createClient } from '@supabase/supabase-js';
-// import { env } from './env';
+// Milestone 2: questo file diventerà supabase.ts quando collegheremo l'app al progetto Supabase.
 //
-// export const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+// Dipendenze previste, da installare quando iniziamo Auth/DB dall'app:
+// npx expo install @supabase/supabase-js @react-native-async-storage/async-storage react-native-url-polyfill
+//
+// Struttura prevista:
+// import 'react-native-url-polyfill/auto';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { createClient } from '@supabase/supabase-js';
+// import { env, supabaseClientKey } from './env';
+//
+// export const supabase = createClient(env.supabaseUrl, supabaseClientKey, {
 //   auth: {
+//     storage: AsyncStorage,
 //     persistSession: true,
 //     autoRefreshToken: true,
 //     detectSessionInUrl: false,

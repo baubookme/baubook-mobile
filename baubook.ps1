@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("web", "android-build", "android-dev", "android-go", "doctor", "install", "clean", "typecheck", "export-web", "stop-emulator")]
+  [ValidateSet("web", "android-build", "android-dev", "android-go", "doctor", "supabase-doctor", "install", "clean", "typecheck", "export-web", "stop-emulator")]
   [string]$Mode = "web",
 
   [ValidateSet("lan", "localhost")]
@@ -430,6 +430,7 @@ switch ($Mode) {
   "android-dev" { Start-AndroidDevClient }
   "android-go" { Start-ExpoGoLegacy }
   "doctor" { .\scripts\doctor.ps1 }
+  "supabase-doctor" { .\scripts\supabase-doctor.ps1 }
   "install" { .\scripts\install-clean.ps1 }
   "clean" { Clear-LocalCache }
   "typecheck" { Run-Typecheck }

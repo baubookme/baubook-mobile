@@ -30,10 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# JetBrains user-specific files
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/shelf/
+# JetBrains project metadata is local. Shared run configs live in .run/.
+.idea/
 
 # local env files
 .env*.local
@@ -49,4 +47,3 @@ yarn-error.*
 .env
 .env.*
 !.env.example
-/.idea/

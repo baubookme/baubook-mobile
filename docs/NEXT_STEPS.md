@@ -1,39 +1,61 @@
-# BauBook - prossimi step
+# BauBook! next steps
 
-## 1. Stabilizzare workspace
+## Baseline corrente
+
+Baseline consigliata: **1.5.1 super-stable**.
+
+Prima di sviluppare feature nuove:
 
 ```powershell
-.\scripts\install-clean.ps1
-.\baubook.ps1 -Mode web
-.\baubook.ps1 -Mode android-build
+cd C:\baubook
 .\baubook.ps1 -Mode doctor
+.\baubook.ps1 -Mode web
+.\baubook.ps1 -Mode android-build -CleanPrebuild
+.\baubook.ps1 -Mode android-dev
+.\baubook.ps1 -Mode supabase-doctor
 ```
 
-## 2. GitHub
+## Commit baseline 1.5.1
 
-Segui `docs/GIT_SETUP.md` e fai il primo commit pulito.
+```powershell
+git add .
+git commit -m "chore: stabilize workspace and prepare Supabase setup"
+git tag -a v0.1.5-super-stable -m "BauBook super-stable baseline 1.5.1"
+git push
+git push origin v0.1.5-super-stable
+```
 
-## 3. Supabase
+## Step 1 completato: launcher icon
 
-Dopo Git:
+Il logo completo resta per splash/Home/store. Il launcher Android usa il muso del cane, piu' leggibile e non tagliato dalla maschera adaptive icon.
 
-1. crea progetto Supabase;
-2. abilita PostGIS;
-3. esegui `supabase/migrations/0001_initial_schema.sql`;
-4. esegui seed demo se necessario: `supabase/seeds/venezia_mestre_demo.sql`;
-5. copia `.env.example` in `.env`.
+Guida:
 
-## 4. Milestone 2 app
+```txt
+docs/ANDROID_LAUNCHER_ICON.md
+```
 
-- installare `@supabase/supabase-js`;
-- client Supabase reale;
-- login email OTP/magic link;
-- `profiles` e `dogs` collegati a Auth;
-- upload avatar cane su Supabase Storage.
+## Step 2: Supabase
 
-## 5. Milestone 3 mappe
+1. Crea progetto `baubook-beta`.
+2. Compila `.env`.
+3. Esegui schema SQL.
+4. Esegui seed demo opzionale.
+5. Rilancia `supabase-doctor`.
 
-- Development Build gia' pronto;
-- aggiungere `react-native-maps`;
-- configurare API key Android;
-- leggere marker da tabella `places`.
+Guida:
+
+```txt
+docs/SUPABASE_SETUP.md
+```
+
+## Dopo Supabase
+
+Quando il progetto Supabase e' creato, la tranche successiva sara':
+
+- installazione dipendenze Supabase React Native;
+- `src/shared/lib/supabase.ts` reale;
+- Auth email OTP/magic link;
+- creazione profilo utente automatico;
+- lettura luoghi demo da Supabase nella schermata Mappa/List;
+- primo commit feature: `feat: connect Supabase client and auth bootstrap`.
