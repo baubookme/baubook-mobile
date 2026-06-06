@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "BauBook! Venezia-Mestre",
+    "slug": "baubook",
+    "version": "0.1.4",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "baubook",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF8ED"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "me.baubook.app"
+    },
+    "android": {
+      "package": "me.baubook.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8ED",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 4
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "name": "BauBook! Venezia-Mestre",
+      "shortName": "BauBook!"
+    },
+    "extra": {
+      "projectName": "BauBook MVP Clean Workspace 1.4",
+      "betaCity": "Venezia-Mestre",
+      "preferredDevFlow": "web + android development build"
+    }
+  }
+}

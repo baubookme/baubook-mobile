@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="BauBook Android Dev Metro Manual Device" type="ShConfigurationType">
+    <option name="SCRIPT_TEXT" value="powershell -ExecutionPolicy Bypass -File .\baubook.ps1 -Mode android-dev -NoStartEmulator" />
+    <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
+    <option name="SCRIPT_PATH" value="" />
+    <option name="SCRIPT_OPTIONS" value="" />
+    <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
+    <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>
