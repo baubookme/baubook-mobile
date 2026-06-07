@@ -1,32 +1,23 @@
 # BauBook! Supabase setup
 
-Obiettivo della fase 2: creare il backend managed Supabase per la beta **BauBook! Venezia-Mestre**, senza ancora collegare schermate reali dell'app al database.
+Obiettivo: configurare il backend managed Supabase per la beta **BauBook! Venezia-Mestre**.
 
-## Nome progetto consigliato
+## 1. Progetto Supabase
 
-- Organization: `BauBook`
-- Project name: `baubook-beta`
-- Ambiente: `beta`
-- Region: scegli una region europea vicina all'Italia, se disponibile nel tuo piano/dashboard.
-- Piano iniziale: Free va bene per bootstrap e test interni.
+Valori consigliati:
 
-Conserva la database password in un password manager. Non inserirla mai in `.env`, GitHub, chat o documentazione.
+```txt
+Organization: BauBook
+Project name: baubook-beta
+Region: Europe
+Plan: Free, per bootstrap e test interni
+```
 
-## 1. Crea progetto
+Salva la database password in un password manager. Non inserirla in `.env`, GitHub, chat o documentazione.
 
-1. Vai nella Supabase Dashboard.
-2. Crea una organization `BauBook`, se non esiste.
-3. Crea progetto `baubook-beta`.
-4. Aspetta che il database sia pronto.
+## 2. Variabili locali
 
-## 2. Recupera URL e client key
-
-Dalla Dashboard Supabase, apri il progetto e recupera:
-
-- Project URL
-- Publishable key oppure anon/public key
-
-Poi crea `.env` locale:
+Crea `C:\baubook\.env` partendo da `.env.example`:
 
 ```powershell
 cd C:\baubook
@@ -34,34 +25,32 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-Compila almeno:
+Compila:
 
-```txt
+```env
 EXPO_PUBLIC_SUPABASE_URL=https://TUO_PROJECT_REF.supabase.co
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=LA_TUA_PUBLISHABLE_KEY
 ```
 
-Se nella Dashboard vedi ancora la vecchia dicitura `anon key`, puoi copiarla anche in:
+`NEXT_PUBLIC_*` e' per Next.js, non per Expo.
 
-```txt
-EXPO_PUBLIC_SUPABASE_ANON_KEY=LA_TUA_ANON_KEY
+Verifica:
+
+```powershell
+.\baubook.ps1 -Mode supabase-doctor
 ```
 
-Non committare `.env`.
+## 3. Auth base
 
-## 3. Configura Auth base
-
-Per il primo MVP useremo email OTP / magic link, poi telefono solo per funzioni ad alto rischio.
-
-Dashboard:
+Dashboard Supabase:
 
 ```txt
 Authentication > Providers > Email
 ```
 
-Lascia Email provider abilitato.
+Per MVP useremo email OTP / magic link. Il telefono arrivera' solo per funzioni ad alto rischio come alert smarrimento.
 
-URL consigliati per la fase beta:
+URL consigliati:
 
 ```txt
 Site URL:
@@ -74,84 +63,59 @@ http://localhost:8081/**
 http://127.0.0.1:8081/**
 ```
 
-Il progetto Expo ha gia' lo scheme:
+Lo scheme Expo e' gia':
 
 ```json
 "scheme": "baubook"
 ```
 
-## 4. Applica schema database
+## 4. Schema database
 
-Apri Supabase Dashboard:
+Apri:
 
 ```txt
-SQL Editor > New query
+Supabase Dashboard > SQL Editor > New query
 ```
 
-Copia ed esegui tutto il file:
+Copia ed esegui tutto:
 
 ```txt
 supabase/migrations/0001_initial_schema.sql
 ```
 
-Questo crea:
+Lo schema crea fondazioni MVP e future-proof:
 
-- estensione PostGIS;
-- tabelle core BauBook;
-- moderazione UGC;
-- reports;
-- blocks;
-- audit logs;
-- lost dog alerts;
-- danger reports;
-- policy RLS iniziali;
+- citta' e zone;
+- profili e cani;
+- media, preferenze cibo e knowledge card safety;
+- luoghi, recensioni, mappa;
+- passeggiate, eventi community, presenza temporanea;
+- relazioni profilo-profilo e cane-cane;
+- alert smarrimento e pericoli;
+- servizi consigliati;
+- moderazione, report, block, audit;
+- feature flags e app config;
+- push token e supporter entitlements;
 - storage bucket base.
 
-## 5. Seed demo Venezia-Mestre
+## 5. Seed demo
 
-Solo dopo lo schema, opzionalmente esegui:
+Dopo lo schema, opzionalmente esegui:
 
 ```txt
 supabase/seeds/venezia_mestre_demo.sql
 ```
 
-Serve per avere luoghi demo in mappa/lista.
+Il seed crea citta', zone, luoghi demo e feature flags disattivate. I dati geografici sono placeholder da verificare.
 
-## 6. Verifica locale
+## 6. CLI Supabase
 
-Da PowerShell:
+Non e' obbligatoria subito. La config iniziale puo' avvenire da Dashboard.
 
-```powershell
-cd C:\baubook
-.\baubook.ps1 -Mode supabase-doctor
-```
-
-Il doctor non contatta ancora il database: verifica file, `.env`, CLI opzionale e dipendenze app.
-
-## 7. Supabase CLI, non obbligatoria subito
-
-Per ora puoi usare la Dashboard. Quando inizieremo a gestire migrazioni in modo professionale installeremo la Supabase CLI e useremo:
+Quando passeremo a migrazioni gestite professionalmente:
 
 ```powershell
 supabase login
 supabase link --project-ref TUO_PROJECT_REF
 supabase db push
-```
-
-Non farlo prima di avere il progetto creato e un backup del repository Git pulito.
-
-## 8. Collegamento app, step successivo
-
-Quando decideremo di collegare Auth/DB all'app installeremo:
-
-```powershell
-npx expo install @supabase/supabase-js @react-native-async-storage/async-storage react-native-url-polyfill
-```
-
-Poi `src/shared/lib/supabase.todo.ts` diventera' `src/shared/lib/supabase.ts`.
-
-A quel punto, essendoci una dipendenza nativa (`@react-native-async-storage/async-storage`), rilanceremo:
-
-```powershell
-.\baubook.ps1 -Mode android-build
 ```

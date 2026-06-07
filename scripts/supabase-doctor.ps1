@@ -88,8 +88,8 @@ foreach ($dep in $deps) {
 Write-Section "Prossimi passi"
 Write-Host "1. Crea progetto Supabase: baubook-beta" -ForegroundColor Gray
 Write-Host "2. Copia .env.example in .env e inserisci URL + publishable/anon key" -ForegroundColor Gray
-Write-Host "3. Esegui SQL: supabase/migrations/0001_initial_schema.sql nel SQL Editor" -ForegroundColor Gray
-Write-Host "4. Opzionale: esegui seed supabase/seeds/venezia_mestre_demo.sql" -ForegroundColor Gray
+Write-Host "3. Esegui SQL schema-ready: supabase/migrations/0001_initial_schema.sql nel SQL Editor" -ForegroundColor Gray
+Write-Host "4. Opzionale: esegui seed demo supabase/seeds/venezia_mestre_demo.sql" -ForegroundColor Gray
 Write-Host "5. Rilancia: .\baubook.ps1 -Mode supabase-doctor" -ForegroundColor Gray
 
 if ($Strict -and $errors -gt 0) {

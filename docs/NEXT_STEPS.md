@@ -1,10 +1,8 @@
 # BauBook! next steps
 
-## Baseline corrente
+Baseline consigliata: **1.5.2 schema-ready**.
 
-Baseline consigliata: **1.5.1 super-stable**.
-
-Prima di sviluppare feature nuove:
+## Prima di eseguire lo schema
 
 ```powershell
 cd C:\baubook
@@ -15,47 +13,30 @@ cd C:\baubook
 .\baubook.ps1 -Mode supabase-doctor
 ```
 
-## Commit baseline 1.5.1
+## Supabase
+
+1. Verifica `.env` con `supabase-doctor`.
+2. Esegui `supabase/migrations/0001_initial_schema.sql` nel SQL Editor.
+3. Verifica le tabelle nel Table Editor.
+4. Esegui opzionalmente `supabase/seeds/venezia_mestre_demo.sql`.
+
+## Dopo lo schema
+
+Prossima tranche tecnica:
+
+- installazione `@supabase/supabase-js`, AsyncStorage e polyfill URL;
+- `src/shared/lib/supabase.ts` reale;
+- Auth email OTP/magic link;
+- creazione automatica profilo utente;
+- lettura luoghi demo da Supabase;
+- primo commit feature: `feat: connect Supabase client and auth bootstrap`.
+
+## Commit suggerito
 
 ```powershell
 git add .
-git commit -m "chore: stabilize workspace and prepare Supabase setup"
-git tag -a v0.1.5-super-stable -m "BauBook super-stable baseline 1.5.1"
+git commit -m "chore: prepare schema-ready Supabase baseline"
+git tag -a v0.1.6-schema-ready -m "BauBook schema-ready baseline 1.5.2"
 git push
-git push origin v0.1.5-super-stable
+git push origin v0.1.6-schema-ready
 ```
-
-## Step 1 completato: launcher icon
-
-Il logo completo resta per splash/Home/store. Il launcher Android usa il muso del cane, piu' leggibile e non tagliato dalla maschera adaptive icon.
-
-Guida:
-
-```txt
-docs/ANDROID_LAUNCHER_ICON.md
-```
-
-## Step 2: Supabase
-
-1. Crea progetto `baubook-beta`.
-2. Compila `.env`.
-3. Esegui schema SQL.
-4. Esegui seed demo opzionale.
-5. Rilancia `supabase-doctor`.
-
-Guida:
-
-```txt
-docs/SUPABASE_SETUP.md
-```
-
-## Dopo Supabase
-
-Quando il progetto Supabase e' creato, la tranche successiva sara':
-
-- installazione dipendenze Supabase React Native;
-- `src/shared/lib/supabase.ts` reale;
-- Auth email OTP/magic link;
-- creazione profilo utente automatico;
-- lettura luoghi demo da Supabase nella schermata Mappa/List;
-- primo commit feature: `feat: connect Supabase client and auth bootstrap`.

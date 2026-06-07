@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,7 +25,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 5
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",
@@ -34,10 +34,10 @@
       "shortName": "BauBook!"
     },
     "extra": {
-      "projectName": "BauBook MVP Super-Stable Workspace 1.5.1",
+      "projectName": "BauBook MVP Schema-Ready Workspace 1.5.2",
       "betaCity": "Venezia-Mestre",
       "preferredDevFlow": "web + Android development build + Supabase managed",
-      "baseline": "1.5.1"
+      "baseline": "1.5.2"
     }
   }
 }

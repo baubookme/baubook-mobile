@@ -7,3 +7,4 @@ Reminder for BauBook work:
 - Supabase preparation: `./baubook.ps1 -Mode supabase-doctor` and `docs/SUPABASE_SETUP.md`.
 - Do not use Expo Go as the main Android workflow.
 - Do not commit `.env`, `node_modules`, `.expo`, `android`, `ios`, or registry-internal lockfiles.
+- Keep docs concise: no HOTFIX/BASELINE markdown files.

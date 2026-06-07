@@ -2,7 +2,7 @@
 
 Project: Expo SDK 56 + React Native + TypeScript.
 
-Current baseline: **BauBook 1.5.0 super-stable**.
+Current workspace baseline: **BauBook 1.5.2 schema-ready**.
 
 Operational workflow:
 
@@ -35,6 +35,8 @@ npm run export:web
 ```
 
 6. Keep `android/` and `ios/` generated for now. Do not commit native folders until BauBook needs manual native edits.
+
+7. Keep `docs/` small. Do not create `HOTFIX_*.md` or `BASELINE_*.md`.
 
 Notes:
 
