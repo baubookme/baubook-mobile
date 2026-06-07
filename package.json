@@ -29,10 +29,13 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@supabase/supabase-js": "^2.107.0",
     "expo": "~56.0.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
+    "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
