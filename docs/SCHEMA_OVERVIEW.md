@@ -46,3 +46,9 @@ Tutte le tabelle UGC partono con:
 - `reports`, `blocks`, `moderation_actions`, `content_removals`, `user_suspensions`, `audit_logs`.
 
 Le tabelle moderator-only non hanno policy client: saranno gestite da Dashboard o Edge Functions con service role.
+
+## API grants
+
+La migration `0002_api_access_grants.sql` assegna i privilegi PostgREST a `anon` e `authenticated`.
+
+Le RLS policy restano il vero controllo di sicurezza: i grant aprono solo la porta API, mentre le policy decidono cosa e' visibile o modificabile.

@@ -40,7 +40,8 @@ $errors = 0
 Write-Section "File progetto"
 if (Test-Path ".env.example") { Write-Ok ".env.example presente" } else { Write-Bad ".env.example mancante"; $errors++ }
 if (Test-Path ".env") { Write-Ok ".env presente" } else { Write-WarnLine ".env non presente: copia .env.example in .env quando avrai URL e key Supabase" }
-if (Test-Path "supabase/migrations/0001_initial_schema.sql") { Write-Ok "Migration SQL presente" } else { Write-Bad "Migration SQL mancante"; $errors++ }
+if (Test-Path "supabase/migrations/0001_initial_schema.sql") { Write-Ok "Migration 0001 schema presente" } else { Write-Bad "Migration 0001 schema mancante"; $errors++ }
+if (Test-Path "supabase/migrations/0002_api_access_grants.sql") { Write-Ok "Migration 0002 API grants presente" } else { Write-Bad "Migration 0002 API grants mancante"; $errors++ }
 if (Test-Path "supabase/seeds/venezia_mestre_demo.sql") { Write-Ok "Seed Venezia-Mestre presente" } else { Write-WarnLine "Seed demo non trovato" }
 
 Write-Section "Variabili Supabase"
@@ -89,8 +90,9 @@ Write-Section "Prossimi passi"
 Write-Host "1. Crea progetto Supabase: baubook-beta" -ForegroundColor Gray
 Write-Host "2. Copia .env.example in .env e inserisci URL + publishable/anon key" -ForegroundColor Gray
 Write-Host "3. Esegui SQL schema-ready: supabase/migrations/0001_initial_schema.sql nel SQL Editor" -ForegroundColor Gray
-Write-Host "4. Opzionale: esegui seed demo supabase/seeds/venezia_mestre_demo.sql" -ForegroundColor Gray
-Write-Host "5. Rilancia: .\baubook.ps1 -Mode supabase-doctor" -ForegroundColor Gray
+Write-Host "4. Esegui seed demo: supabase/seeds/venezia_mestre_demo.sql" -ForegroundColor Gray
+Write-Host "5. Esegui API grants: supabase/migrations/0002_api_access_grants.sql" -ForegroundColor Gray
+Write-Host "6. Apri app: Mappa e Setup devono leggere dati live da Supabase" -ForegroundColor Gray
 
 if ($Strict -and $errors -gt 0) {
   throw "Supabase doctor ha rilevato $errors errore/i bloccante/i."

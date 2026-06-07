@@ -26,6 +26,7 @@ Per Android usa la Development Build, non Expo Go:
 
 ```powershell
 .\baubook.ps1 -Mode doctor
+.\baubook.ps1 -Mode supabase-doctor
 .\baubook.ps1 -Mode web
 .\baubook.ps1 -Mode android-build -CleanPrebuild
 .\baubook.ps1 -Mode android-dev
@@ -47,6 +48,7 @@ Per Android usa la Development Build, non Expo Go:
 - Se Java manca: `winget install EclipseAdoptium.Temurin.17.JDK`.
 - Android Studio non deve restare aperto: serve solo per SDK/AVD Manager.
 - L'emulatore viene avviato dallo script tramite `emulator.exe`.
+- Dopo nuove dipendenze native usa `android-build -CleanPrebuild`.
 
 ## Git
 

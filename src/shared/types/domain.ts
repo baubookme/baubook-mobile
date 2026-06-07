@@ -2,7 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 export type TabKey = 'home' | 'map' | 'dog' | 'walks' | 'alerts' | 'profile';
 
-export type PlaceKind = 'dog_area' | 'walk' | 'vet' | 'pet_shop' | 'warning';
+export type PlaceKind = 'dog_area' | 'walk' | 'vet' | 'pet_shop' | 'warning_zone' | 'beach' | 'trail' | 'service' | 'other';
 
 export type ModerationStatus = 'pending' | 'approved' | 'rejected' | 'hidden' | 'escalated' | 'removed';
 

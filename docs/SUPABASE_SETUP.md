@@ -1,21 +1,21 @@
 # BauBook! Supabase setup
 
-Obiettivo: configurare il backend managed Supabase per la beta **BauBook! Venezia-Mestre**.
+Backend managed per la beta **BauBook! Venezia-Mestre**.
 
-## 1. Progetto Supabase
+## 1. Progetto
 
-Valori consigliati:
+Valori usati:
 
 ```txt
 Organization: BauBook
 Project name: baubook-beta
 Region: Europe
-Plan: Free, per bootstrap e test interni
+Plan: Free
 ```
 
-Salva la database password in un password manager. Non inserirla in `.env`, GitHub, chat o documentazione.
+La database password resta solo nel password manager. Non va in `.env`, GitHub, chat o documentazione.
 
-## 2. Variabili locali
+## 2. Variabili locali Expo
 
 Crea `C:\baubook\.env` partendo da `.env.example`:
 
@@ -30,6 +30,7 @@ Compila:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://TUO_PROJECT_REF.supabase.co
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=LA_TUA_PUBLISHABLE_KEY
+EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY=
 ```
 
 `NEXT_PUBLIC_*` e' per Next.js, non per Expo.
@@ -40,82 +41,56 @@ Verifica:
 .\baubook.ps1 -Mode supabase-doctor
 ```
 
-## 3. Auth base
+## 3. Schema, seed e API grants
 
-Dashboard Supabase:
+Nel Dashboard Supabase usa `SQL Editor > New query`.
 
-```txt
-Authentication > Providers > Email
-```
+Ordine da rispettare:
 
-Per MVP useremo email OTP / magic link. Il telefono arrivera' solo per funzioni ad alto rischio come alert smarrimento.
+1. `supabase/migrations/0001_initial_schema.sql`
+2. `supabase/seeds/venezia_mestre_demo.sql`
+3. `supabase/migrations/0002_api_access_grants.sql`
 
-URL consigliati:
+`0002_api_access_grants.sql` e' importante: le policy RLS decidono cosa si puo' leggere/scrivere, ma il client Supabase ha comunque bisogno dei privilegi PostgREST corretti per `anon` e `authenticated`.
 
-```txt
-Site URL:
-https://baubook.me
+## 4. App live read-only
 
-Redirect URLs:
-baubook://**
-https://baubook.me/**
-http://localhost:8081/**
-http://127.0.0.1:8081/**
-```
+Dalla 1.6.0 l'app legge da Supabase:
 
-Lo scheme Expo e' gia':
+- `places` nella schermata **Mappa**;
+- `app_config`, `feature_flags`, `places` nella schermata **Setup**.
 
-```json
-"scheme": "baubook"
-```
+Se Supabase non risponde, BauBook mostra fallback demo locali e un messaggio parlante. Non deve crashare.
 
-## 4. Schema database
+## 5. Test consigliati
 
-Apri:
-
-```txt
-Supabase Dashboard > SQL Editor > New query
-```
-
-Copia ed esegui tutto:
-
-```txt
-supabase/migrations/0001_initial_schema.sql
-```
-
-Lo schema crea fondazioni MVP e future-proof:
-
-- citta' e zone;
-- profili e cani;
-- media, preferenze cibo e knowledge card safety;
-- luoghi, recensioni, mappa;
-- passeggiate, eventi community, presenza temporanea;
-- relazioni profilo-profilo e cane-cane;
-- alert smarrimento e pericoli;
-- servizi consigliati;
-- moderazione, report, block, audit;
-- feature flags e app config;
-- push token e supporter entitlements;
-- storage bucket base.
-
-## 5. Seed demo
-
-Dopo lo schema, opzionalmente esegui:
-
-```txt
-supabase/seeds/venezia_mestre_demo.sql
-```
-
-Il seed crea citta', zone, luoghi demo e feature flags disattivate. I dati geografici sono placeholder da verificare.
-
-## 6. CLI Supabase
-
-Non e' obbligatoria subito. La config iniziale puo' avvenire da Dashboard.
-
-Quando passeremo a migrazioni gestite professionalmente:
+Dopo aver eseguito gli SQL:
 
 ```powershell
-supabase login
-supabase link --project-ref TUO_PROJECT_REF
-supabase db push
+cd C:\baubook
+.\baubook.ps1 -Mode supabase-doctor
+.\baubook.ps1 -Mode web
 ```
+
+Nel browser:
+
+- **Mappa** deve mostrare `Supabase live` e luoghi `seed Supabase`;
+- **Setup** deve mostrare `DB raggiungibile` con conteggi config/flag/luoghi.
+
+Poi ricostruisci Android almeno una volta, perche' sono state aggiunte dipendenze native:
+
+```powershell
+.\baubook.ps1 -Mode android-build -CleanPrebuild
+.\baubook.ps1 -Mode android-dev
+```
+
+## 6. Auth base: prossimo step
+
+La prossima tranche sara':
+
+- email OTP/magic link;
+- creazione automatica `profiles`;
+- primo cane locale/su DB;
+- upload avatar piu' avanti.
+
+Il telefono resta rimandato alle funzioni ad alto rischio, come `Mi sono perso!`.

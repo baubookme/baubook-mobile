@@ -8,6 +8,8 @@ import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
 import { hasGoogleMapsConfig, hasSupabaseConfig } from '../../shared/lib/env';
+import { getSupabaseConfigSummary } from '../../shared/lib/supabase';
+import { useSupabasePublicStatus } from '../../shared/hooks/useSupabasePublicData';
 import { getRuntimeDiagnostics } from '../../shared/lib/runtimeDiagnostics';
 import { colors, spacing, typography } from '../../shared/theme/theme';
 
@@ -16,12 +18,16 @@ const setupSteps = [
   'Android: .\\baubook.ps1 -Mode android-build',
   'Dopo la build: .\\baubook.ps1 -Mode android-dev',
   'Git: inizializza repository e primo commit pulito.',
-  'Supabase: crea progetto baubook-beta e compila .env.',
+  'Supabase: progetto baubook-beta e .env locali.',
   'Supabase check: .\\baubook.ps1 -Mode supabase-doctor',
+  'DB grants: esegui supabase/migrations/0002_api_access_grants.sql se la app legge permission denied.',
 ];
 
 export function ProfileScreen() {
   const diagnostics = getRuntimeDiagnostics();
+  const supabaseSummary = getSupabaseConfigSummary();
+  const supabaseStatus = useSupabasePublicStatus();
+  const liveStatus = supabaseStatus.data;
 
   return (
     <Screen>
@@ -43,6 +49,44 @@ export function ProfileScreen() {
         <View style={styles.statusRow}>
           <Tag label={hasSupabaseConfig ? 'Supabase configurato' : 'Supabase non configurato'} tone={hasSupabaseConfig ? 'green' : 'orange'} />
           <Tag label={hasGoogleMapsConfig ? 'Maps configurato' : 'Maps non configurato'} tone={hasGoogleMapsConfig ? 'green' : 'orange'} />
+        </View>
+      </AppCard>
+
+
+      <AppCard tone={liveStatus?.connected ? 'teal' : 'warm'}>
+        <View style={styles.headerRow}>
+          <IconBubble source={baubookImages.icons.dogArea} size={58} tone="plain" />
+          <View style={styles.headerCopy}>
+            <Text style={styles.cardTitle}>Supabase live check</Text>
+            <Text style={styles.bodyText}>
+              {supabaseStatus.status === 'loading'
+                ? 'Controllo app_config, feature_flags e places...'
+                : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statusRow}>
+          <Tag label={liveStatus?.connected ? 'DB raggiungibile' : hasSupabaseConfig ? 'DB da verificare' : 'DB non configurato'} tone={liveStatus?.connected ? 'green' : 'orange'} />
+          <Tag label={`config ${liveStatus?.appConfigCount ?? 0}`} tone="teal" />
+          <Tag label={`flag ${liveStatus?.featureFlagsCount ?? 0}`} tone="pink" />
+          <Tag label={`luoghi ${liveStatus?.placesCount ?? 0}`} tone="green" />
+        </View>
+        <View style={styles.diagnosticsList}>
+          <View style={styles.diagnosticRow}>
+            <Text style={styles.diagnosticLabel}>Supabase URL</Text>
+            <Text selectable style={styles.diagnosticValue}>{supabaseSummary.url || 'non configurato'}</Text>
+          </View>
+          <View style={styles.diagnosticRow}>
+            <Text style={styles.diagnosticLabel}>Client key</Text>
+            <Text selectable style={styles.diagnosticValue}>{supabaseSummary.keyPrefix || 'non configurata'}</Text>
+          </View>
+          <View style={styles.diagnosticRow}>
+            <Text style={styles.diagnosticLabel}>Ultimo check</Text>
+            <Text selectable style={styles.diagnosticValue}>{liveStatus?.lastCheckedAt ?? 'non ancora eseguito'}</Text>
+          </View>
+        </View>
+        <View style={styles.buttonWrap}>
+          <AppButton label="Riprova check Supabase" variant="ghost" icon={baubookImages.icons.settings} onPress={supabaseStatus.reload} />
         </View>
       </AppCard>
 

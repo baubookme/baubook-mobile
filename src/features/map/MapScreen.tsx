@@ -7,16 +7,19 @@ import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
-import { demoPlaces } from '../../shared/data/mockData';
+import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
 export function MapScreen() {
+  const { places, source, status, message, errorMessage, reload } = useSupabasePlaces();
+  const isLive = source === 'supabase';
+
   return (
     <Screen>
       <SectionHeader
         eyebrow="Dove andiamo?"
-        title="Mappa locale pronta per Maps e PostGIS"
-        description="Per ora vedi dati demo. La prossima iterazione collegherà Supabase, geodati e Google Places con salvataggio dei Place ID."
+        title={isLive ? 'Luoghi caricati da Supabase' : 'Mappa locale pronta per Supabase e PostGIS'}
+        description="Questa schermata legge i luoghi pubblici dal database quando Supabase e' configurato. Se qualcosa non risponde, BauBook torna ai dati demo locali senza bloccarsi."
       />
 
       <View style={styles.mapMock}>
@@ -28,9 +31,28 @@ export function MapScreen() {
         <View style={styles.mapRoadTwo} />
         <View style={styles.mapLegend}>
           <Tag label="Venezia-Mestre" tone="teal" />
-          <Tag label="placeholder mappa" tone="orange" />
+          <Tag label={isLive ? 'Supabase live' : 'fallback demo'} tone={isLive ? 'green' : 'orange'} />
         </View>
       </View>
+
+      <AppCard tone={isLive ? 'teal' : 'warm'}>
+        <View style={styles.statusHeader}>
+          <IconBubble source={isLive ? baubookImages.icons.dogArea : baubookImages.icons.settings} size={58} tone="plain" />
+          <View style={styles.statusCopy}>
+            <Text style={styles.cardTitle}>{isLive ? 'Backend collegato' : 'Backend in fallback controllato'}</Text>
+            <Text style={styles.bodyText}>{status === 'loading' ? 'Carico i luoghi dal database...' : message}</Text>
+            {errorMessage ? <Text selectable style={styles.errorText}>{errorMessage}</Text> : null}
+          </View>
+        </View>
+        <View style={styles.tagsRow}>
+          <Tag label={status === 'loading' ? 'loading' : isLive ? 'live DB' : 'demo locale'} tone={isLive ? 'green' : 'orange'} />
+          <Tag label={`${places.length} schede`} tone="teal" />
+          <Tag label="RLS attiva" tone="pink" />
+        </View>
+        <View style={styles.buttonWrap}>
+          <AppButton label="Ricarica luoghi" variant="ghost" icon={baubookImages.icons.filters} onPress={reload} />
+        </View>
+      </AppCard>
 
       <AppCard tone="teal">
         <View style={styles.searchHeader}>
@@ -49,7 +71,7 @@ export function MapScreen() {
       </AppCard>
 
       <View style={styles.list}>
-        {demoPlaces.map((place) => (
+        {places.map((place) => (
           <AppCard key={place.id}>
             <View style={styles.placeHeader}>
               <IconBubble source={place.icon} size={62} />
@@ -160,11 +182,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
+    zIndex: 4,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  statusCopy: {
+    flex: 1,
+    gap: spacing.xs,
   },
   searchHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.md,
+    alignItems: 'center',
   },
   searchCopy: {
     flex: 1,
@@ -180,11 +212,21 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 22,
   },
+  errorText: {
+    color: colors.danger,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginTop: spacing.md,
+  },
+  buttonWrap: {
+    marginTop: spacing.md,
+    alignItems: 'flex-start',
   },
   list: {
     gap: spacing.md,
@@ -192,6 +234,7 @@ const styles = StyleSheet.create({
   placeHeader: {
     flexDirection: 'row',
     gap: spacing.md,
+    alignItems: 'flex-start',
   },
   placeCopy: {
     flex: 1,
@@ -208,25 +251,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   placeDescription: {
-    color: colors.muted,
-    fontSize: typography.small,
-    lineHeight: 19,
+    color: colors.text,
+    fontSize: typography.body,
+    lineHeight: 21,
   },
   placeFooter: {
+    marginTop: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.md,
   },
   score: {
-    color: colors.ink,
-    fontSize: typography.body,
+    color: colors.primaryDark,
+    fontSize: typography.small,
     fontWeight: '900',
   },
   status: {
     color: colors.success,
-    fontSize: typography.small,
+    fontSize: typography.tiny,
     fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
   },
   statusPending: {
     color: colors.warning,
@@ -234,7 +279,8 @@ const styles = StyleSheet.create({
   inlineAction: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   actionCopy: {
     flex: 1,

@@ -1,42 +1,59 @@
 # BauBook! next steps
 
-Baseline consigliata: **1.5.2 schema-ready**.
+Baseline corrente: **1.6.0 Supabase live read-only**.
 
-## Prima di eseguire lo schema
+## Gia' fatto
+
+- Workspace stabile Web + Android Development Build.
+- Schema Supabase 1.5.2 applicato.
+- Seed Venezia-Mestre applicato.
+- App collegata a Supabase per letture pubbliche.
+- Fallback locale se Supabase non risponde.
+
+## Test base
 
 ```powershell
 cd C:\baubook
 .\baubook.ps1 -Mode doctor
+.\baubook.ps1 -Mode supabase-doctor
 .\baubook.ps1 -Mode web
 .\baubook.ps1 -Mode android-build -CleanPrebuild
 .\baubook.ps1 -Mode android-dev
-.\baubook.ps1 -Mode supabase-doctor
 ```
 
-## Supabase
+## Prima verifica funzionale
 
-1. Verifica `.env` con `supabase-doctor`.
-2. Esegui `supabase/migrations/0001_initial_schema.sql` nel SQL Editor.
-3. Verifica le tabelle nel Table Editor.
-4. Esegui opzionalmente `supabase/seeds/venezia_mestre_demo.sql`.
+Nel browser:
 
-## Dopo lo schema
+1. apri **Mappa**;
+2. verifica badge `Supabase live`;
+3. verifica luoghi seed dal DB;
+4. apri **Setup**;
+5. verifica `DB raggiungibile` e conteggi `config`, `flag`, `luoghi`.
 
-Prossima tranche tecnica:
+Se vedi `permission denied`, esegui in Supabase SQL Editor:
 
-- installazione `@supabase/supabase-js`, AsyncStorage e polyfill URL;
-- `src/shared/lib/supabase.ts` reale;
-- Auth email OTP/magic link;
-- creazione automatica profilo utente;
-- lettura luoghi demo da Supabase;
-- primo commit feature: `feat: connect Supabase client and auth bootstrap`.
+```txt
+supabase/migrations/0002_api_access_grants.sql
+```
 
-## Commit suggerito
+## Prossima tranche tecnica
+
+`feat: bootstrap Supabase Auth`
+
+- Email OTP/magic link.
+- Creazione profilo utente.
+- Logout.
+- Schermata account minima.
+- `profiles` collegato ad `auth.users`.
+- Nessun telefono finche' non partono alert smarrimento.
+
+## Commit suggerito per questa tranche
 
 ```powershell
 git add .
-git commit -m "chore: prepare schema-ready Supabase baseline"
-git tag -a v0.1.6-schema-ready -m "BauBook schema-ready baseline 1.5.2"
+git commit -m "feat: connect Supabase public data"
+git tag -a v0.1.7-supabase-live -m "BauBook Supabase live read-only baseline 1.6.0"
 git push
-git push origin v0.1.6-schema-ready
+git push origin v0.1.7-supabase-live
 ```
