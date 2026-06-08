@@ -1,6 +1,8 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { baubookImages } from '../../shared/assets/images';
+import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
 import { IconBubble } from '../../shared/components/IconBubble';
@@ -11,16 +13,14 @@ import { hasGoogleMapsConfig, hasSupabaseConfig } from '../../shared/lib/env';
 import { getSupabaseConfigSummary } from '../../shared/lib/supabase';
 import { useSupabasePublicStatus } from '../../shared/hooks/useSupabasePublicData';
 import { getRuntimeDiagnostics } from '../../shared/lib/runtimeDiagnostics';
-import { colors, spacing, typography } from '../../shared/theme/theme';
+import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
 const setupSteps = [
-  'Browser: .\\baubook.ps1 -Mode web',
-  'Android: .\\baubook.ps1 -Mode android-build',
-  'Dopo la build: .\\baubook.ps1 -Mode android-dev',
-  'Git: inizializza repository e primo commit pulito.',
-  'Supabase: progetto baubook-beta e .env locali.',
-  'Supabase check: .\\baubook.ps1 -Mode supabase-doctor',
-  'DB grants: esegui supabase/migrations/0002_api_access_grants.sql se la app legge permission denied.',
+  'Web: .\\baubook.ps1 -Mode web',
+  'Android build: .\\baubook.ps1 -Mode android-build -CleanPrebuild quando cambiano asset/librerie native.',
+  'Android dev: .\\baubook.ps1 -Mode android-dev per sviluppo quotidiano.',
+  'Supabase: esegui le migration nuove dal SQL Editor prima di testare feature DB.',
+  'Git: commit piccolo dopo ogni baseline funzionante.',
 ];
 
 export function ProfileScreen() {
@@ -28,13 +28,21 @@ export function ProfileScreen() {
   const supabaseSummary = getSupabaseConfigSummary();
   const supabaseStatus = useSupabasePublicStatus();
   const liveStatus = supabaseStatus.data;
+  const auth = useAuthAccount();
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    setDisplayName(auth.profile?.displayName ?? '');
+  }, [auth.profile?.displayName]);
 
   return (
     <Screen>
       <SectionHeader
         eyebrow="Setup sviluppatore"
-        title="BauBook! è pronto per essere collegato ai servizi"
-        description="Questa pagina e' una checklist tecnica interna. Da ora il flusso stabile e': browser per UI, Development Build per Android, Supabase managed per backend."
+        title="BauBook! ora parla con Supabase"
+        description="Questa pagina tiene insieme diagnostica, login email e profilo umano. Il flusso resta prudente: niente dati sensibili, sessione persistente, errori leggibili."
       />
 
       <AppCard tone="warm">
@@ -49,9 +57,98 @@ export function ProfileScreen() {
         <View style={styles.statusRow}>
           <Tag label={hasSupabaseConfig ? 'Supabase configurato' : 'Supabase non configurato'} tone={hasSupabaseConfig ? 'green' : 'orange'} />
           <Tag label={hasGoogleMapsConfig ? 'Maps configurato' : 'Maps non configurato'} tone={hasGoogleMapsConfig ? 'green' : 'orange'} />
+          <Tag label={auth.isSignedIn ? 'Sessione attiva' : 'Non loggato'} tone={auth.isSignedIn ? 'green' : 'orange'} />
         </View>
       </AppCard>
 
+      <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
+        <View style={styles.headerRow}>
+          <IconBubble source={baubookImages.icons.phoneVerify} size={58} tone="teal" />
+          <View style={styles.headerCopy}>
+            <Text style={styles.cardTitle}>Account BauBook</Text>
+            <Text style={styles.bodyText}>{auth.message}</Text>
+          </View>
+        </View>
+
+        {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
+
+        {!auth.isSignedIn ? (
+          <View style={styles.formStack}>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="nome@esempio.it"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                style={styles.input}
+              />
+            </View>
+            <View style={styles.actionsColumn}>
+              <AppButton
+                label={auth.isBusy ? 'Invio in corso...' : 'Invia magic link / OTP'}
+                icon={baubookImages.icons.notifications}
+                disabled={auth.isBusy || !auth.isConfigured}
+                onPress={() => void auth.sendLoginEmail(email)}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Codice OTP, se presente nella email</Text>
+              <TextInput
+                value={otp}
+                onChangeText={setOtp}
+                placeholder="123456"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="number-pad"
+                style={styles.input}
+              />
+            </View>
+            <AppButton
+              label={auth.isBusy ? 'Verifica...' : 'Verifica codice OTP'}
+              variant="secondary"
+              icon={baubookImages.icons.phoneVerify}
+              disabled={auth.isBusy || !auth.isConfigured}
+              onPress={() => void auth.verifyOtpCode(email, otp)}
+            />
+            <Text style={styles.helperText}>
+              Per il test più semplice usa il codice OTP se Supabase lo mostra nella mail. Il link magico richiede anche i Redirect URL in Supabase Auth.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.formStack}>
+            <View style={styles.diagnosticsList}>
+              <View style={styles.diagnosticRow}>
+                <Text style={styles.diagnosticLabel}>Email</Text>
+                <Text selectable style={styles.diagnosticValue}>{auth.user?.email ?? 'non disponibile'}</Text>
+              </View>
+              <View style={styles.diagnosticRow}>
+                <Text style={styles.diagnosticLabel}>Profile ID</Text>
+                <Text selectable style={styles.diagnosticValue}>{auth.profile?.id ?? 'profilo in creazione'}</Text>
+              </View>
+              <View style={styles.diagnosticRow}>
+                <Text style={styles.diagnosticLabel}>Cani salvati</Text>
+                <Text selectable style={styles.diagnosticValue}>{auth.dogs.length}</Text>
+              </View>
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nome umano visibile</Text>
+              <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Eris e branco BauBook" style={styles.input} />
+            </View>
+            <View style={styles.actionsRow}>
+              <AppButton
+                label={auth.isBusy ? 'Salvo...' : 'Salva profilo'}
+                icon={baubookImages.icons.settings}
+                disabled={auth.isBusy}
+                onPress={() => void auth.saveProfile(displayName)}
+              />
+              <AppButton label="Logout" variant="ghost" icon={baubookImages.icons.privacy} disabled={auth.isBusy} onPress={() => void auth.signOut()} />
+            </View>
+          </View>
+        )}
+      </AppCard>
 
       <AppCard tone={liveStatus?.connected ? 'teal' : 'warm'}>
         <View style={styles.headerRow}>
@@ -92,32 +189,20 @@ export function ProfileScreen() {
 
       <AppCard>
         <View style={styles.headerRow}>
-          <IconBubble source={baubookImages.icons.phoneVerify} size={58} tone="teal" />
-          <View style={styles.headerCopy}>
-            <Text style={styles.cardTitle}>Verifica account</Text>
-            <Text style={styles.bodyText}>Email/OTP per tutti. Telefono obbligatorio solo per funzioni ad alto rischio, come alert smarrimento.</Text>
-          </View>
-        </View>
-      </AppCard>
-
-      <AppCard>
-        <View style={styles.headerRow}>
           <IconBubble source={baubookImages.icons.privacy} size={58} tone="pink" />
           <View style={styles.headerCopy}>
             <Text style={styles.cardTitle}>Privacy by default</Text>
-            <Text style={styles.bodyText}>Niente home address, niente live location predefinita, visibilità contenuti esplicita e blocco utente sempre disponibile.</Text>
+            <Text style={styles.bodyText}>Email/OTP per tutti. Telefono solo per funzioni ad alto rischio. Niente home address, niente live location predefinita.</Text>
           </View>
         </View>
       </AppCard>
-
-
 
       <AppCard tone="pink">
         <View style={styles.headerRow}>
           <IconBubble source={baubookImages.icons.settings} size={58} tone="plain" />
           <View style={styles.headerCopy}>
             <Text style={styles.cardTitle}>Debug parlante</Text>
-            <Text style={styles.bodyText}>Questi dati aiutano a capire subito runtime, piattaforma, host Metro e ultimo errore intercettato.</Text>
+            <Text style={styles.bodyText}>Dati runtime utili per capire subito piattaforma, Metro, errori e build.</Text>
           </View>
         </View>
         <View style={styles.diagnosticsList}>
@@ -139,9 +224,6 @@ export function ProfileScreen() {
               <Text style={styles.stepText}>{step}</Text>
             </View>
           ))}
-        </View>
-        <View style={styles.buttonWrap}>
-          <AppButton label="Apri docs/RUN_WEB_ANDROID.md" variant="ghost" icon={baubookImages.icons.settings} />
         </View>
       </AppCard>
     </Screen>
@@ -194,6 +276,55 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
     gap: 4,
+  },
+  formStack: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  formGroup: {
+    gap: spacing.xs,
+  },
+  label: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: '900',
+  },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text,
+    fontSize: typography.body,
+  },
+  helperText: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  errorBox: {
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.redSoft,
+    color: colors.text,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  actionsColumn: {
+    gap: spacing.sm,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   diagnosticsList: {
     gap: spacing.xs,

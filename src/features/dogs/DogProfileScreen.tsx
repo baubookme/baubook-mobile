@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { baubookImages } from '../../shared/assets/images';
+import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
 import { IconBubble } from '../../shared/components/IconBubble';
@@ -11,34 +12,59 @@ import { Tag } from '../../shared/components/Tag';
 import { demoDog } from '../../shared/data/mockData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
+const defaultPersonalityTags = ['curioso', 'buffo', 'gentile'];
+const defaultSocialityTags = ['ok cani piccoli', 'ama umani calmi', 'no caos'];
+const defaultWalkTags = ['ombra', 'fontanella', 'passeggiata lenta'];
+
 export function DogProfileScreen() {
-  const [dogName, setDogName] = useState(demoDog.name);
-  const [headline, setHeadline] = useState(demoDog.headline);
+  const auth = useAuthAccount();
+  const firstDog = auth.dogs[0] ?? null;
+  const [dogName, setDogName] = useState(firstDog?.name ?? demoDog.name);
+  const [headline, setHeadline] = useState(firstDog?.notesPublic ?? demoDog.headline);
+  const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
+
+  const personalityTags = useMemo(() => firstDog?.personalityTags.length ? firstDog.personalityTags : defaultPersonalityTags, [firstDog]);
+  const socialityTags = useMemo(() => firstDog?.socialityTags.length ? firstDog.socialityTags : defaultSocialityTags, [firstDog]);
+  const walkTags = useMemo(() => firstDog?.walkTags.length ? firstDog.walkTags : defaultWalkTags, [firstDog]);
+
+  useEffect(() => {
+    if (firstDog) {
+      setDogName(firstDog.name);
+      setHeadline(firstDog.notesPublic ?? demoDog.headline);
+      setPrivateNotes(firstDog.notesPrivate ?? '');
+    }
+  }, [firstDog?.id]);
+
+  const saveLabel = firstDog ? 'Aggiorna cane su Supabase' : 'Crea il mio cane';
 
   return (
     <Screen>
       <SectionHeader
         eyebrow="Io sono...!"
         title="Profilo cane in prima persona"
-        description="Questa schermata è già pensata per diventare CRUD Supabase: avatar, tag, note, visibilità e moderazione."
+        description="Ora questa schermata salva davvero su Supabase quando l'account e' attivo. Il demo resta visibile come fallback."
       />
 
-      <AppCard tone="warm">
+      <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarFrame}>
             <Image source={baubookImages.avatar} style={styles.avatar} />
           </View>
           <View style={styles.profileCopy}>
-            <Text style={styles.eyebrow}>Profilo demo</Text>
-            <Text style={styles.name}>{dogName}</Text>
-            <Text style={styles.visibility}>Visibilità: pubblico beta · moderazione: approved</Text>
+            <Text style={styles.eyebrow}>{firstDog ? 'Profilo Supabase' : auth.isSignedIn ? 'Nuovo cane' : 'Profilo demo'}</Text>
+            <Text style={styles.name}>{dogName || 'Il mio cane'}</Text>
+            <Text style={styles.visibility}>
+              {auth.isSignedIn ? 'Visibilita: pubblico beta · moderazione: approved' : 'Accedi nel tab Setup per salvare davvero'}
+            </Text>
           </View>
         </View>
-        <Text style={styles.quote}>“{headline}”</Text>
-        <View style={styles.actionsRow}>
-          <AppButton label="Aggiungi foto" variant="secondary" icon={baubookImages.icons.camera} />
-          <AppButton label="Privacy" variant="ghost" icon={baubookImages.icons.privacy} />
+        <Text style={styles.quote}>“{headline || 'Scrivi una bio in prima persona.'}”</Text>
+        <View style={styles.statusRow}>
+          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Demo locale'} tone={auth.isSignedIn ? 'green' : 'orange'} />
+          <Tag label={firstDog ? 'DB salvato' : 'non salvato'} tone={firstDog ? 'green' : 'orange'} />
+          <Tag label={`cani ${auth.dogs.length}`} tone="teal" />
         </View>
+        {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
       </AppCard>
 
       <AppCard>
@@ -46,7 +72,7 @@ export function DogProfileScreen() {
           <IconBubble source={baubookImages.icons.dogProfile} size={58} tone="teal" />
           <View style={styles.formHeaderCopy}>
             <Text style={styles.cardTitle}>Campi MVP</Text>
-            <Text style={styles.bodyText}>Niente feed infinito all'inizio: solo identità utile per incontri e alert.</Text>
+            <Text style={styles.bodyText}>Identita' utile per incontri, passeggiate e alert. Story, gallery e extra arriveranno dopo.</Text>
           </View>
         </View>
         <View style={styles.formGroup}>
@@ -63,21 +89,50 @@ export function DogProfileScreen() {
             multiline
           />
         </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Note private MVP</Text>
+          <TextInput
+            value={privateNotes}
+            onChangeText={setPrivateNotes}
+            placeholder="Es. non ama cani grandi, timoroso, anziano..."
+            style={[styles.input, styles.textArea]}
+            multiline
+          />
+        </View>
+        <View style={styles.actionsRow}>
+          <AppButton
+            label={auth.isBusy ? 'Salvo...' : saveLabel}
+            icon={baubookImages.icons.dogProfile}
+            disabled={!auth.isSignedIn || auth.isBusy}
+            onPress={() => void auth.saveDogProfile({
+              id: firstDog?.id,
+              name: dogName,
+              personalityTags,
+              socialityTags,
+              walkTags,
+              notesPublic: headline,
+              notesPrivate: privateNotes,
+              visibility: 'public',
+            })}
+          />
+          <AppButton label="Foto dopo" variant="ghost" icon={baubookImages.icons.camera} disabled />
+        </View>
+        {!auth.isSignedIn ? <Text style={styles.helperText}>Per salvare il cane: vai in Setup, invia email OTP/magic link e crea il profilo umano.</Text> : null}
       </AppCard>
 
       <AppCard>
         <Text style={styles.cardTitle}>Tag caratteriali</Text>
         <View style={styles.tagsRow}>
-          {demoDog.personalityTags.map((tag) => (
+          {personalityTags.map((tag) => (
             <Tag key={tag} label={tag} tone="orange" />
           ))}
         </View>
       </AppCard>
 
       <AppCard>
-        <Text style={styles.cardTitle}>Socialità</Text>
+        <Text style={styles.cardTitle}>Socialita'</Text>
         <View style={styles.tagsRow}>
-          {demoDog.socialityTags.map((tag) => (
+          {socialityTags.map((tag) => (
             <Tag key={tag} label={tag} tone="teal" />
           ))}
         </View>
@@ -86,7 +141,7 @@ export function DogProfileScreen() {
       <AppCard>
         <Text style={styles.cardTitle}>Passeggiata preferita</Text>
         <View style={styles.tagsRow}>
-          {demoDog.walkTags.map((tag) => (
+          {walkTags.map((tag) => (
             <Tag key={tag} label={tag} tone="green" />
           ))}
         </View>
@@ -95,7 +150,7 @@ export function DogProfileScreen() {
       <AppCard tone="pink">
         <Text style={styles.cardTitle}>Note utili, non giudicanti</Text>
         <View style={styles.notesList}>
-          {demoDog.notes.map((note) => (
+          {(privateNotes ? privateNotes.split('\n').filter(Boolean) : demoDog.notes).map((note) => (
             <View key={note} style={styles.noteItem}>
               <Text style={styles.noteBullet}>•</Text>
               <Text style={styles.noteText}>{note}</Text>
@@ -155,8 +210,27 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     fontWeight: '800',
   },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+  },
+  errorBox: {
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.redSoft,
+    color: colors.text,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
   actionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
@@ -179,6 +253,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  helperText: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '700',
+    marginTop: spacing.md,
   },
   formGroup: {
     gap: spacing.xs,

@@ -9,6 +9,7 @@ import { MapScreen } from '../features/map/MapScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { WalksScreen } from '../features/walks/WalksScreen';
 import { baubookImages } from '../shared/assets/images';
+import { AuthProvider } from '../shared/auth/AuthProvider';
 import { colors, spacing, shadows } from '../shared/theme/theme';
 import type { TabKey } from '../shared/types/domain';
 
@@ -44,7 +45,8 @@ export function BauBookApp() {
   }, [activeTab]);
 
   return (
-    <View style={styles.appRoot}>
+    <AuthProvider>
+      <View style={styles.appRoot}>
       <View style={styles.deviceShell}>
         <View style={styles.content}>{screen}</View>
         <View style={styles.tabBar}>
@@ -74,7 +76,8 @@ export function BauBookApp() {
           })}
         </View>
       </View>
-    </View>
+      </View>
+    </AuthProvider>
   );
 }
 

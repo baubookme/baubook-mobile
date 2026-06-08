@@ -52,3 +52,13 @@ Le tabelle moderator-only non hanno policy client: saranno gestite da Dashboard 
 La migration `0002_api_access_grants.sql` assegna i privilegi PostgREST a `anon` e `authenticated`.
 
 Le RLS policy restano il vero controllo di sicurezza: i grant aprono solo la porta API, mentre le policy decidono cosa e' visibile o modificabile.
+
+## Auth bootstrap
+
+La migration `0003_auth_profile_bootstrap.sql` collega Supabase Auth allo schema pubblico:
+
+- trigger su `auth.users` per creare `profiles` sui nuovi utenti;
+- RPC `ensure_current_profile(display_name_input, city_slug_input)` per creare/aggiornare il profilo dell'utente corrente;
+- grant minimi per `profiles` e `dogs` a utenti autenticati.
+
+Il client mobile non usa mai service role key: opera sempre con publishable key + sessione utente + RLS.

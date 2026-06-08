@@ -41,7 +41,7 @@ Verifica:
 .\baubook.ps1 -Mode supabase-doctor
 ```
 
-## 3. Schema, seed e API grants
+## 3. Schema, seed, API grants e Auth helper
 
 Nel Dashboard Supabase usa `SQL Editor > New query`.
 
@@ -50,19 +50,54 @@ Ordine da rispettare:
 1. `supabase/migrations/0001_initial_schema.sql`
 2. `supabase/seeds/venezia_mestre_demo.sql`
 3. `supabase/migrations/0002_api_access_grants.sql`
+4. `supabase/migrations/0003_auth_profile_bootstrap.sql`
 
-`0002_api_access_grants.sql` e' importante: le policy RLS decidono cosa si puo' leggere/scrivere, ma il client Supabase ha comunque bisogno dei privilegi PostgREST corretti per `anon` e `authenticated`.
+`0002_api_access_grants.sql` espone a PostgREST le operazioni minime. Le policy RLS restano il vero controllo di sicurezza.
 
-## 4. App live read-only
+`0003_auth_profile_bootstrap.sql` aggiunge:
 
-Dalla 1.6.0 l'app legge da Supabase:
+- trigger per creare un `profiles` quando nasce un nuovo `auth.users`;
+- funzione `ensure_current_profile(...)` richiamata dall'app dopo login;
+- grant `execute` per utenti autenticati.
+
+## 4. Auth email OTP / magic link
+
+Nel tab **Setup** l'app puo':
+
+- inviare email OTP/magic link;
+- verificare un codice OTP se il template email Supabase lo include;
+- gestire sessione persistente;
+- creare/aggiornare il profilo umano;
+- fare logout.
+
+Per il link magico su Development Build aggiungi in Supabase:
+
+```txt
+Authentication > URL Configuration > Redirect URLs
+baubook://auth/callback
+```
+
+Per test web puoi aggiungere anche l'origin locale mostrato dal browser Expo, per esempio:
+
+```txt
+http://localhost:8081
+http://127.0.0.1:8081
+```
+
+Il test piu' semplice resta OTP: se modifichi il template email per mostrare `{{ .Token }}`, puoi inserire il codice direttamente nel tab Setup.
+
+## 5. App live
+
+Dalla 1.7.0 l'app usa Supabase per:
 
 - `places` nella schermata **Mappa**;
-- `app_config`, `feature_flags`, `places` nella schermata **Setup**.
+- `app_config`, `feature_flags`, `places` nella schermata **Setup**;
+- `auth.users` + `profiles` nel tab **Setup**;
+- `dogs` nella schermata **Io sono...!**.
 
-Se Supabase non risponde, BauBook mostra fallback demo locali e un messaggio parlante. Non deve crashare.
+Se Supabase non risponde, BauBook deve mostrare fallback demo o errore parlante. Non deve crashare.
 
-## 5. Test consigliati
+## 6. Test consigliati
 
 Dopo aver eseguito gli SQL:
 
@@ -74,23 +109,15 @@ cd C:\baubook
 
 Nel browser:
 
-- **Mappa** deve mostrare `Supabase live` e luoghi `seed Supabase`;
-- **Setup** deve mostrare `DB raggiungibile` con conteggi config/flag/luoghi.
+1. **Mappa** deve mostrare `Supabase live`.
+2. **Setup** deve mostrare `DB raggiungibile`.
+3. **Setup > Account BauBook** deve inviare email OTP/magic link.
+4. Dopo login, salva il nome umano.
+5. **Io sono...!** deve salvare il primo cane su `dogs`.
 
-Poi ricostruisci Android almeno una volta, perche' sono state aggiunte dipendenze native:
+Poi ricostruisci Android se vuoi testare la Development Build:
 
 ```powershell
 .\baubook.ps1 -Mode android-build -CleanPrebuild
 .\baubook.ps1 -Mode android-dev
 ```
-
-## 6. Auth base: prossimo step
-
-La prossima tranche sara':
-
-- email OTP/magic link;
-- creazione automatica `profiles`;
-- primo cane locale/su DB;
-- upload avatar piu' avanti.
-
-Il telefono resta rimandato alle funzioni ad alto rischio, come `Mi sono perso!`.

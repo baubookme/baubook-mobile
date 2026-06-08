@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from 'react-native';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../theme/theme';
 
@@ -8,13 +8,18 @@ interface AppButtonProps {
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   icon?: ImageSourcePropType;
+  disabled?: boolean;
 }
 
-export function AppButton({ label, onPress, variant = 'primary', icon }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', icon, disabled = false }: AppButtonProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.button, variants[variant], pressed && styles.pressed]}>
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.button, variants[variant], disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+    >
       {icon ? <Image source={icon} style={styles.icon} /> : null}
-      <Text style={[styles.label, labelVariants[variant]]}>{label}</Text>
+      <Text style={[styles.label, labelVariants[variant], disabled && styles.disabledLabel]}>{label}</Text>
     </Pressable>
   );
 }
@@ -34,9 +39,15 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
     opacity: 0.88,
   },
+  disabled: {
+    opacity: 0.52,
+  },
   label: {
     fontSize: typography.body,
     fontWeight: '800',
+  },
+  disabledLabel: {
+    opacity: 0.9,
   },
   icon: {
     width: 24,
