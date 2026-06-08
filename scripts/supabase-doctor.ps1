@@ -42,6 +42,9 @@ if (Test-Path ".env.example") { Write-Ok ".env.example presente" } else { Write-
 if (Test-Path ".env") { Write-Ok ".env presente" } else { Write-WarnLine ".env non presente: copia .env.example in .env quando avrai URL e key Supabase" }
 if (Test-Path "supabase/migrations/0001_initial_schema.sql") { Write-Ok "Migration 0001 schema presente" } else { Write-Bad "Migration 0001 schema mancante"; $errors++ }
 if (Test-Path "supabase/migrations/0002_api_access_grants.sql") { Write-Ok "Migration 0002 API grants presente" } else { Write-Bad "Migration 0002 API grants mancante"; $errors++ }
+if (Test-Path "supabase/migrations/0003_auth_profile_bootstrap.sql") { Write-Ok "Migration 0003 Auth presente" } else { Write-Bad "Migration 0003 Auth mancante"; $errors++ }
+if (Test-Path "supabase/migrations/0004_walks_presence_bootstrap.sql") { Write-Ok "Migration 0004 Walks/Presence presente" } else { Write-Bad "Migration 0004 Walks/Presence mancante"; $errors++ }
+if (Test-Path "supabase/migrations/0005_safety_alerts_bootstrap.sql") { Write-Ok "Migration 0005 Safety presente" } else { Write-Bad "Migration 0005 Safety mancante"; $errors++ }
 if (Test-Path "supabase/seeds/venezia_mestre_demo.sql") { Write-Ok "Seed Venezia-Mestre presente" } else { Write-WarnLine "Seed demo non trovato" }
 
 Write-Section "Variabili Supabase"
@@ -92,7 +95,10 @@ Write-Host "2. Copia .env.example in .env e inserisci URL + publishable/anon key
 Write-Host "3. Esegui SQL schema-ready: supabase/migrations/0001_initial_schema.sql nel SQL Editor" -ForegroundColor Gray
 Write-Host "4. Esegui seed demo: supabase/seeds/venezia_mestre_demo.sql" -ForegroundColor Gray
 Write-Host "5. Esegui API grants: supabase/migrations/0002_api_access_grants.sql" -ForegroundColor Gray
-Write-Host "6. Apri app: Mappa e Setup devono leggere dati live da Supabase" -ForegroundColor Gray
+Write-Host "6. Esegui Auth bootstrap: supabase/migrations/0003_auth_profile_bootstrap.sql" -ForegroundColor Gray
+Write-Host "7. Esegui Walks/Presence: supabase/migrations/0004_walks_presence_bootstrap.sql" -ForegroundColor Gray
+Write-Host "8. Esegui Safety: supabase/migrations/0005_safety_alerts_bootstrap.sql" -ForegroundColor Gray
+Write-Host "9. Apri app: Mappa, Setup, Passeggio e Aiuto devono leggere/scrivere dati live" -ForegroundColor Gray
 
 if ($Strict -and $errors -gt 0) {
   throw "Supabase doctor ha rilevato $errors errore/i bloccante/i."

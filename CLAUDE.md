@@ -2,7 +2,7 @@
 
 This project is an Expo SDK 56 React Native app for BauBook! Venezia-Mestre.
 
-Current baseline: **1.8.0 Walks + Presence bootstrap**.
+Current baseline: **1.9.0 Safety bootstrap bootstrap**.
 
 ## Ground rules
 

@@ -21,6 +21,8 @@ export interface SupabasePublicStatus {
   placesCount: number;
   walkPlansCount: number;
   presencesCount: number;
+  lostDogAlertsCount: number;
+  dangerReportsCount: number;
   lastCheckedAt: string;
 }
 
@@ -256,19 +258,23 @@ export async function fetchSupabasePublicStatus(): Promise<SupabasePublicStatus>
       placesCount: 0,
       walkPlansCount: 0,
       presencesCount: 0,
+      lostDogAlertsCount: 0,
+      dangerReportsCount: 0,
       lastCheckedAt: checkedAt,
     };
   }
 
-  const [appConfig, featureFlags, places, walkPlans, presences] = await Promise.all([
+  const [appConfig, featureFlags, places, walkPlans, presences, lostDogAlerts, dangerReports] = await Promise.all([
     countRows('app_config'),
     countRows('feature_flags'),
     countRows('places'),
     countRows('walk_plans'),
     countRows('presence_sessions'),
+    countRows('lost_dog_alerts'),
+    countRows('danger_reports'),
   ]);
 
-  const firstError = appConfig.errorMessage ?? featureFlags.errorMessage ?? places.errorMessage ?? walkPlans.errorMessage ?? presences.errorMessage;
+  const firstError = appConfig.errorMessage ?? featureFlags.errorMessage ?? places.errorMessage ?? walkPlans.errorMessage ?? presences.errorMessage ?? lostDogAlerts.errorMessage ?? dangerReports.errorMessage;
 
   if (firstError) {
     return {
@@ -280,6 +286,8 @@ export async function fetchSupabasePublicStatus(): Promise<SupabasePublicStatus>
       placesCount: places.count,
       walkPlansCount: walkPlans.count,
       presencesCount: presences.count,
+      lostDogAlertsCount: lostDogAlerts.count,
+      dangerReportsCount: dangerReports.count,
       lastCheckedAt: checkedAt,
     };
   }
@@ -293,6 +301,8 @@ export async function fetchSupabasePublicStatus(): Promise<SupabasePublicStatus>
     placesCount: places.count,
     walkPlansCount: walkPlans.count,
     presencesCount: presences.count,
+    lostDogAlertsCount: lostDogAlerts.count,
+    dangerReportsCount: dangerReports.count,
     lastCheckedAt: checkedAt,
   };
 }

@@ -1,14 +1,14 @@
 # BauBook! schema overview
 
-Lo schema 1.5.2 e' una base **MVP estendibile**, non una modellazione definitiva di ogni funzione futura.
+Lo schema e' una base **MVP estendibile**, non una modellazione definitiva di ogni funzione futura.
 
 ## Promesse MVP coperte
 
 | Promessa | Tabelle principali |
 |---|---|
 | So dove andare col cane | `cities`, `city_areas`, `places`, `place_reviews` |
-| So chi c'e' o chi va a passeggiare | `walk_plans`, `community_events`, `community_event_participants` |
-| Se succede qualcosa, la community locale mi aiuta | `lost_dog_alerts`, `lost_dog_sightings`, `danger_reports`, `alert_notifications` |
+| So chi c'e' o chi va a passeggiare | `walk_plans`, `community_events`, `community_event_participants`, `presence_sessions` |
+| Se succede qualcosa, la community locale mi aiuta | `lost_dog_alerts`, `lost_dog_sightings`, `danger_reports`, `reports`, `audit_logs` |
 
 ## Fondazioni per la versione estesa
 
@@ -23,6 +23,26 @@ Lo schema 1.5.2 e' una base **MVP estendibile**, non una modellazione definitiva
 | Funzioni beta accendibili | `feature_flags`, `app_config` |
 | Monetizzazione leggera | `supporter_entitlements` |
 
+## Safety bootstrap
+
+La migration `0005_safety_alerts_bootstrap.sql` rende operative le funzioni critiche:
+
+- smarrimento cane con `lost_dog_alerts`;
+- avvistamenti/recupero con `lost_dog_sightings`;
+- pericoli temporanei con `danger_reports`;
+- report abuso/falso alert con `reports`;
+- audit minimo con `audit_logs`.
+
+### Regole tecniche safety
+
+- le scritture passano da RPC `security definer`, non da insert liberi del client;
+- disclaimer obbligatorio lato app e lato database;
+- TTL clampato lato database;
+- rate limit beta per profilo;
+- chiusura esplicita per proprietario/segnalatore;
+- area indicativa derivata da `places.location`, in attesa di disegno poligonale su mappa;
+- `expire_stale_safety_alerts()` aggiorna gli alert scaduti.
+
 ## Cosa e' volutamente rimandato
 
 Non sono ancora modellati in dettaglio:
@@ -32,7 +52,8 @@ Non sono ancora modellati in dettaglio:
 - live location continua;
 - marketplace dog sitter;
 - dashboard admin completa;
-- motore notifiche geospaziali.
+- motore notifiche geospaziali/push;
+- volantino PDF premium.
 
 Queste aree richiedono decisioni privacy, sicurezza e policy. Verranno aggiunte con migrazioni dedicate.
 
@@ -47,30 +68,10 @@ Tutte le tabelle UGC partono con:
 
 Le tabelle moderator-only non hanno policy client: saranno gestite da Dashboard o Edge Functions con service role.
 
-## API grants
+## API grants e RPC
 
 La migration `0002_api_access_grants.sql` assegna i privilegi PostgREST a `anon` e `authenticated`.
 
 Le RLS policy restano il vero controllo di sicurezza: i grant aprono solo la porta API, mentre le policy decidono cosa e' visibile o modificabile.
 
-## Auth bootstrap
-
-La migration `0003_auth_profile_bootstrap.sql` collega Supabase Auth allo schema pubblico:
-
-- trigger su `auth.users` per creare `profiles` sui nuovi utenti;
-- RPC `ensure_current_profile(display_name_input, city_slug_input)` per creare/aggiornare il profilo dell'utente corrente;
-- grant minimi per `profiles` e `dogs` a utenti autenticati.
-
-Il client mobile non usa mai service role key: opera sempre con publishable key + sessione utente + RLS.
-
-## Walks + Presence bootstrap
-
-La migration `0004_walks_presence_bootstrap.sql` aggiunge funzioni RPC per evitare che il client mobile debba costruire payload complessi o aggirare regole di sicurezza:
-
-- `create_beta_walk_plan(...)` crea `community_events`, `walk_plans` e la partecipazione organizer;
-- `join_beta_walk_plan(...)` registra interesse su `walk_plan_participants` e `community_event_participants`;
-- `create_or_refresh_presence_session(...)` crea presenza temporanea, con scadenza 30-180 minuti;
-- `end_my_presence_sessions()` chiude le presenze attive dell'utente corrente.
-
-La presenza resta temporanea e legata a un luogo BauBook, non a tracciamento continuo.
-
+Le migration `0003`, `0004` e `0005` aggiungono RPC per evitare payload client fragili e per concentrare le regole sensibili nel database.

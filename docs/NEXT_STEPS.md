@@ -1,60 +1,58 @@
 # BauBook! next steps
 
-Baseline corrente: **1.8.0 Walks + Presence bootstrap**.
+Baseline attuale: **1.9.0 Safety bootstrap**.
 
-## Gia' fatto
+## Fatto
 
-- Workspace stabile Web + Android Development Build.
-- Schema Supabase 1.5.2 applicato.
-- Seed Venezia-Mestre applicato.
-- App collegata a Supabase per letture pubbliche.
-- Auth email OTP/magic link funzionante.
-- Profilo umano `profiles` creato/aggiornabile.
-- Primo cane `dogs` creato/aggiornabile.
-- Passeggiate reali su `walk_plans` + `community_events`.
-- Presenza temporanea su `presence_sessions`.
-- Bacheca passeggiate e presenze con fallback demo se Supabase non risponde.
+- Workspace Expo/React Native stabile.
+- Browser e Android Development Build funzionanti.
+- Supabase schema estendibile.
+- Seed Venezia-Mestre.
+- Lettura luoghi live.
+- Auth email OTP/magic link.
+- Profilo umano e primo cane.
+- Passeggiate live e presenza temporanea.
+- Alert smarrimento/pericolo con TTL, disclaimer, chiusura, avvistamenti e report abuso.
 
-## Test base
+## Prossima tranche consigliata
 
-```powershell
-cd C:\baubook
-.\baubook.ps1 -Mode doctor
-.\baubook.ps1 -Mode supabase-doctor
-.\baubook.ps1 -Mode web
-.\baubook.ps1 -Mode android-build -CleanPrebuild
-.\baubook.ps1 -Mode android-dev
-```
+### 1. Migliorare UX safety
 
-## Prima verifica funzionale
+- Disegno area su mappa invece di luogo + buffer.
+- Lista avvistamenti per proprietario alert.
+- Schermata dettaglio alert.
+- Volantino base non premium.
+- Filtri: smarriti/pericoli/solo miei.
 
-Nel browser:
+### 2. Moderazione admin minima
 
-1. apri **Setup** e verifica sessione attiva;
-2. se serve, login con OTP/magic link;
-3. apri **Io sono...!** e verifica che esista almeno un cane;
-4. apri **Passeggio**;
-5. scegli cane, luogo e orario;
-6. crea una passeggiata;
-7. attiva una presenza temporanea;
-8. torna in Supabase Table Editor e verifica `walk_plans`, `community_events`, `community_event_participants`, `presence_sessions`.
+- Mini pagina web interna o schermata protetta.
+- Lista `reports` open.
+- Azioni: hide/remove/escalate.
+- Chiusura manuale contenuti abusivi.
 
-## Prossima tranche tecnica
+### 3. Mappe vere
 
-`feat: safety alerts bootstrap`
+- Google Maps Android key.
+- `react-native-maps` o alternativa.
+- Marker luoghi Supabase.
+- Marker safety con raggio indicativo.
 
-- Creazione `danger_reports` autenticata con TTL.
-- Creazione `lost_dog_alerts` autenticata, senza push iniziale.
-- Primo flusso `Avvistato!` su `lost_dog_sightings`.
-- Report abuso su alert e passeggiate.
-- UI piu' forte per disclaimer e responsabilita'.
+### 4. Push notification
 
-## Commit suggerito per questa tranche
+- Expo Notifications.
+- `push_tokens` reali.
+- Prima notifica manuale/locale, poi Edge Function.
 
-```powershell
-git add .
-git commit -m "feat: add live walk planning and temporary presence"
-git tag -a v0.1.9-walks-presence -m "BauBook walks and presence baseline 1.8.0"
-git push
-git push origin v0.1.9-walks-presence
-```
+## Regola di lavoro
+
+Ogni tranche deve avere:
+
+1. migration SQL se cambia il DB;
+2. fallback demo o errore parlante;
+3. test web;
+4. test Android dev/build se cambia nativo;
+5. commit Git piccolo;
+6. tag solo sulle baseline stabili.
+
+Non creare file `HOTFIX_*.md` o `BASELINE_*.md`: le versioni si tracciano con commit/tag Git.

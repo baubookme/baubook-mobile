@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.1.9",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,7 +25,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "bundler": "metro",
@@ -34,10 +34,10 @@
       "shortName": "BauBook!"
     },
     "extra": {
-      "projectName": "BauBook MVP Walks Workspace 1.8.0",
+      "projectName": "BauBook MVP Safety Workspace 1.9.0",
       "betaCity": "Venezia-Mestre",
-      "preferredDevFlow": "web + Android development build + Supabase Auth + live walk plans",
-      "baseline": "1.8.0"
+      "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts",
+      "baseline": "1.9.0"
     }
   }
 }

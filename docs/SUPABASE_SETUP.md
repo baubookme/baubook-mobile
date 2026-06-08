@@ -41,7 +41,7 @@ Verifica:
 .\baubook.ps1 -Mode supabase-doctor
 ```
 
-## 3. Schema, seed, API grants, Auth e Walks
+## 3. Schema e migrations
 
 Nel Dashboard Supabase usa `SQL Editor > New query`.
 
@@ -52,21 +52,9 @@ Ordine da rispettare:
 3. `supabase/migrations/0002_api_access_grants.sql`
 4. `supabase/migrations/0003_auth_profile_bootstrap.sql`
 5. `supabase/migrations/0004_walks_presence_bootstrap.sql`
+6. `supabase/migrations/0005_safety_alerts_bootstrap.sql`
 
-`0002_api_access_grants.sql` espone a PostgREST le operazioni minime. Le policy RLS restano il vero controllo di sicurezza.
-
-`0003_auth_profile_bootstrap.sql` aggiunge:
-
-- trigger per creare un `profiles` quando nasce un nuovo `auth.users`;
-- funzione `ensure_current_profile(...)` richiamata dall'app dopo login;
-- grant `execute` per utenti autenticati.
-
-`0004_walks_presence_bootstrap.sql` aggiunge RPC sicure per la beta:
-
-- `create_beta_walk_plan(...)`;
-- `join_beta_walk_plan(...)`;
-- `create_or_refresh_presence_session(...)`;
-- `end_my_presence_sessions()`.
+`0002` espone a PostgREST le operazioni minime. Le policy RLS restano il vero controllo di sicurezza.
 
 ## 4. Auth email OTP / magic link
 
@@ -92,19 +80,28 @@ http://localhost:8081
 http://127.0.0.1:8081
 ```
 
-Il test piu' semplice resta OTP: se modifichi il template email per mostrare `{{ .Token }}`, puoi inserire il codice direttamente nel tab Setup.
+## 5. Safety alerts
 
-## 5. App live
+La migration `0005_safety_alerts_bootstrap.sql` aggiunge RPC controllate per:
 
-Dalla 1.8.0 l'app usa Supabase per:
+- `create_lost_dog_alert(...)`;
+- `close_lost_dog_alert(...)`;
+- `create_lost_dog_sighting(...)`;
+- `create_danger_report(...)`;
+- `close_danger_report(...)`;
+- `report_safety_content(...)`;
+- `expire_stale_safety_alerts()`.
 
-- `places` nella schermata **Mappa**;
-- `app_config`, `feature_flags`, `places` nella schermata **Setup**;
-- `auth.users` + `profiles` nel tab **Setup**;
-- `dogs` nella schermata **Io sono...!**;
-- `walk_plans`, `community_events` e `presence_sessions` nella schermata **Passeggio**.
+Regole principali:
 
-Se Supabase non risponde, BauBook deve mostrare fallback demo o errore parlante. Non deve crashare.
+- disclaimer obbligatorio anche lato database;
+- email verificata per creare alert smarrimento/pericolo;
+- TTL smarrimento clampato 6-48h;
+- TTL pericolo normalizzato 2/6/24/72h;
+- rate limit beta per profilo;
+- un solo alert smarrimento attivo per cane;
+- area approssimata a un luogo BauBook;
+- audit log minimo su creazione, chiusura, avvistamenti e report abuso.
 
 ## 6. Test consigliati
 
@@ -120,11 +117,12 @@ Nel browser:
 
 1. **Mappa** deve mostrare `Supabase live`.
 2. **Setup** deve mostrare `DB raggiungibile`.
-3. **Setup > Account BauBook** deve inviare email OTP/magic link.
-4. Dopo login, salva il nome umano.
-5. **Io sono...!** deve salvare il primo cane su `dogs`.
-6. **Passeggio** deve creare una passeggiata su `walk_plans`.
-7. **Passeggio** deve creare e chiudere una presenza su `presence_sessions`.
+3. **Setup > Account BauBook** deve mantenere sessione attiva.
+4. **Io sono...!** deve mostrare il cane salvato.
+5. **Passeggio** deve creare una passeggiata e una presenza.
+6. **Aiuto** deve creare un `lost_dog_alert` solo dopo disclaimer.
+7. **Aiuto** deve creare un `danger_report` solo dopo disclaimer.
+8. **Aiuto** deve creare `lost_dog_sightings`, chiudere alert e creare `reports`.
 
 Poi ricostruisci Android se vuoi testare la Development Build:
 

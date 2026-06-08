@@ -2,7 +2,7 @@
 
 Project: Expo SDK 56 + React Native + TypeScript.
 
-Current workspace baseline: **BauBook 1.8.0 Walks + Presence bootstrap**.
+Current workspace baseline: **BauBook 1.9.0 Safety bootstrap bootstrap**.
 
 Operational workflow:
 

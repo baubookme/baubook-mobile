@@ -157,7 +157,7 @@ export function ProfileScreen() {
             <Text style={styles.cardTitle}>Supabase live check</Text>
             <Text style={styles.bodyText}>
               {supabaseStatus.status === 'loading'
-                ? 'Controllo app_config, feature_flags, places, passeggiate e presenze...'
+                ? 'Controllo app_config, feature_flags, places, passeggiate, presenze e safety...'
                 : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'}
             </Text>
           </View>
@@ -169,6 +169,8 @@ export function ProfileScreen() {
           <Tag label={`luoghi ${liveStatus?.placesCount ?? 0}`} tone="green" />
           <Tag label={`walk ${liveStatus?.walkPlansCount ?? 0}`} tone="orange" />
           <Tag label={`presenze ${liveStatus?.presencesCount ?? 0}`} tone="teal" />
+          <Tag label={`smarriti ${liveStatus?.lostDogAlertsCount ?? 0}`} tone="red" />
+          <Tag label={`pericoli ${liveStatus?.dangerReportsCount ?? 0}`} tone="orange" />
         </View>
         <View style={styles.diagnosticsList}>
           <View style={styles.diagnosticRow}>
