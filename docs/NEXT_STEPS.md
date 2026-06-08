@@ -1,6 +1,6 @@
 # BauBook! next steps
 
-Baseline corrente: **1.7.0 Auth bootstrap**.
+Baseline corrente: **1.8.0 Walks + Presence bootstrap**.
 
 ## Gia' fatto
 
@@ -8,10 +8,12 @@ Baseline corrente: **1.7.0 Auth bootstrap**.
 - Schema Supabase 1.5.2 applicato.
 - Seed Venezia-Mestre applicato.
 - App collegata a Supabase per letture pubbliche.
-- Auth email OTP/magic link predisposta.
+- Auth email OTP/magic link funzionante.
 - Profilo umano `profiles` creato/aggiornabile.
 - Primo cane `dogs` creato/aggiornabile.
-- Fallback locale se Supabase non risponde.
+- Passeggiate reali su `walk_plans` + `community_events`.
+- Presenza temporanea su `presence_sessions`.
+- Bacheca passeggiate e presenze con fallback demo se Supabase non risponde.
 
 ## Test base
 
@@ -28,30 +30,31 @@ cd C:\baubook
 
 Nel browser:
 
-1. apri **Setup**;
-2. invia email OTP/magic link;
-3. verifica codice OTP oppure usa link magico se Redirect URL e' configurato;
-4. salva nome umano;
-5. apri **Io sono...!**;
-6. salva il primo cane;
-7. torna in Supabase Table Editor e verifica `profiles` + `dogs`.
+1. apri **Setup** e verifica sessione attiva;
+2. se serve, login con OTP/magic link;
+3. apri **Io sono...!** e verifica che esista almeno un cane;
+4. apri **Passeggio**;
+5. scegli cane, luogo e orario;
+6. crea una passeggiata;
+7. attiva una presenza temporanea;
+8. torna in Supabase Table Editor e verifica `walk_plans`, `community_events`, `community_event_participants`, `presence_sessions`.
 
 ## Prossima tranche tecnica
 
-`feat: authenticated places and walk planning`
+`feat: safety alerts bootstrap`
 
-- Creazione evento passeggiata autenticato.
-- Lettura `community_events` / `walk_plans` dal DB.
-- Primo check-in/presenza temporanea.
-- Report abuso base su contenuti.
-- Nessuna chat privata ancora.
+- Creazione `danger_reports` autenticata con TTL.
+- Creazione `lost_dog_alerts` autenticata, senza push iniziale.
+- Primo flusso `Avvistato!` su `lost_dog_sightings`.
+- Report abuso su alert e passeggiate.
+- UI piu' forte per disclaimer e responsabilita'.
 
 ## Commit suggerito per questa tranche
 
 ```powershell
 git add .
-git commit -m "feat: bootstrap Supabase Auth and dog profile"
-git tag -a v0.1.8-auth-bootstrap -m "BauBook Auth bootstrap baseline 1.7.0"
+git commit -m "feat: add live walk planning and temporary presence"
+git tag -a v0.1.9-walks-presence -m "BauBook walks and presence baseline 1.8.0"
 git push
-git push origin v0.1.8-auth-bootstrap
+git push origin v0.1.9-walks-presence
 ```

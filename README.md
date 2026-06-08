@@ -1,6 +1,6 @@
 # BauBook! Venezia-Mestre MVP
 
-Workspace **BauBook 1.7.0 Auth bootstrap** per Expo + React Native + TypeScript.
+Workspace **BauBook 1.8.0 Walks + Presence bootstrap** per Expo + React Native + TypeScript.
 
 Questa baseline e' pensata per:
 
@@ -11,6 +11,8 @@ Questa baseline e' pensata per:
 - Auth email OTP/magic link con sessione persistente;
 - creazione/aggiornamento profilo umano `profiles`;
 - creazione/aggiornamento primo cane `dogs`;
+- creazione passeggiate reali su `walk_plans` + `community_events`;
+- presenza temporanea su `presence_sessions`, senza live tracking continuo;
 - fallback demo locale se il backend non risponde;
 - repository Git pulito, senza `node_modules`, `.env`, `.expo`, `android/` o `ios/`.
 
@@ -33,14 +35,15 @@ cd C:\baubook
 - Usa `android-dev` quando la Development Build BauBook e' gia' installata sull'emulatore.
 - Usa `supabase-doctor` per verificare `.env`, migration, seed e dipendenze Supabase.
 
-## Supabase live + Auth
+## Supabase live + Auth + Walks
 
-La 1.7.0 usa il progetto `baubook-beta` per:
+La 1.8.0 usa il progetto `baubook-beta` per:
 
 - **Mappa**: luoghi pubblici da `places`.
-- **Setup**: conteggi live di `app_config`, `feature_flags` e `places`.
+- **Setup**: conteggi live di `app_config`, `feature_flags`, `places`, `walk_plans` e `presence_sessions`.
 - **Setup > Account BauBook**: invio email OTP/magic link, sessione, profilo umano, logout.
 - **Io sono...!**: primo cane salvato/aggiornato su `dogs`.
+- **Passeggio**: creazione passeggiata, interesse, presenza temporanea e chiusura presenze.
 
 Ordine SQL richiesto in Supabase:
 
@@ -49,6 +52,7 @@ supabase/migrations/0001_initial_schema.sql
 supabase/seeds/venezia_mestre_demo.sql
 supabase/migrations/0002_api_access_grants.sql
 supabase/migrations/0003_auth_profile_bootstrap.sql
+supabase/migrations/0004_walks_presence_bootstrap.sql
 ```
 
 ## Documentazione
@@ -56,7 +60,7 @@ supabase/migrations/0003_auth_profile_bootstrap.sql
 La cartella `docs/` resta volutamente piccola:
 
 - `docs/DEVELOPMENT.md` - ambiente, script, Android/WebStorm e troubleshooting essenziale.
-- `docs/SUPABASE_SETUP.md` - progetto Supabase, `.env`, schema, seed, API grants, Auth e test live.
+- `docs/SUPABASE_SETUP.md` - progetto Supabase, `.env`, schema, seed, API grants, Auth, Walks e test live.
 - `docs/SCHEMA_OVERVIEW.md` - riepilogo modello dati e aree future.
 - `docs/NEXT_STEPS.md` - roadmap tecnica immediata.
 
@@ -74,8 +78,8 @@ Commit/tag consigliati per questa baseline:
 
 ```powershell
 git add .
-git commit -m "feat: bootstrap Supabase Auth and dog profile"
-git tag -a v0.1.8-auth-bootstrap -m "BauBook Auth bootstrap baseline 1.7.0"
+git commit -m "feat: add live walk planning and temporary presence"
+git tag -a v0.1.9-walks-presence -m "BauBook walks and presence baseline 1.8.0"
 git push
-git push origin v0.1.8-auth-bootstrap
+git push origin v0.1.9-walks-presence
 ```

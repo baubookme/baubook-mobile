@@ -2,7 +2,7 @@
 
 Project: Expo SDK 56 + React Native + TypeScript.
 
-Current workspace baseline: **BauBook 1.6.0 Supabase live read-only**.
+Current workspace baseline: **BauBook 1.8.0 Walks + Presence bootstrap**.
 
 Operational workflow:
 
@@ -19,7 +19,7 @@ Operational workflow:
 .\baubook.ps1 -Mode android-dev
 ```
 
-3. Supabase runtime connection exists for public read-only data:
+3. Supabase runtime connection exists for public data, Auth, dogs, walks and temporary presence:
 
 ```powershell
 .\baubook.ps1 -Mode supabase-doctor
@@ -28,9 +28,19 @@ Operational workflow:
 Screens using Supabase now:
 
 - `src/features/map/MapScreen.tsx` reads public `places`.
-- `src/features/profile/ProfileScreen.tsx` checks `app_config`, `feature_flags`, `places`.
+- `src/features/profile/ProfileScreen.tsx` checks `app_config`, `feature_flags`, `places`, `walk_plans`, `presence_sessions` and handles Auth/profile.
+- `src/features/dogs/DogProfileScreen.tsx` saves the first dog.
+- `src/features/walks/WalksScreen.tsx` creates live walk plans and temporary presence.
 
-4. If live reads fail with permission errors, ensure `supabase/migrations/0002_api_access_grants.sql` was executed after schema + seed.
+4. SQL order in Supabase Dashboard:
+
+```txt
+0001_initial_schema.sql
+venezia_mestre_demo.sql
+0002_api_access_grants.sql
+0003_auth_profile_bootstrap.sql
+0004_walks_presence_bootstrap.sql
+```
 
 5. Before changing dependencies, keep npm on the public registry. Never commit a lockfile containing `applied-caas` or `artifactory` URLs.
 

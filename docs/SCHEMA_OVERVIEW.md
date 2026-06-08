@@ -62,3 +62,15 @@ La migration `0003_auth_profile_bootstrap.sql` collega Supabase Auth allo schema
 - grant minimi per `profiles` e `dogs` a utenti autenticati.
 
 Il client mobile non usa mai service role key: opera sempre con publishable key + sessione utente + RLS.
+
+## Walks + Presence bootstrap
+
+La migration `0004_walks_presence_bootstrap.sql` aggiunge funzioni RPC per evitare che il client mobile debba costruire payload complessi o aggirare regole di sicurezza:
+
+- `create_beta_walk_plan(...)` crea `community_events`, `walk_plans` e la partecipazione organizer;
+- `join_beta_walk_plan(...)` registra interesse su `walk_plan_participants` e `community_event_participants`;
+- `create_or_refresh_presence_session(...)` crea presenza temporanea, con scadenza 30-180 minuti;
+- `end_my_presence_sessions()` chiude le presenze attive dell'utente corrente.
+
+La presenza resta temporanea e legata a un luogo BauBook, non a tracciamento continuo.
+

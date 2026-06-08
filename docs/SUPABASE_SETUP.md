@@ -41,7 +41,7 @@ Verifica:
 .\baubook.ps1 -Mode supabase-doctor
 ```
 
-## 3. Schema, seed, API grants e Auth helper
+## 3. Schema, seed, API grants, Auth e Walks
 
 Nel Dashboard Supabase usa `SQL Editor > New query`.
 
@@ -51,6 +51,7 @@ Ordine da rispettare:
 2. `supabase/seeds/venezia_mestre_demo.sql`
 3. `supabase/migrations/0002_api_access_grants.sql`
 4. `supabase/migrations/0003_auth_profile_bootstrap.sql`
+5. `supabase/migrations/0004_walks_presence_bootstrap.sql`
 
 `0002_api_access_grants.sql` espone a PostgREST le operazioni minime. Le policy RLS restano il vero controllo di sicurezza.
 
@@ -59,6 +60,13 @@ Ordine da rispettare:
 - trigger per creare un `profiles` quando nasce un nuovo `auth.users`;
 - funzione `ensure_current_profile(...)` richiamata dall'app dopo login;
 - grant `execute` per utenti autenticati.
+
+`0004_walks_presence_bootstrap.sql` aggiunge RPC sicure per la beta:
+
+- `create_beta_walk_plan(...)`;
+- `join_beta_walk_plan(...)`;
+- `create_or_refresh_presence_session(...)`;
+- `end_my_presence_sessions()`.
 
 ## 4. Auth email OTP / magic link
 
@@ -88,12 +96,13 @@ Il test piu' semplice resta OTP: se modifichi il template email per mostrare `{{
 
 ## 5. App live
 
-Dalla 1.7.0 l'app usa Supabase per:
+Dalla 1.8.0 l'app usa Supabase per:
 
 - `places` nella schermata **Mappa**;
 - `app_config`, `feature_flags`, `places` nella schermata **Setup**;
 - `auth.users` + `profiles` nel tab **Setup**;
-- `dogs` nella schermata **Io sono...!**.
+- `dogs` nella schermata **Io sono...!**;
+- `walk_plans`, `community_events` e `presence_sessions` nella schermata **Passeggio**.
 
 Se Supabase non risponde, BauBook deve mostrare fallback demo o errore parlante. Non deve crashare.
 
@@ -114,6 +123,8 @@ Nel browser:
 3. **Setup > Account BauBook** deve inviare email OTP/magic link.
 4. Dopo login, salva il nome umano.
 5. **Io sono...!** deve salvare il primo cane su `dogs`.
+6. **Passeggio** deve creare una passeggiata su `walk_plans`.
+7. **Passeggio** deve creare e chiudere una presenza su `presence_sessions`.
 
 Poi ricostruisci Android se vuoi testare la Development Build:
 
