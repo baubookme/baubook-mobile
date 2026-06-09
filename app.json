@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.2.0",
+    "version": "0.2.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "me.baubook.app"
+      "bundleIdentifier": "me.baubook.app",
+      "buildNumber": "11",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "me.baubook.app",
@@ -25,7 +29,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 10
+      "versionCode": 11
     },
     "web": {
       "bundler": "metro",
@@ -34,10 +38,12 @@
       "shortName": "BauBook!"
     },
     "extra": {
-      "projectName": "BauBook MVP Safety Workspace 1.9.0",
+      "projectName": "BauBook MVP Launch Hardening Workspace 1.9.8",
       "betaCity": "Venezia-Mestre",
-      "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts",
-      "baseline": "1.9.0"
+      "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts + launch readiness checks",
+      "baseline": "1.9.8",
+      "launchReadiness": "store-launch-hardening",
+      "sponsoredLiteDefault": false
     }
   }
 }
