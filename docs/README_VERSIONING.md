@@ -134,3 +134,11 @@ git push origin v0.2.9-in-app-launch-compliance-docs
 ## v0.3.2-live-map-realtime-radar
 
 Release BauBook 2.0.2: realtime/polling diagnostico per i dati mappa, migration Supabase 0009 e check `map:realtime:check`.
+
+## v0.3.3-native-mapview-markers
+
+- App/package version: 0.3.3.
+- Baseline: 2.0.3.
+- Introduce una mappa nativa con react-native-maps e marker reali per i luoghi BauBook.
+- Mantiene il badge realtime/polling introdotto in 2.0.2 e aggiunge il check `npm run map:native:check`.
+

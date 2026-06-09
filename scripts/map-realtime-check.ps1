@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 function Pass($Message) { Write-Host ("OK   " + $Message) -ForegroundColor Green }
 function Fail($Message) { Write-Host ("FAIL " + $Message) -ForegroundColor Red; $script:Failures++ }
@@ -16,11 +16,11 @@ Write-Host "============================================================"
 $Snapshot = node -e "const fs=require('fs'); function read(f){return JSON.parse(fs.readFileSync(f,'utf8').replace(/^\uFEFF/,''));} const pkg=read('package.json'); const app=read('app.json'); console.log(JSON.stringify({pkgVersion:pkg.version, expoVersion:app.expo.version, baseline:app.expo.extra&&app.expo.extra.baseline, androidVersionCode:app.expo.android&&app.expo.android.versionCode, iosBuildNumber:app.expo.ios&&app.expo.ios.buildNumber, hasScript: !!(pkg.scripts&&pkg.scripts['map:realtime:check'])}));"
 $Info = $Snapshot | ConvertFrom-Json
 
-if ($Info.pkgVersion -eq "0.3.2") { Pass "package.json version 0.3.2" } else { Fail ("package.json version attesa 0.3.2, trovata " + $Info.pkgVersion) }
-if ($Info.expoVersion -eq "0.3.2") { Pass "app.json expo.version 0.3.2" } else { Fail ("app.json expo.version attesa 0.3.2, trovata " + $Info.expoVersion) }
-if ($Info.baseline -eq "2.0.2") { Pass "extra.baseline 2.0.2" } else { Fail ("extra.baseline atteso 2.0.2, trovato " + $Info.baseline) }
-if ([int]$Info.androidVersionCode -ge 15) { Pass "Android versionCode >= 15" } else { Fail ("Android versionCode atteso >= 15, trovato " + $Info.androidVersionCode) }
-if ([string]$Info.iosBuildNumber -eq "15") { Pass "iOS buildNumber 15" } else { Fail ("iOS buildNumber atteso 15, trovato " + $Info.iosBuildNumber) }
+if ($Info.pkgVersion -eq "0.3.3") { Pass "package.json version 0.3.3" } else { Fail ("package.json version attesa 0.3.3, trovata " + $Info.pkgVersion) }
+if ($Info.expoVersion -eq "0.3.3") { Pass "app.json expo.version 0.3.3" } else { Fail ("app.json expo.version attesa 0.3.3, trovata " + $Info.expoVersion) }
+if ($Info.baseline -eq "2.0.3") { Pass "extra.baseline 2.0.3" } else { Fail ("extra.baseline atteso 2.0.3, trovato " + $Info.baseline) }
+if ([int]$Info.androidVersionCode -ge 15) { Pass "Android versionCode >= 16" } else { Fail ("Android versionCode atteso >= 16, trovato " + $Info.androidVersionCode) }
+if ([string]$Info.iosBuildNumber -eq "16") { Pass "iOS buildNumber 16" } else { Fail ("iOS buildNumber atteso 16, trovato " + $Info.iosBuildNumber) }
 if ($Info.hasScript) { Pass "script npm map:realtime:check presente" } else { Fail "script npm map:realtime:check mancante" }
 
 $Hook = "src\shared\hooks\useSupabasePublicData.ts"
@@ -53,3 +53,4 @@ if ($script:Warnings -gt 0) { Write-Host ("Warnings: " + $script:Warnings) -Fore
 if ($script:Failures -gt 0) { throw ("Map realtime check fallito con " + $script:Failures + " failure.") }
 
 Pass "BauBook map realtime check completato"
+

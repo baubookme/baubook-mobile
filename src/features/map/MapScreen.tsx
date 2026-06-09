@@ -8,6 +8,7 @@ import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
+import { NativePlacesMap } from './NativePlacesMap';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
@@ -278,6 +279,13 @@ export function MapScreen() {
           title="Luoghi BauBook"
           description="Elenco completo dei luoghi pubblici caricati. Le aree cani ufficiali sono marcate e pronte per filtri più evoluti."
         />
+        <NativePlacesMap
+          places={visiblePlaces}
+          source={source}
+          realtimeStatus={realtimeStatus}
+          onRefresh={reload}
+        />
+
         {visiblePlaces.map((place) => (
           <AppCard key={place.id}>
             <View style={styles.placeHeader}>
