@@ -75,7 +75,7 @@ function formatCoordinate(value: number): string {
 }
 
 export function MapScreen() {
-  const { places, source, status, message, errorMessage, reload } = useSupabasePlaces();
+  const { places, source, status, message, errorMessage, reload, realtimeStatus } = useSupabasePlaces();
   const [radiusKm, setRadiusKm] = useState(3);
   const [manualRadius, setManualRadius] = useState('3');
   const [nearby, setNearby] = useState<NearbyState>({
@@ -175,6 +175,18 @@ export function MapScreen() {
             <View style={styles.tagsRow}>
               <Tag label={`${approvedDogAreas.length} aree cani`} tone="teal" />
               <Tag label={`${places.length} luoghi`} tone="orange" />
+              <Tag
+                label={`Mappa ${
+                  realtimeStatus === 'subscribed'
+                    ? 'realtime'
+                    : realtimeStatus === 'polling'
+                      ? 'polling'
+                      : source === 'supabase'
+                        ? 'live'
+                        : 'demo'
+                }`}
+                tone="orange"
+              />
               <Tag label={source === 'supabase' ? 'Supabase live' : 'demo locale'} tone={source === 'supabase' ? 'green' : 'orange'} />
             </View>
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}

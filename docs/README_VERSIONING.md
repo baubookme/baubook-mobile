@@ -129,3 +129,8 @@ git push origin v0.2.9-in-app-launch-compliance-docs
 - Versione app/package: `0.3.0`
 - Baseline: `2.0.0`
 - Contenuto: Beta Experience + Cartoon Toolbar.
+
+
+## v0.3.2-live-map-realtime-radar
+
+Release BauBook 2.0.2: realtime/polling diagnostico per i dati mappa, migration Supabase 0009 e check `map:realtime:check`.

@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -32,7 +32,8 @@
     "docs:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docs-structure-check.ps1",
     "beta:check": "npm run docs:check && npm run launch:check && npm run typecheck",
     "ui:check": "powershell -ExecutionPolicy Bypass -File ./scripts/ui-smoke-check.ps1",
-    "baubook:release:doctor": "node scripts/baubook-release-doctor.mjs --expected-version 0.3.1 --expected-baseline 2.0.1 --expected-android-version-code 14 --expected-ios-build-number 14"
+    "baubook:release:doctor": "node scripts/baubook-release-doctor.mjs --expected-version 0.3.1 --expected-baseline 2.0.1 --expected-android-version-code 14 --expected-ios-build-number 14",
+    "map:realtime:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-realtime-check.ps1"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",

@@ -118,3 +118,8 @@ Non sono ancora modellati in modo definitivo:
 - generazione PDF premium.
 
 Queste aree richiedono decisioni privacy, sicurezza e policy prima di nuove migrations.
+
+
+## BauBook 2.0.2 - Map realtime
+
+- `0009_map_realtime_publication.sql`: abilita `supabase_realtime` per `places`, `presence_sessions`, `walk_plans`, `lost_dog_alerts` e `danger_reports`, mantenendo RLS e policy applicative.

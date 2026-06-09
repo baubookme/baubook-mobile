@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "me.baubook.app",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,7 +29,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 14
+      "versionCode": 15
     },
     "web": {
       "bundler": "metro",
@@ -41,7 +41,7 @@
       "projectName": "BauBook 2.0.0 Beta Experience + Cartoon Toolbar",
       "betaCity": "Venezia-Mestre",
       "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts + compact docs",
-      "baseline": "2.0.1",
+      "baseline": "2.0.2",
       "launchReadiness": "beta-experience-cartoon-toolbar",
       "sponsoredLiteDefault": false,
       "releaseName": "BauBook 2.0.0 Beta Experience + Cartoon Toolbar",

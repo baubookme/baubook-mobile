@@ -10,8 +10,23 @@ import {
 } from '../api/supabaseContent';
 import { demoPlaces } from '../data/mockData';
 import type { PlaceModel } from '../types/domain';
+import { supabase } from '../lib/supabase';
 
 type ResourceStatus = 'idle' | 'loading' | 'success' | 'error';
+
+
+export type PlacesRealtimeStatus = 'idle' | 'connecting' | 'subscribed' | 'polling' | 'disabled' | 'error';
+
+const MAP_REALTIME_POLL_INTERVAL_MS = 30000;
+const MAP_REALTIME_TABLES = ['places', 'presence_sessions', 'walk_plans', 'lost_dog_alerts', 'danger_reports'] as const;
+
+function getMapRealtimeClient(): any {
+  try {
+    return supabase ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface PlacesState {
   status: ResourceStatus;
@@ -19,6 +34,8 @@ interface PlacesState {
   places: PlaceModel[];
   message: string;
   errorMessage?: string;
+  realtimeStatus?: PlacesRealtimeStatus;
+  lastUpdatedAt?: string | null;
 }
 
 interface PublicStatusState {
@@ -35,50 +52,120 @@ interface FeatureFlagsState {
 
 export function useSupabasePlaces() {
   const [state, setState] = useState<PlacesState>({
-    status: 'idle',
+    status: 'loading',
     source: 'fallback',
     places: demoPlaces,
-    message: 'In attesa di caricamento.',
+    message: 'Carico luoghi...',
+    errorMessage: undefined,
+    realtimeStatus: 'idle',
+    lastUpdatedAt: null,
   });
 
-  const reload = useCallback(() => {
-    let active = true;
+  const reload = useCallback((reasonOrEvent?: unknown) => {
+    const reason = typeof reasonOrEvent === 'string' ? reasonOrEvent : 'manual';
 
-    setState((current) => ({ ...current, status: 'loading' }));
+    setState((previous) => ({
+      ...previous,
+      status: previous.places.length ? previous.status : 'loading',
+    }));
 
     fetchPublicPlaces()
       .then((result: SupabasePlacesResult) => {
-        if (!active) {
-          return;
-        }
-        setState({
-          status: 'success',
-          source: result.source,
-          places: result.places,
-          message: result.message,
-          errorMessage: result.errorMessage,
+        const loadedAt = new Date().toISOString();
+        setState((previous) => {
+          const realtimeStatus: PlacesRealtimeStatus =
+            result.source !== 'supabase'
+              ? 'disabled'
+              : previous.realtimeStatus === 'subscribed' || reason === 'realtime'
+                ? 'subscribed'
+                : 'polling';
+
+          return {
+            status: 'success',
+            source: result.source,
+            places: result.places,
+            message:
+              realtimeStatus === 'subscribed'
+                ? `${result.message} Aggiornamento realtime attivo.`
+                : realtimeStatus === 'polling'
+                  ? `${result.message} Fallback polling attivo.`
+                  : result.message,
+            errorMessage: result.errorMessage,
+            realtimeStatus,
+            lastUpdatedAt: loadedAt,
+          };
         });
       })
       .catch((error: unknown) => {
-        if (!active) {
-          return;
-        }
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        const message = error instanceof Error ? error.message : 'Errore sconosciuto';
         setState({
           status: 'error',
           source: 'fallback',
           places: demoPlaces,
-          message: 'Errore non gestito durante il caricamento Supabase: uso dati demo locali.',
-          errorMessage,
+          message: 'Luoghi demo disponibili. Supabase non raggiungibile.',
+          errorMessage: message,
+          realtimeStatus: 'error',
+          lastUpdatedAt: new Date().toISOString(),
         });
       });
-
-    return () => {
-      active = false;
-    };
   }, []);
 
-  useEffect(() => reload(), [reload]);
+  useEffect(() => {
+    reload('initial');
+  }, [reload]);
+
+  useEffect(() => {
+    const client = getMapRealtimeClient();
+
+    if (!client || typeof client.channel !== 'function') {
+      setState((previous) => ({
+        ...previous,
+        realtimeStatus: previous.source === 'supabase' ? 'polling' : 'disabled',
+      }));
+      const pollingId = setInterval(() => reload('polling'), MAP_REALTIME_POLL_INTERVAL_MS);
+      return () => clearInterval(pollingId);
+    }
+
+    setState((previous) => ({ ...previous, realtimeStatus: 'connecting' }));
+
+    const channel = client.channel('baubook-map-realtime-2-0-2');
+
+    MAP_REALTIME_TABLES.forEach((table) => {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        () => reload('realtime'),
+      );
+    });
+
+    channel.subscribe((subscriptionStatus: string) => {
+      if (subscriptionStatus === 'SUBSCRIBED') {
+        setState((previous) => ({ ...previous, realtimeStatus: 'subscribed' }));
+      }
+
+      if (
+        subscriptionStatus === 'CHANNEL_ERROR' ||
+        subscriptionStatus === 'TIMED_OUT' ||
+        subscriptionStatus === 'CLOSED'
+      ) {
+        setState((previous) => ({
+          ...previous,
+          realtimeStatus: previous.source === 'supabase' ? 'polling' : 'error',
+        }));
+      }
+    });
+
+    const pollingId = setInterval(() => reload('polling'), MAP_REALTIME_POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(pollingId);
+      if (typeof client.removeChannel === 'function') {
+        client.removeChannel(channel);
+      } else if (typeof channel.unsubscribe === 'function') {
+        channel.unsubscribe();
+      }
+    };
+  }, [reload]);
 
   return { ...state, reload };
 }
@@ -148,3 +235,4 @@ export function useSupabaseFeatureFlags() {
 
   return { ...state, reload };
 }
+
