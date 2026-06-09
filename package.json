@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.3.3",
+  "version": "0.3.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -34,7 +34,9 @@
     "ui:check": "powershell -ExecutionPolicy Bypass -File ./scripts/ui-smoke-check.ps1",
     "baubook:release:doctor": "node scripts/baubook-release-doctor.mjs --expected-version 0.3.1 --expected-baseline 2.0.1 --expected-android-version-code 14 --expected-ios-build-number 14",
     "map:realtime:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-realtime-check.ps1",
-    "map:native:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-native-check.ps1"
+    "map:native:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-native-check.ps1",
+    "map:web-safe:check": "node scripts/check-web-safe-maps.js",
+    "sponsored:rls:check": "node scripts/check-sponsored-slots-rls-sql.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
