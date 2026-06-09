@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
-
 import { baubookImages } from '../../shared/assets/images';
+import { requestAccountDeletion, fetchActiveSponsoredSlots, type SponsoredSlotModel } from '../../shared/api/launchReadiness';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
@@ -23,6 +23,18 @@ const setupSteps = [
   'Git: commit piccolo dopo ogni baseline funzionante.',
 ];
 
+const launchChecklist = [
+  'Privacy e termini beta visibili in app.',
+  'Cancellazione account richiedibile dall\'utente loggato.',
+  'Email OTP/magic link come Auth primaria, senza obbligo Google/Apple nella beta.',
+  'Sponsored Places Lite nativo: nessun SDK ads, nessun advertising ID, disclosure visibile.',
+  'Safety e segnalazioni con disclaimer, report abuso e rate limit DB.',
+];
+
+function scoreItem(done: boolean) {
+  return done ? 20 : 0;
+}
+
 export function ProfileScreen() {
   const diagnostics = getRuntimeDiagnostics();
   const supabaseSummary = getSupabaseConfigSummary();
@@ -32,45 +44,92 @@ export function ProfileScreen() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [deletionReason, setDeletionReason] = useState('');
+  const [deletionMessage, setDeletionMessage] = useState('');
+  const [deletionError, setDeletionError] = useState('');
+  const [sponsoredSlots, setSponsoredSlots] = useState<SponsoredSlotModel[]>([]);
 
   useEffect(() => {
     setDisplayName(auth.profile?.displayName ?? '');
   }, [auth.profile?.displayName]);
 
+  useEffect(() => {
+    let active = true;
+    fetchActiveSponsoredSlots('setup')
+      .then((slots) => {
+        if (active) {
+          setSponsoredSlots(slots);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSponsoredSlots([]);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const launchScore = useMemo(() => {
+    return (
+      scoreItem(hasSupabaseConfig) +
+      scoreItem(Boolean(liveStatus?.connected)) +
+      scoreItem(auth.isSignedIn) +
+      scoreItem(Boolean(auth.profile)) +
+      scoreItem(auth.dogs.length > 0)
+    );
+  }, [auth.dogs.length, auth.isSignedIn, auth.profile, liveStatus?.connected]);
+
+  const readinessTone = launchScore >= 80 ? 'green' : launchScore >= 40 ? 'orange' : 'red';
+  const primarySponsoredSlot = sponsoredSlots[0];
+
+  const handleDeletionRequest = async () => {
+    setDeletionMessage('');
+    setDeletionError('');
+    try {
+      const result = await requestAccountDeletion({
+        userId: auth.user?.id ?? '',
+        profileId: auth.profile?.id ?? null,
+        email: auth.user?.email ?? null,
+        reason: deletionReason,
+      });
+      setDeletionMessage(`Richiesta cancellazione registrata: ${result.status}.`);
+      setDeletionReason('');
+    } catch (error) {
+      setDeletionError(error instanceof Error ? error.message : JSON.stringify(error));
+    }
+  };
+
   return (
     <Screen>
-      <SectionHeader
-        eyebrow="Setup sviluppatore"
-        title="BauBook! ora parla con Supabase"
-        description="Questa pagina tiene insieme diagnostica, login email e profilo umano. Il flusso resta prudente: niente dati sensibili, sessione persistente, errori leggibili."
-      />
-
       <AppCard tone="warm">
         <View style={styles.identityHeader}>
-          <Image source={baubookImages.appIcon} style={styles.appIcon} />
+          <Image source={baubookImages.logo} style={styles.appIcon} />
           <View style={styles.identityCopy}>
             <Text style={styles.eyebrow}>BauBook! Venezia-Mestre</Text>
-            <Text style={styles.cardTitle}>MVP locale</Text>
-            <Text style={styles.bodyText}>Dominio: baubook.me · handle: @baubook_me</Text>
+            <Text style={styles.cardTitle}>Launch readiness cockpit</Text>
+            <Text style={styles.bodyText}>Account, privacy, sponsor nativi e stato beta in un solo punto.</Text>
           </View>
         </View>
         <View style={styles.statusRow}>
-          <Tag label={hasSupabaseConfig ? 'Supabase configurato' : 'Supabase non configurato'} tone={hasSupabaseConfig ? 'green' : 'orange'} />
-          <Tag label={hasGoogleMapsConfig ? 'Maps configurato' : 'Maps non configurato'} tone={hasGoogleMapsConfig ? 'green' : 'orange'} />
-          <Tag label={auth.isSignedIn ? 'Sessione attiva' : 'Non loggato'} tone={auth.isSignedIn ? 'green' : 'orange'} />
+          <Tag label={`Launch ${launchScore}%`} tone={readinessTone} />
+          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Login richiesto'} tone={auth.isSignedIn ? 'green' : 'orange'} />
+          <Tag label={hasSupabaseConfig ? 'Supabase configurato' : 'Supabase assente'} tone={hasSupabaseConfig ? 'green' : 'red'} />
+          <Tag label={hasGoogleMapsConfig ? 'Maps configurato' : 'Maps opzionale'} tone={hasGoogleMapsConfig ? 'green' : 'default'} />
         </View>
       </AppCard>
 
-      <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
+      <AppCard>
         <View style={styles.headerRow}>
-          <IconBubble source={baubookImages.icons.phoneVerify} size={58} tone="teal" />
+          <IconBubble source={baubookImages.icons.settings} tone="teal" />
           <View style={styles.headerCopy}>
-            <Text style={styles.cardTitle}>Account BauBook</Text>
-            <Text style={styles.bodyText}>{auth.message}</Text>
+            <Text style={styles.eyebrow}>Account BauBook</Text>
+            <Text style={styles.cardTitle}>{auth.isSignedIn ? 'Sessione attiva' : 'Email OTP / magic link'}</Text>
           </View>
         </View>
-
-        {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
+        <Text style={styles.bodyText}>{auth.message}</Text>
+        {auth.errorMessage ? <Text style={styles.errorBox}>{auth.errorMessage}</Text> : null}
 
         {!auth.isSignedIn ? (
           <View style={styles.formStack}>
@@ -79,148 +138,143 @@ export function ProfileScreen() {
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder="nome@esempio.it"
                 autoCapitalize="none"
-                autoCorrect={false}
                 keyboardType="email-address"
+                placeholder="bau@bau.it"
+                placeholderTextColor={colors.muted}
                 style={styles.input}
               />
             </View>
-            <View style={styles.actionsColumn}>
-              <AppButton
-                label={auth.isBusy ? 'Invio in corso...' : 'Invia magic link / OTP'}
-                icon={baubookImages.icons.notifications}
-                disabled={auth.isBusy || !auth.isConfigured}
-                onPress={() => void auth.sendLoginEmail(email)}
-              />
-            </View>
+            <AppButton label="Invia link magico / OTP" disabled={auth.isBusy} onPress={() => void auth.sendLoginEmail(email)} />
             <View style={styles.formGroup}>
               <Text style={styles.label}>Codice OTP, se presente nella email</Text>
               <TextInput
                 value={otp}
                 onChangeText={setOtp}
-                placeholder="123456"
                 autoCapitalize="none"
-                autoCorrect={false}
                 keyboardType="number-pad"
+                placeholder="123456"
+                placeholderTextColor={colors.muted}
                 style={styles.input}
               />
             </View>
-            <AppButton
-              label={auth.isBusy ? 'Verifica...' : 'Verifica codice OTP'}
-              variant="secondary"
-              icon={baubookImages.icons.phoneVerify}
-              disabled={auth.isBusy || !auth.isConfigured}
-              onPress={() => void auth.verifyOtpCode(email, otp)}
-            />
-            <Text style={styles.helperText}>
-              Per il test più semplice usa il codice OTP se Supabase lo mostra nella mail. Il link magico richiede anche i Redirect URL in Supabase Auth.
-            </Text>
+            <AppButton label="Verifica codice OTP" variant="secondary" disabled={auth.isBusy} onPress={() => void auth.verifyOtpCode(email, otp)} />
+            <Text style={styles.helperText}>Per la beta pubblica restiamo email-first: meno attrito store, niente Google/Apple obbligatori ora.</Text>
           </View>
         ) : (
           <View style={styles.formStack}>
-            <View style={styles.diagnosticsList}>
-              <View style={styles.diagnosticRow}>
-                <Text style={styles.diagnosticLabel}>Email</Text>
-                <Text selectable style={styles.diagnosticValue}>{auth.user?.email ?? 'non disponibile'}</Text>
-              </View>
-              <View style={styles.diagnosticRow}>
-                <Text style={styles.diagnosticLabel}>Profile ID</Text>
-                <Text selectable style={styles.diagnosticValue}>{auth.profile?.id ?? 'profilo in creazione'}</Text>
-              </View>
-              <View style={styles.diagnosticRow}>
-                <Text style={styles.diagnosticLabel}>Cani salvati</Text>
-                <Text selectable style={styles.diagnosticValue}>{auth.dogs.length}</Text>
-              </View>
+            <View style={styles.metricGrid}>
+              <Metric label="Email" value={auth.user?.email ?? 'non disponibile'} />
+              <Metric label="Profile ID" value={auth.profile?.id ?? 'profilo in creazione'} />
+              <Metric label="Cani salvati" value={String(auth.dogs.length)} />
             </View>
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nome umano visibile</Text>
-              <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Eris e branco BauBook" style={styles.input} />
+              <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome" placeholderTextColor={colors.muted} style={styles.input} />
             </View>
             <View style={styles.actionsRow}>
-              <AppButton
-                label={auth.isBusy ? 'Salvo...' : 'Salva profilo'}
-                icon={baubookImages.icons.settings}
-                disabled={auth.isBusy}
-                onPress={() => void auth.saveProfile(displayName)}
-              />
-              <AppButton label="Logout" variant="ghost" icon={baubookImages.icons.privacy} disabled={auth.isBusy} onPress={() => void auth.signOut()} />
+              <AppButton label="Salva profilo" disabled={auth.isBusy} onPress={() => void auth.saveProfile(displayName)} />
+              <AppButton label="Logout" variant="ghost" disabled={auth.isBusy} onPress={() => void auth.signOut()} />
             </View>
           </View>
         )}
       </AppCard>
 
-      <AppCard tone={liveStatus?.connected ? 'teal' : 'warm'}>
-        <View style={styles.headerRow}>
-          <IconBubble source={baubookImages.icons.dogArea} size={58} tone="plain" />
-          <View style={styles.headerCopy}>
-            <Text style={styles.cardTitle}>Supabase live check</Text>
-            <Text style={styles.bodyText}>
-              {supabaseStatus.status === 'loading'
-                ? 'Controllo app_config, feature_flags, places, passeggiate, presenze e safety...'
-                : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'}
-            </Text>
-          </View>
+      <AppCard tone="teal">
+        <SectionHeader
+          eyebrow="Pronti alla beta"
+          title="Launch readiness"
+          description="Questa card indica cosa manca prima di una beta pubblica seria, senza introdurre SDK invasivi."
+        />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${launchScore}%` }]} />
         </View>
-        <View style={styles.statusRow}>
-          <Tag label={liveStatus?.connected ? 'DB raggiungibile' : hasSupabaseConfig ? 'DB da verificare' : 'DB non configurato'} tone={liveStatus?.connected ? 'green' : 'orange'} />
-          <Tag label={`config ${liveStatus?.appConfigCount ?? 0}`} tone="teal" />
-          <Tag label={`flag ${liveStatus?.featureFlagsCount ?? 0}`} tone="pink" />
-          <Tag label={`luoghi ${liveStatus?.placesCount ?? 0}`} tone="green" />
-          <Tag label={`walk ${liveStatus?.walkPlansCount ?? 0}`} tone="orange" />
-          <Tag label={`presenze ${liveStatus?.presencesCount ?? 0}`} tone="teal" />
-          <Tag label={`smarriti ${liveStatus?.lostDogAlertsCount ?? 0}`} tone="red" />
-          <Tag label={`pericoli ${liveStatus?.dangerReportsCount ?? 0}`} tone="orange" />
-        </View>
-        <View style={styles.diagnosticsList}>
-          <View style={styles.diagnosticRow}>
-            <Text style={styles.diagnosticLabel}>Supabase URL</Text>
-            <Text selectable style={styles.diagnosticValue}>{supabaseSummary.url || 'non configurato'}</Text>
-          </View>
-          <View style={styles.diagnosticRow}>
-            <Text style={styles.diagnosticLabel}>Client key</Text>
-            <Text selectable style={styles.diagnosticValue}>{supabaseSummary.keyPrefix || 'non configurata'}</Text>
-          </View>
-          <View style={styles.diagnosticRow}>
-            <Text style={styles.diagnosticLabel}>Ultimo check</Text>
-            <Text selectable style={styles.diagnosticValue}>{liveStatus?.lastCheckedAt ?? 'non ancora eseguito'}</Text>
-          </View>
-        </View>
-        <View style={styles.buttonWrap}>
-          <AppButton label="Riprova check Supabase" variant="ghost" icon={baubookImages.icons.settings} onPress={supabaseStatus.reload} />
-        </View>
-      </AppCard>
-
-      <AppCard>
-        <View style={styles.headerRow}>
-          <IconBubble source={baubookImages.icons.privacy} size={58} tone="pink" />
-          <View style={styles.headerCopy}>
-            <Text style={styles.cardTitle}>Privacy by default</Text>
-            <Text style={styles.bodyText}>Email/OTP per tutti. Telefono solo per funzioni ad alto rischio. Niente home address, niente live location predefinita.</Text>
-          </View>
-        </View>
-      </AppCard>
-
-      <AppCard tone="pink">
-        <View style={styles.headerRow}>
-          <IconBubble source={baubookImages.icons.settings} size={58} tone="plain" />
-          <View style={styles.headerCopy}>
-            <Text style={styles.cardTitle}>Debug parlante</Text>
-            <Text style={styles.bodyText}>Dati runtime utili per capire subito piattaforma, Metro, errori e build.</Text>
-          </View>
-        </View>
-        <View style={styles.diagnosticsList}>
-          {diagnostics.map((item) => (
-            <View key={item.label} style={styles.diagnosticRow}>
-              <Text style={styles.diagnosticLabel}>{item.label}</Text>
-              <Text selectable style={styles.diagnosticValue}>{item.value}</Text>
+        <View style={styles.checkList}>
+          {launchChecklist.map((item) => (
+            <View key={item} style={styles.checkItem}>
+              <Text style={styles.checkBullet}>✓</Text>
+              <Text style={styles.checkText}>{item}</Text>
             </View>
           ))}
         </View>
       </AppCard>
 
-      <AppCard tone="teal">
-        <Text style={styles.cardTitle}>Prossimi comandi</Text>
+      <AppCard tone="pink">
+        <SectionHeader
+          eyebrow="Privacy & Terms"
+          title="Trasparenza beta"
+          description="Testi brevi in-app per ridurre attrito di review e rendere chiaro cosa raccoglie BauBook."
+        />
+        <View style={styles.legalStack}>
+          <LegalBlock title="Privacy beta" body="Raccogliamo email, profilo umano, profilo cane, contenuti safety e presenza temporanea solo per far funzionare la community locale." />
+          <LegalBlock title="Localizzazione" body="La posizione e' usata solo quando l'utente chiede funzioni di prossimita. BauBook non abilita live tracking continuo di default." />
+          <LegalBlock title="Sponsor nativi" body="Gli spazi partner sono sponsorizzazioni locali dichiarate. Niente tracking cross-app, niente SDK ads, niente advertising ID nella beta." />
+          <LegalBlock title="Cancellazione account" body="L'utente loggato puo richiedere cancellazione account dall'app. La richiesta resta tracciata per gestione operativa e audit minimo." />
+        </View>
+      </AppCard>
+
+      <AppCard>
+        <SectionHeader eyebrow="Account deletion" title="Richiesta cancellazione account" description="Flusso leggero, utile per beta e review store. Richiede login e migration 0008 applicata." />
+        <View style={styles.formStack}>
+          <TextInput
+            value={deletionReason}
+            onChangeText={setDeletionReason}
+            placeholder="Motivo facoltativo"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, styles.textArea]}
+            multiline
+          />
+          <AppButton
+            label="Richiedi cancellazione account"
+            variant="danger"
+            disabled={!auth.isSignedIn || auth.isBusy}
+            onPress={() => void handleDeletionRequest()}
+          />
+          {!auth.isSignedIn ? <Text style={styles.helperText}>Effettua il login per inviare una richiesta reale.</Text> : null}
+          {deletionMessage ? <Text style={styles.successBox}>{deletionMessage}</Text> : null}
+          {deletionError ? <Text style={styles.errorBox}>{deletionError}</Text> : null}
+        </View>
+      </AppCard>
+
+      <AppCard tone="warm">
+        <SectionHeader
+          eyebrow="Sponsored Places Lite"
+          title="Sponsor nativo, non ad network"
+          description="Primo spazio partner controllato da Supabase: utile per monetizzare senza AdMob nella beta."
+        />
+        {primarySponsoredSlot ? (
+          <View style={styles.sponsorBox}>
+            <Text style={styles.sponsorLabel}>Partner</Text>
+            <Text style={styles.sponsorName}>{primarySponsoredSlot.sponsorName}</Text>
+            <Text style={styles.sponsorTitle}>{primarySponsoredSlot.title}</Text>
+            <Text style={styles.bodyText}>{primarySponsoredSlot.body}</Text>
+            <Tag label={primarySponsoredSlot.ctaLabel} tone="orange" />
+          </View>
+        ) : (
+          <Text style={styles.bodyText}>Nessuno slot sponsor attivo. App pronta a mostrarli appena li abiliti da Supabase.</Text>
+        )}
+      </AppCard>
+
+      <AppCard>
+        <SectionHeader eyebrow="Supabase live check" title="Backend" description={supabaseStatus.status === 'loading' ? 'Controllo app_config, feature_flags, places, passeggiate, presenze e safety...' : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'} />
+        <View style={styles.metricGrid}>
+          <Metric label="Supabase URL" value={supabaseSummary.url || 'non configurato'} />
+          <Metric label="Client key" value={supabaseSummary.keyPrefix || 'non configurata'} />
+          <Metric label="Ultimo check" value={liveStatus?.lastCheckedAt ?? 'non ancora eseguito'} />
+        </View>
+      </AppCard>
+
+      <AppCard>
+        <SectionHeader eyebrow="Debug parlante" title="Runtime" description="Dati utili per capire subito piattaforma, Metro, errori e build." />
+        <View style={styles.diagnosticsList}>
+          {diagnostics.map((item) => (
+            <Metric key={item.label} label={item.label} value={item.value} />
+          ))}
+        </View>
+      </AppCard>
+
+      <AppCard>
+        <SectionHeader eyebrow="Prossimi comandi" title="Operativita" />
         <View style={styles.stepsList}>
           {setupSteps.map((step, index) => (
             <View key={step} style={styles.stepItem}>
@@ -231,6 +285,24 @@ export function ProfileScreen() {
         </View>
       </AppCard>
     </Screen>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.diagnosticRow}>
+      <Text style={styles.diagnosticLabel}>{label}</Text>
+      <Text style={styles.diagnosticValue}>{value}</Text>
+    </View>
+  );
+}
+
+function LegalBlock({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={styles.legalBlock}>
+      <Text style={styles.legalTitle}>{title}</Text>
+      <Text style={styles.helperText}>{body}</Text>
+    </View>
   );
 }
 
@@ -304,6 +376,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
   },
+  textArea: {
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
   helperText: {
     color: colors.muted,
     fontSize: typography.small,
@@ -311,7 +387,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   errorBox: {
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.danger,
     backgroundColor: colors.redSoft,
@@ -322,13 +398,26 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '800',
   },
-  actionsColumn: {
-    gap: spacing.sm,
+  successBox: {
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.success,
+    backgroundColor: colors.greenSoft,
+    color: colors.text,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
   },
   actionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  metricGrid: {
+    gap: spacing.xs,
+    marginTop: spacing.lg,
   },
   diagnosticsList: {
     gap: spacing.xs,
@@ -356,6 +445,81 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '700',
   },
+  progressTrack: {
+    height: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    marginTop: spacing.lg,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  checkList: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  checkItem: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  checkBullet: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+  },
+  checkText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.body,
+    lineHeight: 21,
+    fontWeight: '700',
+  },
+  legalStack: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  legalBlock: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
+  },
+  legalTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: '900',
+  },
+  sponsorBox: {
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+  },
+  sponsorLabel: {
+    color: colors.primaryDark,
+    fontSize: typography.tiny,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  sponsorName: {
+    color: colors.ink,
+    fontSize: typography.h3,
+    fontWeight: '900',
+  },
+  sponsorTitle: {
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: '900',
+  },
   stepsList: {
     gap: spacing.md,
     marginTop: spacing.lg,
@@ -380,8 +544,5 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 22,
     fontWeight: '700',
-  },
-  buttonWrap: {
-    marginTop: spacing.lg,
   },
 });
