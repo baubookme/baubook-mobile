@@ -1,6 +1,6 @@
 # BauBook! Venezia-Mestre MVP Workspace
 
-**BauBook 1.9.9 In-App Launch Compliance + Docs Compaction** per Expo, React Native, TypeScript e Supabase.
+**BauBook 2.0.0 Beta Experience + Cartoon Toolbar** per Expo, React Native, TypeScript e Supabase.
 
 Root locale standard del repo: `C:\baubook`.
 
@@ -69,5 +69,5 @@ https://github.com/baubookme/baubook-mobile
 Tag baseline consigliato per questo blocco:
 
 ```powershell
-git tag -a v0.2.9-in-app-launch-compliance-docs -m "BauBook 1.9.9 In-App Launch Compliance + Docs Compaction"
+git tag -a v0.3.0-beta-experience-cartoon-toolbar -m "BauBook 2.0.0 Beta Experience + Cartoon Toolbar"
 ```

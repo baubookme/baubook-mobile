@@ -114,3 +114,18 @@ Poi:
 git push origin main
 git push origin v0.2.9-in-app-launch-compliance-docs
 ```
+
+## BauBook 2.0.0 - v0.3.0-beta-experience-cartoon-toolbar
+
+- Versione app/package: 0.3.0.
+- Android versionCode: 13.
+- iOS buildNumber: 13.
+- Esperienza beta visibile: toolbar con badge cartoon coerenti con la Home.
+- Check nuovo: npm run ui:check.
+
+## BauBook 2.0.0
+
+- Tag: `v0.3.0-beta-experience-cartoon-toolbar`
+- Versione app/package: `0.3.0`
+- Baseline: `2.0.0`
+- Contenuto: Beta Experience + Cartoon Toolbar.

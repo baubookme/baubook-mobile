@@ -2,5 +2,14 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "_baubook_work",
+    "_baubook_work/**",
+    "_baubook_backups",
+    "_baubook_backups/**",
+    "repo_overlay",
+    "repo_overlay/**"
+  ]
 }
