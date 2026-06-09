@@ -1,0 +1,1 @@
+export { BetaTrustCommandCenter } from './BetaTrustCommandCenter';

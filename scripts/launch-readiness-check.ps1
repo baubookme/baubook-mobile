@@ -68,17 +68,17 @@ $package = Read-JsonFile "package.json"
 $app = Read-JsonFile "app.json"
 
 if ($package) {
-  if ($package.version -eq "0.3.0") { Write-Ok "package.json version 0.3.0" } else { Write-FailLine "package.json version attesa 0.3.0, trovata '$($package.version)'" }
+  if ($package.version -eq "0.3.1") { Write-Ok "package.json version 0.3.1" } else { Write-FailLine "package.json version attesa 0.3.1, trovata '$($package.version)'" }
   foreach ($scriptName in @("launch:check", "launch:check:strict", "docs:check", "beta:check", "safety:smoke")) {
     if ($package.scripts.$scriptName) { Write-Ok "script npm $scriptName presente" } else { Write-FailLine "script npm $scriptName mancante" }
   }
 }
 
 if ($app -and $app.expo) {
-  if ($app.expo.version -eq "0.3.0") { Write-Ok "app.json expo.version 0.3.0" } else { Write-FailLine "app.json expo.version attesa 0.3.0, trovata '$($app.expo.version)'" }
+  if ($app.expo.version -eq "0.3.1") { Write-Ok "app.json expo.version 0.3.1" } else { Write-FailLine "app.json expo.version attesa 0.3.1, trovata '$($app.expo.version)'" }
   if ($app.expo.android.versionCode -ge 13) { Write-Ok "Android versionCode >= 13" } else { Write-FailLine "Android versionCode deve essere >= 13" }
-  if ($app.expo.ios.buildNumber -eq "13") { Write-Ok "iOS buildNumber 13" } else { Write-FailLine "iOS buildNumber atteso 13" }
-  if ($app.expo.extra.baseline -eq "2.0.0") { Write-Ok "extra.baseline 2.0.0" } else { Write-FailLine "extra.baseline atteso 2.0.0" }
+  if ($app.expo.ios.buildNumber -eq "14") { Write-Ok "iOS buildNumber 13" } else { Write-FailLine "iOS buildNumber atteso 14" }
+  if ($app.expo.extra.baseline -eq "2.0.1") { Write-Ok "extra.baseline 2.0.1" } else { Write-FailLine "extra.baseline atteso 2.0.1" }
   if ($app.expo.extra.sponsoredLiteDefault -eq $false) { Write-Ok "Sponsored Lite default spento in metadata" } else { Write-WarnLine "Sponsored Lite default non risulta false" }
 }
 
@@ -153,5 +153,6 @@ Write-Host "Warnings: $script:Warnings" -ForegroundColor Yellow
 Write-Host "Failures: $script:Failures" -ForegroundColor $(if ($script:Failures -eq 0) { "Green" } else { "Red" })
 if ($script:Failures -gt 0) { throw "Launch readiness check fallito con $script:Failures failure." }
 Write-Host "BauBook launch readiness check completato." -ForegroundColor Green
+
 
 

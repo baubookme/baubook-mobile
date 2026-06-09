@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
@@ -9,6 +9,7 @@ import { colors, radius, shadows, spacing, typography } from '../../shared/theme
 import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
+import { BetaTrustCommandCenter } from '../beta';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -102,7 +103,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.kicker}>BauBook live cockpit</Text>
             <Text style={styles.title}>Cosa succede vicino a te?</Text>
             <Text style={styles.subtitle}>
-              Home operativa: passeggiate, luoghi e safety in un colpo d’occhio.
+              Home operativa: passeggiate, luoghi e safety in un colpo dâ€™occhio.
             </Text>
           </View>
         </View>
@@ -119,6 +120,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           <AppButton label="Vai alla Mappa" onPress={() => onNavigate('map')} variant="ghost" />
         </View>
       </View>
+
+      <BetaTrustCommandCenter />
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -223,7 +226,7 @@ function QuickActionCard({ action, onPress }: { action: QuickAction; onPress: ()
     >
       <Text style={styles.quickTitle}>{action.title}</Text>
       <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
-      <Text style={styles.quickCta}>Apri →</Text>
+      <Text style={styles.quickCta}>Apri â†’</Text>
     </Pressable>
   );
 }
@@ -239,7 +242,7 @@ function RadarAlertRow({ alert, onPress }: { alert: SafetyAlertModel; onPress: (
       <View style={styles.alertRowCopy}>
         <Text style={styles.alertRowTitle}>{alert.title}</Text>
         <Text style={styles.alertRowMeta}>
-          {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
+          {alert.placeName} Â· {alert.ttlLabel} Â· {alert.radiusLabel}
         </Text>
         <Text style={styles.alertRowText} numberOfLines={2}>
           {alert.description}
@@ -544,3 +547,4 @@ const toneStyles = StyleSheet.create({
     backgroundColor: colors.greenSoft,
   },
 });
+

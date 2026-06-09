@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -31,7 +31,8 @@
     "launch:check:strict": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1 -Strict",
     "docs:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docs-structure-check.ps1",
     "beta:check": "npm run docs:check && npm run launch:check && npm run typecheck",
-    "ui:check": "powershell -ExecutionPolicy Bypass -File ./scripts/ui-smoke-check.ps1"
+    "ui:check": "powershell -ExecutionPolicy Bypass -File ./scripts/ui-smoke-check.ps1",
+    "baubook:release:doctor": "node scripts/baubook-release-doctor.mjs --expected-version 0.3.1 --expected-baseline 2.0.1 --expected-android-version-code 14 --expected-ios-build-number 14"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
@@ -48,5 +49,11 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
+  },
+  "baubook": {
+    "baseline": "2.0.1",
+    "releaseName": "Beta Trust Command Center",
+    "releaseTag": "v0.3.1-beta-trust-command-center",
+    "releaseDate": "2026-06-09"
   }
 }

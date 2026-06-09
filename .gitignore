@@ -49,3 +49,7 @@ yarn-error.*
 .env
 .env.*
 !.env.example
+
+_baubook_work/
+_baubook_backups/
+baubook_*.zip
