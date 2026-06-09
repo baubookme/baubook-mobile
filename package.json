@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -28,7 +28,9 @@
     "bb:supabase": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode supabase-doctor",
     "safety:smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/safety-smoke-check.ps1",
     "launch:check": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1",
-    "launch:check:strict": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1 -Strict"
+    "launch:check:strict": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1 -Strict",
+    "docs:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docs-structure-check.ps1",
+    "beta:check": "npm run docs:check && npm run launch:check && npm run typecheck"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",

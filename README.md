@@ -1,8 +1,10 @@
-# BauBook! Venezia-Mestre MVP
+# BauBook! Venezia-Mestre MVP Workspace
 
-Workspace **BauBook 1.9.0 Safety bootstrap** per Expo + React Native + TypeScript.
+**BauBook 1.9.9 In-App Launch Compliance + Docs Compaction** per Expo, React Native, TypeScript e Supabase.
 
-Questa baseline e' pensata per:
+Root locale standard del repo: `C:\baubook`.
+
+## Cosa copre questa baseline
 
 - sviluppo UI rapido da browser;
 - test Android tramite Expo Development Build, non Expo Go;
@@ -13,31 +15,34 @@ Questa baseline e' pensata per:
 - passeggiate reali su `walk_plans` + `community_events`;
 - presenza temporanea su `presence_sessions`, senza live tracking continuo;
 - safety live: `lost_dog_alerts`, `lost_dog_sightings`, `danger_reports`, `reports`, `audit_logs`;
-- fallback demo locale se il backend non risponde;
-- repository Git pulito, senza `node_modules`, `.env`, `.expo`, `android/` o `ios/`.
+- dog areas ufficiali e ricerca raggio;
+- Sponsored Places Lite nativo, senza SDK ads e spento di default;
+- documentazione compatta in `docs/`.
 
 ## Comandi base
 
 ```powershell
 cd C:\baubook
 .\scripts\install-clean.ps1
-.\baubook.ps1 -Mode doctor
-.\baubook.ps1 -Mode supabase-doctor
+npm run docs:check
+npm run launch:check
+npm run typecheck
 .\baubook.ps1 -Mode web
 .\baubook.ps1 -Mode android-build -CleanPrebuild
 .\baubook.ps1 -Mode android-dev
 ```
 
-## Supabase live + Auth + Walks + Safety
+## Documentazione compatta
 
-La 1.9.0 usa il progetto `baubook-beta` per:
+La cartella `docs/` deve restare corta e stabile:
 
-- **Mappa**: luoghi pubblici da `places`.
-- **Setup**: conteggi live di config, luoghi, passeggiate, presenze e safety.
-- **Setup > Account BauBook**: email OTP/magic link, sessione persistente, profilo umano, logout.
-- **Io sono...!**: primo cane salvato/aggiornato su `dogs`.
-- **Passeggio**: passeggiata, interesse, presenza temporanea e chiusura presenze.
-- **Aiuto**: alert smarrimento, pericolo, avvistamento, recupero, chiusura e report abuso.
+- `docs/DEVELOPMENT.md` - sviluppo locale, Supabase, env, Android, store readiness e troubleshooting.
+- `docs/SCHEMA_DB.md` - schema DB, migrations, RLS, RPC, safety e sponsored slots.
+- `docs/README_VERSIONING.md` - regole versioni, commit, tag e release notes.
+
+Non creare file `HOTFIX_*.md` o `BASELINE_*.md` in `docs/`. Versioni e milestone si tracciano con Git commit/tag.
+
+## Supabase
 
 Ordine SQL richiesto in Supabase:
 
@@ -48,32 +53,10 @@ supabase/migrations/0002_api_access_grants.sql
 supabase/migrations/0003_auth_profile_bootstrap.sql
 supabase/migrations/0004_walks_presence_bootstrap.sql
 supabase/migrations/0005_safety_alerts_bootstrap.sql
+supabase/migrations/0006_official_venice_dog_areas.sql
+supabase/migrations/0007_geocoded_dog_area_radius_search.sql
+supabase/migrations/0008_launch_readiness_native_sponsored_slots.sql
 ```
-
-## Safety guardrail
-
-Le funzioni **Mi sono perso!** e **Pericolo!** non inseriscono righe libere dal client. L'app chiama RPC Supabase che applicano:
-
-- login obbligatorio;
-- email verificata per creare alert critici;
-- disclaimer obbligatorio lato app e lato DB;
-- TTL clampato lato DB;
-- rate limit beta per profilo;
-- area indicativa attorno a un luogo BauBook;
-- chiusura/dismissione esplicita;
-- report abuso/falso alert;
-- audit log minimo.
-
-## Documentazione
-
-La cartella `docs/` resta volutamente piccola:
-
-- `docs/DEVELOPMENT.md` - ambiente, script, Android/WebStorm e troubleshooting essenziale.
-- `docs/SUPABASE_SETUP.md` - progetto Supabase, `.env`, schema, migrations, Auth, Walks, Safety e test live.
-- `docs/SCHEMA_OVERVIEW.md` - riepilogo modello dati e aree future.
-- `docs/NEXT_STEPS.md` - roadmap tecnica immediata.
-
-Non teniamo file `HOTFIX_*.md` o `BASELINE_*.md`: versioni e milestone si tracciano con Git commit/tag.
 
 ## GitHub
 
@@ -83,12 +66,8 @@ Repository:
 https://github.com/baubookme/baubook-mobile
 ```
 
-Commit/tag consigliati per questa baseline:
+Tag baseline consigliato per questo blocco:
 
 ```powershell
-git add .
-git commit -m "feat: add safety alerts and danger reports"
-git tag -a v0.2.0-safety-bootstrap -m "BauBook safety alerts baseline 1.9.0"
-git push
-git push origin v0.2.0-safety-bootstrap
+git tag -a v0.2.9-in-app-launch-compliance-docs -m "BauBook 1.9.9 In-App Launch Compliance + Docs Compaction"
 ```
