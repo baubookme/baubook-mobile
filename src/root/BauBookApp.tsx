@@ -5,6 +5,7 @@ import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { AlertsScreen } from '../features/alerts/AlertsScreen';
 import { DogProfileScreen } from '../features/dogs/DogProfileScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
+import { PackScreen } from '../features/pack/PackScreen';
 import { MapScreen } from '../features/map/MapScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { WalksScreen } from '../features/walks/WalksScreen';
@@ -18,6 +19,7 @@ const tabs: Array<{ key: TabKey; label: string; icon: ImageSourcePropType; isLog
   { key: 'map', label: 'Mappa', icon: baubookImages.icons.map },
   { key: 'dog', label: 'Io sono', icon: baubookImages.icons.dogProfile },
   { key: 'walks', label: 'Passeggio', icon: baubookImages.icons.walks },
+  { key: 'pack', label: 'Branco', icon: baubookImages.icons.friends },
   { key: 'alerts', label: 'Aiuto', icon: baubookImages.icons.lostDog },
   { key: 'profile', label: 'Setup', icon: baubookImages.icons.settings },
 ];
@@ -35,8 +37,7 @@ export function BauBookApp() {
         return <DogProfileScreen />;
       case 'walks':
         return <WalksScreen />;
-      case 'alerts':
-        return <AlertsScreen />;
+      case 'pack': return <PackScreen onNavigate={setActiveTab} />; case 'alerts': return <AlertsScreen />;
       case 'profile':
         return <ProfileScreen />;
       default:
