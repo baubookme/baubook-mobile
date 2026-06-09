@@ -36,7 +36,7 @@ export function BauBookApp() {
       case 'dog':
         return <DogProfileScreen />;
       case 'walks':
-        return <WalksScreen />;
+        return <WalksScreen onNavigate={setActiveTab} />;
       case 'pack': return <PackScreen onNavigate={setActiveTab} />; case 'alerts': return <AlertsScreen />;
       case 'profile':
         return <ProfileScreen />;
