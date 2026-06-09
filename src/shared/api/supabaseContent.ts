@@ -33,6 +33,21 @@ export interface SupabasePlacesResult {
   errorMessage?: string;
 }
 
+export interface NearbyDogAreaModel extends PlaceModel {
+  addressLabel: string;
+  distanceKm: number;
+  latitude: number;
+  longitude: number;
+  geocodingStatus: string;
+}
+
+export interface NearbyDogAreasResult {
+  source: 'supabase' | 'fallback';
+  areas: NearbyDogAreaModel[];
+  message: string;
+  errorMessage?: string;
+}
+
 interface RemotePlaceRow {
   id: string;
   slug: string | null;
@@ -42,8 +57,27 @@ interface RemotePlaceRow {
   description: string | null;
   moderation_status: string;
   source: string;
+  metadata?: Record<string, unknown> | null;
   city_areas?: { name?: string | null } | Array<{ name?: string | null }> | null;
   cities?: { name?: string | null } | Array<{ name?: string | null }> | null;
+}
+
+interface RemoteNearbyDogAreaRow {
+  id: string;
+  slug: string | null;
+  name: string;
+  type: string;
+  area_name: string | null;
+  city_name: string | null;
+  address: string | null;
+  description: string | null;
+  tags: string[] | null;
+  moderation_status: string;
+  source: string;
+  distance_km: number | null;
+  lat: number | null;
+  lng: number | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface RemoteFeatureFlagRow {
@@ -136,21 +170,83 @@ function normalizeModerationStatus(value: string): ModerationStatus {
   }
 }
 
+function metadataText(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim().length ? value : null;
+}
+
 function remotePlaceToModel(row: RemotePlaceRow): PlaceModel {
   const kind = normalizePlaceKind(row.type);
   const areaName = relationName(row.city_areas) ?? relationName(row.cities) ?? 'Venezia-Mestre';
+  const address = metadataText(row.metadata, 'address');
+  const geocodingStatus = metadataText(row.metadata, 'geocodingStatus');
+  const isOfficialDogArea = row.source === 'comune_venezia_official_dog_areas_2026_pdf';
+  const distanceLabel = isOfficialDogArea
+    ? geocodingStatus === 'beta_geocoded'
+      ? 'ufficiale · geocodificata beta'
+      : 'ufficiale · indirizzo'
+    : row.source === 'demo'
+      ? 'seed Supabase'
+      : 'database';
 
   return {
     id: row.id,
     name: row.name,
     kind,
     area: areaName,
-    distanceLabel: row.source === 'demo' ? 'seed Supabase' : 'database',
-    description: row.description ?? 'Scheda luogo BauBook in preparazione.',
+    distanceLabel,
+    description: row.description ?? (address ? `Indirizzo: ${address}` : 'Scheda luogo BauBook in preparazione.'),
     tags: row.tags?.length ? row.tags : ['da verificare'],
-    scoreLabel: row.source === 'demo' ? 'demo' : 'BauBook',
+    scoreLabel: isOfficialDogArea ? 'ufficiale' : row.source === 'demo' ? 'demo' : 'BauBook',
     icon: iconForPlaceKind(kind),
     moderationStatus: normalizeModerationStatus(row.moderation_status),
+  };
+}
+
+function remoteNearbyDogAreaToModel(row: RemoteNearbyDogAreaRow): NearbyDogAreaModel {
+  const kind = normalizePlaceKind(row.type);
+  const distanceKm = typeof row.distance_km === 'number' ? row.distance_km : 0;
+  const latitude = typeof row.lat === 'number' ? row.lat : 0;
+  const longitude = typeof row.lng === 'number' ? row.lng : 0;
+  const geocodingStatus = metadataText(row.metadata, 'geocodingStatus') ?? 'unknown';
+  const address = row.address ?? metadataText(row.metadata, 'address') ?? 'Indirizzo in verifica';
+
+  return {
+    id: row.id,
+    name: row.name,
+    kind,
+    area: row.area_name ?? row.city_name ?? 'Venezia-Mestre',
+    distanceLabel: `${distanceKm.toFixed(2).replace('.', ',')} km`,
+    description: row.description ?? `Area cani ufficiale. Indirizzo: ${address}`,
+    tags: row.tags?.length ? row.tags : ['area cani', 'ufficiale'],
+    scoreLabel: 'vicina a te',
+    icon: iconForPlaceKind(kind),
+    moderationStatus: normalizeModerationStatus(row.moderation_status),
+    addressLabel: address,
+    distanceKm,
+    latitude,
+    longitude,
+    geocodingStatus,
+  };
+}
+
+function fallbackNearbyDogAreas(message: string, errorMessage?: string): NearbyDogAreasResult {
+  const areas = demoPlaces
+    .filter((place) => place.kind === 'dog_area')
+    .map((place, index) => ({
+      ...place,
+      addressLabel: 'Demo locale: indirizzo non live',
+      distanceKm: index + 1,
+      latitude: 0,
+      longitude: 0,
+      geocodingStatus: 'fallback_demo',
+    }));
+
+  return {
+    source: 'fallback',
+    areas,
+    message,
+    errorMessage,
   };
 }
 
@@ -168,7 +264,7 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
   try {
     const { data, error } = await client
       .from('places')
-      .select('id, slug, name, type, tags, description, moderation_status, source, city_areas(name), cities(name)')
+      .select('id, slug, name, type, tags, description, moderation_status, source, metadata, city_areas(name), cities(name)')
       .eq('visibility', 'public')
       .order('name', { ascending: true });
 
@@ -196,8 +292,7 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
       places,
       message: `${places.length} luogo/i caricati da Supabase.`,
     };
-  }
-  catch (error) {
+  } catch (error) {
     return {
       source: 'fallback',
       places: demoPlaces,
@@ -207,13 +302,59 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
   }
 }
 
+export async function fetchNearbyDogAreas(params: {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  limit?: number;
+}): Promise<NearbyDogAreasResult> {
+  const client = getSupabaseClient();
+
+  if (!hasSupabaseConfig || !client) {
+    return fallbackNearbyDogAreas('Supabase non configurato: ricerca nel raggio disponibile solo con backend live.');
+  }
+
+  try {
+    const { data, error } = await client.rpc('search_dog_areas_nearby', {
+      p_lat: params.latitude,
+      p_lng: params.longitude,
+      p_radius_km: params.radiusKm,
+      p_limit: params.limit ?? 50,
+    });
+
+    if (error) {
+      return fallbackNearbyDogAreas(
+        'Ricerca nel raggio non ancora disponibile: applica la migration 0007 su Supabase.',
+        normalizeError(error),
+      );
+    }
+
+    const areas = ((data ?? []) as RemoteNearbyDogAreaRow[]).map(remoteNearbyDogAreaToModel);
+
+    return {
+      source: 'supabase',
+      areas,
+      message: areas.length
+        ? `${areas.length} area/e cani trovata/e nel raggio selezionato.`
+        : 'Nessuna area cani geocodificata nel raggio selezionato.',
+    };
+  } catch (error) {
+    return fallbackNearbyDogAreas(
+      'Errore runtime durante la ricerca nel raggio: uso fallback controllato.',
+      normalizeError(error),
+    );
+  }
+}
+
 async function countRows(tableName: string): Promise<{ count: number; errorMessage?: string }> {
   const client = getSupabaseClient();
+
   if (!client) {
     return { count: 0, errorMessage: 'Supabase client non configurato' };
   }
 
   const { count, error } = await client.from(tableName).select('*', { count: 'exact', head: true });
+
   if (error) {
     return { count: 0, errorMessage: normalizeError(error) };
   }
@@ -223,6 +364,7 @@ async function countRows(tableName: string): Promise<{ count: number; errorMessa
 
 export async function fetchFeatureFlags(): Promise<SupabaseFeatureFlag[]> {
   const client = getSupabaseClient();
+
   if (!client) {
     return [];
   }
@@ -274,7 +416,14 @@ export async function fetchSupabasePublicStatus(): Promise<SupabasePublicStatus>
     countRows('danger_reports'),
   ]);
 
-  const firstError = appConfig.errorMessage ?? featureFlags.errorMessage ?? places.errorMessage ?? walkPlans.errorMessage ?? presences.errorMessage ?? lostDogAlerts.errorMessage ?? dangerReports.errorMessage;
+  const firstError =
+    appConfig.errorMessage ??
+    featureFlags.errorMessage ??
+    places.errorMessage ??
+    walkPlans.errorMessage ??
+    presences.errorMessage ??
+    lostDogAlerts.errorMessage ??
+    dangerReports.errorMessage;
 
   if (firstError) {
     return {
