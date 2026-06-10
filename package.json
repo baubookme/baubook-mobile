@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.3.5",
+  "version": "0.3.9",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -27,8 +27,8 @@
     "supabase:doctor": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-doctor.ps1",
     "bb:supabase": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode supabase-doctor",
     "safety:smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/safety-smoke-check.ps1",
-    "launch:check": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1",
-    "launch:check:strict": "powershell -ExecutionPolicy Bypass -File ./scripts/launch-readiness-check.ps1 -Strict",
+    "launch:check": "node scripts/check-launch-readiness-207.js",
+    "launch:check:strict": "node scripts/check-launch-readiness-207.js --strict",
     "docs:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docs-structure-check.ps1",
     "beta:check": "npm run docs:check && npm run launch:check && npm run typecheck",
     "ui:check": "powershell -ExecutionPolicy Bypass -File ./scripts/ui-smoke-check.ps1",
@@ -36,11 +36,16 @@
     "map:realtime:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-realtime-check.ps1",
     "map:native:check": "powershell -ExecutionPolicy Bypass -File ./scripts/map-native-check.ps1",
     "map:web-safe:check": "node scripts/check-web-safe-maps.js",
-    "sponsored:rls:check": "node scripts/check-sponsored-slots-rls-sql.js"
+    "sponsored:rls:check": "node scripts/check-sponsored-slots-rls-sql.js",
+    "device:beta:check": "node scripts/check-launch-readiness-207.js --device-beta",
+    "no-store:check": "node scripts/check-launch-readiness-207.js --no-store",
+    "store:fasttrack:check": "node scripts/check-no-store-device-launch.js --store",
+    "sponsor:pilot:check": "node scripts/check-no-store-device-launch.js --sponsor",
+    "home:badges:check": "node scripts/check_home_badges.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
-    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.107.0",
     "expo": "~56.0.9",
     "expo-dev-client": "^56.0.19",
@@ -56,9 +61,10 @@
     "typescript": "~6.0.3"
   },
   "baubook": {
-    "baseline": "2.0.1",
+    "baseline": "2.0.9",
     "releaseName": "Beta Trust Command Center",
     "releaseTag": "v0.3.1-beta-trust-command-center",
-    "releaseDate": "2026-06-09"
+    "releaseDate": "2026-06-09",
+    "label": "Dismissible Weekly Tip + Partnership CTA"
   }
 }

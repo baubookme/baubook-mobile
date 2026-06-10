@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
@@ -10,6 +10,7 @@ import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
 import { BetaTrustCommandCenter } from '../beta';
+import { HomeTopInsightBadges } from './components/HomeTopInsightBadges';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -95,6 +96,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <Screen>
       <View style={styles.heroCard}>
+      <HomeTopInsightBadges />
         <View style={styles.heroHeader}>
           <View style={styles.heroIcon}>
             <Text style={styles.heroIconText}>BB</Text>
