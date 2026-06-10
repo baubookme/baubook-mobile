@@ -4,7 +4,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 declare const require: ((moduleName: string) => unknown) | undefined;
 
 const FEEDBACK_EMAIL = 'admin@baubook.me';
-const DISMISSED_BETA_WELCOME_STORAGE_KEY = 'baubook.home.dismissedBetaWelcome.2.1.0';
+const DISMISSED_BETA_WELCOME_STORAGE_KEY = 'baubook.home.dismissedBetaWelcome.2.1.1';
 
 type AsyncStorageLike = {
   getItem: (key: string) => Promise<string | null>;

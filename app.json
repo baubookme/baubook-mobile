@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "me.baubook.app",
-      "buildNumber": "21",
+      "buildNumber": "22",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 21
+      "versionCode": 22
     },
     "web": {
       "bundler": "metro",
@@ -36,13 +36,13 @@
       "projectName": "BauBook 2.0.0 Beta Experience + Cartoon Toolbar",
       "betaCity": "Venezia-Mestre",
       "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts + compact docs",
-      "baseline": "2.1.0",
+      "baseline": "2.1.1",
       "launchReadiness": "beta-experience-cartoon-toolbar",
       "sponsoredLiteDefault": false,
       "releaseName": "BauBook 2.0.0 Beta Experience + Cartoon Toolbar",
       "cartoonToolbar": true,
       "sponsoredLiteDefaultEnabled": false,
-      "baubookBaseline": "2.1.0",
+      "baubookBaseline": "2.1.1",
       "baubookReleaseName": "Native MapView Markers",
       "nativeMapViewMarkers": true,
       "mapProvider": "react-native-maps",
@@ -51,8 +51,8 @@
         "projectId": "bd85b195-0fc3-4b4c-8b4c-af8f119f51ca"
       },
       "baubook": {
-        "baseline": "2.1.0",
-        "label": "Beta Polish & First Run Experience"
+        "baseline": "2.1.1",
+        "label": "First Steps Command Center"
       }
     }
   }
