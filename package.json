@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.3.9",
+  "version": "0.4.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -41,7 +41,8 @@
     "no-store:check": "node scripts/check-launch-readiness-207.js --no-store",
     "store:fasttrack:check": "node scripts/check-no-store-device-launch.js --store",
     "sponsor:pilot:check": "node scripts/check-no-store-device-launch.js --sponsor",
-    "home:badges:check": "node scripts/check_home_badges.js"
+    "home:badges:check": "node scripts/check_home_badges.js",
+    "beta:polish:check": "node scripts/check_beta_polish.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
@@ -61,10 +62,10 @@
     "typescript": "~6.0.3"
   },
   "baubook": {
-    "baseline": "2.0.9",
+    "baseline": "2.1.0",
     "releaseName": "Beta Trust Command Center",
     "releaseTag": "v0.3.1-beta-trust-command-center",
     "releaseDate": "2026-06-09",
-    "label": "Dismissible Weekly Tip + Partnership CTA"
+    "label": "Beta Polish & First Run Experience"
   }
 }

@@ -4,9 +4,9 @@ const path = require('path');
 
 const root = process.cwd();
 const EXPECTED = {
-  packageVersion: '0.3.9',
-  appVersion: '0.3.9',
-  baseline: '2.0.9',
+  packageVersion: '0.4.0',
+  appVersion: '0.4.0',
+  baseline: '2.1.0',
   androidVersionCodeMin: 20,
   iosBuildNumber: '20',
 };
@@ -117,4 +117,4 @@ else fail('NativePlacesMap.web.tsx mancante');
 if (failed) {
   process.exit(1);
 }
-console.log('OK BauBook 2.0.9 launch/no-store readiness allineata.');
+console.log('OK BauBook 2.1.0 launch/no-store readiness allineata.');

@@ -11,6 +11,7 @@ import type { TabKey } from '../../shared/types/domain';
 
 import { BetaTrustCommandCenter } from '../beta';
 import { HomeTopInsightBadges } from './components/HomeTopInsightBadges';
+import { HomeBetaPolishCards } from './components/HomeBetaPolishCards';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -97,6 +98,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     <Screen>
       <View style={styles.heroCard}>
       <HomeTopInsightBadges />
+      <HomeBetaPolishCards />
         <View style={styles.heroHeader}>
           <View style={styles.heroIcon}>
             <Text style={styles.heroIconText}>BB</Text>
