@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -43,7 +43,8 @@
     "sponsor:pilot:check": "node scripts/check-no-store-device-launch.js --sponsor",
     "home:badges:check": "node scripts/check_home_badges.js",
     "beta:polish:check": "node scripts/check_beta_polish.js",
-    "first-steps:check": "node scripts/check_first_steps.js"
+    "first-steps:check": "node scripts/check_first_steps.js",
+    "contact:embedded:check": "node scripts/check_embedded_contact.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",

@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = process.cwd();
-const TARGET_APP_VERSION = '0.4.1';
-const TARGET_BASELINE = '2.1.1';
+const TARGET_APP_VERSION = '0.4.2';
+const TARGET_BASELINE = '2.1.2';
 const TARGET_ANDROID_VERSION_CODE = 20;
 const TARGET_IOS_BUILD_NUMBER = '20';
 

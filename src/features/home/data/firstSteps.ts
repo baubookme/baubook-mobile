@@ -1,45 +1,40 @@
-export type FirstStepKey = 'dogProfile' | 'map' | 'safety' | 'feedback';
+export type FirstStepKey = 'dogProfile' | 'map' | 'safety';
 
 export type FirstStep = {
   key: FirstStepKey;
-  order: number;
+  id: FirstStepKey;
   title: string;
   description: string;
   actionLabel: string;
-  hint: string;
+  doneLabel: string;
 };
 
-export const FIRST_STEPS: FirstStep[] = [
+export const firstSteps: FirstStep[] = [
   {
     key: 'dogProfile',
-    order: 1,
+    id: 'dogProfile',
     title: 'Completa il profilo cane',
-    description: 'Nome, foto e informazioni base rendono la beta piu utile e personale.',
-    actionLabel: 'Segna fatto',
-    hint: 'Apri la sezione del profilo cane dalla barra principale e completa i dati essenziali.',
+    description: 'Aggiungi o controlla i dati principali del tuo cane per rendere BauBook più utile.',
+    actionLabel: 'Ho completato il profilo',
+    doneLabel: 'Profilo visto'
   },
   {
     key: 'map',
-    order: 2,
+    id: 'map',
     title: 'Esplora la mappa',
-    description: 'Controlla aree cani, luoghi dog-friendly e marker vicini alla tua zona.',
-    actionLabel: 'Ho provato',
-    hint: 'Vai nella tab Mappa e verifica se i marker sono coerenti con la tua zona.',
+    description: 'Guarda aree cani, luoghi dog-friendly e punti utili vicino a te.',
+    actionLabel: 'Ho visto la mappa',
+    doneLabel: 'Mappa vista'
   },
   {
     key: 'safety',
-    order: 3,
+    id: 'safety',
     title: 'Prova Safety',
-    description: 'Guarda come funzionano segnalazioni, radar e messaggi di sicurezza.',
-    actionLabel: 'Ho capito',
-    hint: 'Apri Safety dalla Home o dalla sezione dedicata e verifica messaggi, disclaimer e stato alert.',
-  },
-  {
-    key: 'feedback',
-    order: 4,
-    title: 'Invia feedback beta',
-    description: 'Segnala cosa non e chiaro, cosa manca o cosa funziona bene.',
-    actionLabel: 'Email',
-    hint: 'Si apre una email gia indirizzata a admin@baubook.me con oggetto Feedback beta BauBook.',
-  },
+    description: "Dai un'occhiata agli strumenti per cane smarrito, pericolo e segnalazioni di zona.",
+    actionLabel: 'Ho visto Safety',
+    doneLabel: 'Safety vista'
+  }
 ];
+
+export const FIRST_STEPS = firstSteps;
+export type FirstStepId = FirstStepKey;

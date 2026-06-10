@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { BauBookContactSheet } from './BauBookContactSheet';
 
 declare const require: ((moduleName: string) => unknown) | undefined;
 
-const FEEDBACK_EMAIL = 'admin@baubook.me';
-const DISMISSED_BETA_WELCOME_STORAGE_KEY = 'baubook.home.dismissedBetaWelcome.2.1.1';
+const DISMISSED_BETA_WELCOME_STORAGE_KEY = 'baubook.home.dismissedBetaWelcome.2.1.2';
 
 type AsyncStorageLike = {
   getItem: (key: string) => Promise<string | null>;
@@ -29,6 +30,7 @@ function getOptionalAsyncStorage(): AsyncStorageLike | null {
 
 export function HomeBetaPolishCards() {
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,15 +63,6 @@ export function HomeBetaPolishCards() {
     storage?.setItem(DISMISSED_BETA_WELCOME_STORAGE_KEY, 'true').catch(() => undefined);
   }, []);
 
-  const openFeedbackEmail = useCallback(() => {
-    const subject = encodeURIComponent('Feedback beta BauBook');
-    const body = encodeURIComponent(
-      'Ciao BauBook,\n\nsto provando la beta e vorrei lasciare questo feedback:\n\nCosa mi piace:\n\nCosa migliorerei:\n\nTelefono/modello dispositivo, se utile:\n',
-    );
-
-    Linking.openURL(`mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`).catch(() => undefined);
-  }, []);
-
   return (
     <View style={styles.wrapper}>
       {isWelcomeVisible ? (
@@ -92,7 +85,7 @@ export function HomeBetaPolishCards() {
 
           <Text style={styles.body}>
             Stiamo costruendo una community per passeggiate, aree cani, sicurezza e servizi dog-friendly. In
-            questa fase ogni feedback ci aiuta a rendere l’app più utile e affidabile.
+            questa fase ogni feedback ci aiuta a rendere l'app piu utile e affidabile.
           </Text>
 
           <View style={styles.quickActionsRow}>
@@ -106,7 +99,7 @@ export function HomeBetaPolishCards() {
       <Pressable
         accessibilityLabel="Invia feedback beta BauBook"
         accessibilityRole="button"
-        onPress={openFeedbackEmail}
+        onPress={() => setFeedbackVisible(true)}
         style={({ pressed }) => [styles.feedbackCard, pressed && styles.pressed]}
       >
         <View style={styles.feedbackIcon}>
@@ -114,10 +107,16 @@ export function HomeBetaPolishCards() {
         </View>
         <View style={styles.feedbackCopy}>
           <Text style={styles.feedbackTitle}>Invia feedback beta</Text>
-          <Text style={styles.feedbackSubtitle}>Segnalaci cosa migliorare prima del lancio pubblico</Text>
+          <Text style={styles.feedbackSubtitle}>Scrivici direttamente in app, senza aprire il client email</Text>
         </View>
         <Text style={styles.feedbackArrow}>›</Text>
       </Pressable>
+
+      <BauBookContactSheet
+        visible={feedbackVisible}
+        type="feedback"
+        onClose={() => setFeedbackVisible(false)}
+      />
     </View>
   );
 }

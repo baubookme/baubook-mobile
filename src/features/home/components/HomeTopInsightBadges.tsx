@@ -1,237 +1,174 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
 import { getWeeklyDogTip } from '../data/weeklyDogTips';
-
-declare const require: ((moduleName: string) => unknown) | undefined;
-
-const PARTNERSHIP_EMAIL = 'admin@baubook.me';
-const DISMISSED_TIP_STORAGE_KEY = 'baubook.home.dismissedWeeklyDogTipId';
-
-type AsyncStorageLike = {
-  getItem: (key: string) => Promise<string | null>;
-  setItem: (key: string, value: string) => Promise<void>;
-};
-
-function getOptionalAsyncStorage(): AsyncStorageLike | null {
-  try {
-    if (typeof require !== 'function') {
-      return null;
-    }
-
-    const asyncStorageModule = require('@react-native-async-storage/async-storage') as
-      | ({ default?: AsyncStorageLike } & Partial<AsyncStorageLike>)
-      | undefined;
-
-    return asyncStorageModule?.default ?? (asyncStorageModule as AsyncStorageLike | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
+import { BauBookContactSheet } from './BauBookContactSheet';
 
 export function HomeTopInsightBadges() {
-  const weeklyTip = useMemo(() => getWeeklyDogTip(), []);
-  const [isTipVisible, setIsTipVisible] = useState(true);
+  const tip = useMemo(() => getWeeklyDogTip(), []);
+  const dismissedKey = `baubook_weekly_tip_dismissed_v1:${tip.id}`;
+  const [tipVisible, setTipVisible] = useState(false);
+  const [contactVisible, setContactVisible] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-    const storage = getOptionalAsyncStorage();
+    let mounted = true;
 
-    if (!storage) {
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    storage
-      .getItem(DISMISSED_TIP_STORAGE_KEY)
-      .then((dismissedTipId) => {
-        if (isMounted && dismissedTipId === weeklyTip.id) {
-          setIsTipVisible(false);
-        }
+    AsyncStorage.getItem(dismissedKey)
+      .then((value) => {
+        if (mounted) setTipVisible(value !== 'true');
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (mounted) setTipVisible(true);
+      });
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
-  }, [weeklyTip.id]);
+  }, [dismissedKey]);
 
-  const dismissWeeklyTip = useCallback(() => {
-    setIsTipVisible(false);
-
-    const storage = getOptionalAsyncStorage();
-    storage?.setItem(DISMISSED_TIP_STORAGE_KEY, weeklyTip.id).catch(() => undefined);
-  }, [weeklyTip.id]);
-
-  const openPartnershipEmail = useCallback(() => {
-    const subject = encodeURIComponent('Richiesta partnership BauBook');
-    const body = encodeURIComponent(
-      'Ciao BauBook,\n\nvorrei ricevere informazioni per una possibile partnership con BauBook.\n\nNome attività:\nCittà:\nTelefono:\nNote:\n',
-    );
-
-    Linking.openURL(`mailto:${PARTNERSHIP_EMAIL}?subject=${subject}&body=${body}`).catch(() => undefined);
-  }, []);
+  async function closeTip() {
+    setTipVisible(false);
+    await AsyncStorage.setItem(dismissedKey, 'true');
+  }
 
   return (
     <View style={styles.wrapper}>
-      {isTipVisible ? (
-        <View style={styles.tipBadge}>
-          <View style={styles.tipHeaderRow}>
-            <View style={styles.tipHeadingCluster}>
-              <Text style={styles.tipEyebrow}>Tip della settimana</Text>
-              <Text style={styles.tipPill}>news utile</Text>
+      {tipVisible ? (
+        <View style={styles.tipCard}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.eyebrow}>Tip della settimana</Text>
+              <Text style={styles.title}>{tip.title}</Text>
             </View>
-            <Pressable
-              accessibilityLabel="Chiudi tip della settimana"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={dismissWeeklyTip}
-              style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}
-            >
-              <Text style={styles.closeButtonText}>Chiudi</Text>
-            </Pressable>
+            <Text style={styles.badge}>news utile</Text>
           </View>
-          <Text style={styles.tipTitle}>{weeklyTip.title}</Text>
-          <Text style={styles.tipBody}>{weeklyTip.body}</Text>
+          <Text style={styles.body}>{tip.body}</Text>
+          <Pressable accessibilityRole="button" onPress={closeTip} style={styles.closeTipButton}>
+            <Text style={styles.closeTipText}>Chiudi</Text>
+          </Pressable>
         </View>
       ) : null}
 
       <Pressable
-        accessibilityLabel="Richiedi partnership BauBook"
         accessibilityRole="button"
-        onPress={openPartnershipEmail}
-        style={({ pressed }) => [styles.partnershipBadge, pressed && styles.partnershipBadgePressed]}
+        onPress={() => setContactVisible(true)}
+        style={styles.partnerCard}
       >
-        <View style={styles.pawIcon}>
-          <Text style={styles.pawIconText}>🐾</Text>
+        <View style={styles.pawBadge}>
+          <Text style={styles.paw}>🐾</Text>
         </View>
-        <View style={styles.partnershipCopy}>
-          <Text style={styles.partnershipTitle}>Richiedi partnership</Text>
-          <Text style={styles.partnershipSubtitle}>Scrivi a {PARTNERSHIP_EMAIL}</Text>
+        <View style={styles.partnerTextWrap}>
+          <Text style={styles.partnerTitle}>Richiedi partnership</Text>
+          <Text style={styles.partnerBody}>Invia una richiesta direttamente in app</Text>
         </View>
-        <Text style={styles.partnershipArrow}>›</Text>
+        <Text style={styles.chevron}>›</Text>
       </Pressable>
+
+      <BauBookContactSheet
+        visible={contactVisible}
+        type="partnership"
+        onClose={() => setContactVisible(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 10,
-    marginBottom: 14,
+    gap: 12,
+    marginBottom: 16,
   },
-  tipBadge: {
-    borderRadius: 18,
+  tipCard: {
+    borderRadius: 22,
+    backgroundColor: '#fff5df',
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(64, 91, 69, 0.14)',
-    backgroundColor: 'rgba(247, 244, 234, 0.86)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: '#efd8ad',
+    gap: 10,
   },
-  tipHeaderRow: {
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    gap: 12,
   },
-  tipHeadingCluster: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingRight: 8,
-  },
-  tipEyebrow: {
-    color: '#53634f',
+  eyebrow: {
+    color: '#a36f26',
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  tipPill: {
-    borderRadius: 999,
-    color: '#586451',
-    fontSize: 11,
-    fontWeight: '700',
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+  title: {
+    color: '#35281e',
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: 3,
   },
-  closeButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+  badge: {
+    overflow: 'hidden',
     borderRadius: 999,
-    paddingHorizontal: 10,
+    backgroundColor: '#f2dfb8',
+    color: '#704914',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 9,
     paddingVertical: 5,
   },
-  closeButtonPressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.985 }],
-  },
-  closeButtonText: {
-    color: '#64705c',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  tipTitle: {
-    color: '#243321',
-    fontSize: 15,
-    fontWeight: '800',
+  body: {
+    color: '#665444',
+    fontSize: 14,
     lineHeight: 20,
   },
-  tipBody: {
-    color: '#566252',
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  partnershipBadge: {
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(94, 110, 76, 0.16)',
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  partnershipBadgePressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.995 }],
-  },
-  pawIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(242, 210, 126, 0.36)',
+  closeTipButton: {
+    alignSelf: 'flex-start',
     borderRadius: 999,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
+    backgroundColor: '#ead3a4',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
-  pawIconText: {
-    fontSize: 18,
-  },
-  partnershipCopy: {
-    flex: 1,
-  },
-  partnershipTitle: {
-    color: '#293424',
-    fontSize: 14,
+  closeTipText: {
+    color: '#5c3b13',
+    fontSize: 12,
     fontWeight: '800',
   },
-  partnershipSubtitle: {
-    color: '#6b7465',
-    fontSize: 12,
-    fontWeight: '600',
+  partnerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 22,
+    backgroundColor: '#eef8f1',
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#cce8d5',
+    gap: 12,
+  },
+  pawBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#d8f0df',
+  },
+  paw: {
+    fontSize: 22,
+  },
+  partnerTextWrap: {
+    flex: 1,
+  },
+  partnerTitle: {
+    color: '#203f2d',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  partnerBody: {
+    color: '#52735d',
+    fontSize: 13,
     marginTop: 2,
   },
-  partnershipArrow: {
-    color: '#68745f',
-    fontSize: 26,
-    fontWeight: '700',
-    marginLeft: 2,
-    marginTop: -2,
+  chevron: {
+    color: '#2f7d5c',
+    fontSize: 28,
+    fontWeight: '600',
   },
 });
