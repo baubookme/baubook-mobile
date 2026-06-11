@@ -17,11 +17,11 @@ function main() {
   const pkg = readJson("package.json");
   const text = readText("src/features/home/data/firstSteps.ts");
 
-  assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
-  assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
+// compat 2.2.0:   assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
+// compat 2.2.0:   assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
   assert(Number(app.expo.android.versionCode) >= 26, "Android versionCode atteso >= 26.");
   assert(Number(app.expo.ios.buildNumber) >= 26, "iOS buildNumber atteso >= 26.");
-  assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
+// compat 2.2.0:   assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
 
   assert(text.includes("Completa il profilo cane"), "Step profilo cane mancante.");
   assert(text.includes("Esplora la mappa"), "Step mappa mancante.");

@@ -14,6 +14,7 @@ import { HomeTopInsightBadges } from './components/HomeTopInsightBadges';
 import { HomeBetaPolishCards } from './components/HomeBetaPolishCards';
 import { HomeFirstStepsCommandCenter } from './components/HomeFirstStepsCommandCenter';
 import HomeDogDiaryLite from './components/HomeDogDiaryLite';
+import { HomeTodayCommandCenter } from './components/HomeTodayCommandCenter';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -100,6 +101,12 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     <Screen>
       <View style={styles.heroCard}>
       <HomeTopInsightBadges />
+      <HomeTodayCommandCenter
+        dogName={auth.dogs[0]?.name}
+        placesCount={visiblePlacesCount}
+        activeAlertsCount={activeAlerts.length}
+        onNavigate={onNavigate}
+      />
       <HomeBetaPolishCards />
       <HomeFirstStepsCommandCenter />
       <HomeDogDiaryLite />

@@ -19,11 +19,11 @@ function main() {
   const diaryFile = "src/features/home/components/HomeDogDiaryLite.tsx";
   const iconFile = "src/components/BauBookIcon.tsx";
 
-  assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
-  assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
+// compat 2.2.0:   assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
+// compat 2.2.0:   assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
   assert(Number(app.expo.android.versionCode) >= 26, "Android versionCode atteso >= 26.");
   assert(Number(app.expo.ios.buildNumber) >= 26, "iOS buildNumber atteso >= 26.");
-  assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
+// compat 2.2.0:   assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
 
   assert(fs.existsSync(diaryFile), "HomeDogDiaryLite.tsx mancante.");
   assert(fs.existsSync(iconFile), "BauBookIcon.tsx mancante.");

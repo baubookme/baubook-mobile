@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -46,7 +46,8 @@
     "first-steps:check": "node scripts/check_first_steps.js",
     "contact:embedded:check": "node scripts/check_embedded_contact.js",
     "dog:diary:check": "node scripts/check_dog_diary.js",
-    "dog:diary:smart:check": "node scripts/check_dog_diary_smart_summary.js"
+    "dog:diary:smart:check": "node scripts/check_dog_diary_smart_summary.js",
+    "map:care:check": "node scripts/check_map_care_command_center.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
@@ -66,10 +67,10 @@
     "typescript": "~6.0.3"
   },
   "baubook": {
-    "baseline": "2.1.1",
-    "releaseName": "Beta Trust Command Center",
-    "releaseTag": "v0.3.1-beta-trust-command-center",
-    "releaseDate": "2026-06-09",
-    "label": "First Steps Command Center"
+    "baseline": "2.2.0",
+    "releaseName": "Map & Care Command Center",
+    "releaseTag": "v0.5.0-map-care-command-center",
+    "releaseDate": "2026-06-11",
+    "label": "Map & Care Command Center"
   }
 }

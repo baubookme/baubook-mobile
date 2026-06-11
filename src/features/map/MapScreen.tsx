@@ -9,6 +9,7 @@ import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
 import { NativePlacesMap } from './NativePlacesMap';
+import { MapCareCommandCenter } from './components/MapCareCommandCenter';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
@@ -285,6 +286,7 @@ export function MapScreen() {
           realtimeStatus={realtimeStatus}
           onRefresh={reload}
         />
+      <MapCareCommandCenter places={visiblePlaces} />
 
         {visiblePlaces.map((place) => (
           <AppCard key={place.id}>
