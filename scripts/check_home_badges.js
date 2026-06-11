@@ -1,7 +1,7 @@
-const fs = require('fs');
+const fs = require("fs");
 
 function readText(file) {
-  return fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
+  return fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
 }
 
 function readJson(file) {
@@ -12,25 +12,38 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function includes(file, value) {
+  return readText(file).includes(value);
+}
+
 function main() {
-  const app = readJson('app.json');
-  const pkg = readJson('package.json');
-  const text = readText('src/features/home/components/HomeTopInsightBadges.tsx');
+  const app = readJson("app.json");
+  const pkg = readJson("package.json");
+  const file = "src/features/home/components/HomeTopInsightBadges.tsx";
+  const text = readText(file);
 
-  assert(pkg.version === '0.4.2', 'package.json version attesa 0.4.2.');
-  assert(app.expo.version === '0.4.2', 'app.json expo.version attesa 0.4.2.');
-  assert(Number(app.expo.android.versionCode) === 23, 'Android versionCode atteso 23.');
-  assert(String(app.expo.ios.buildNumber) === '23', 'iOS buildNumber atteso 23.');
-  assert(app.expo.extra && app.expo.extra.baseline === '2.1.2', 'extra.baseline attesa 2.1.2.');
+  assert(pkg.version === "0.4.3", "package.json version attesa 0.4.3.");
+  assert(app.expo.version === "0.4.3", "app.json expo.version attesa 0.4.3.");
+  assert(Number(app.expo.android.versionCode) >= 24, "app.json android.versionCode atteso >= 24.");
+  assert(Number(app.expo.ios.buildNumber) >= 24, "app.json ios.buildNumber atteso >= 24.");
+  assert(app.expo.extra && app.expo.extra.baseline === "2.1.3", "extra.baseline attesa 2.1.3.");
 
-  assert(text.includes('Tip della settimana'), 'Tip della settimana mancante.');
-  assert(text.includes('Richiedi partnership'), 'Richiedi partnership mancante.');
-  assert(text.includes('Chiudi'), 'Pulsante Chiudi mancante.');
-  assert(text.includes('AsyncStorage'), 'Persistenza tip mancante.');
-  assert(text.includes('BauBookContactSheet'), 'Modal embedded partnership mancante.');
-  assert(!text.includes('mailto:'), 'Non deve esserci mailto nel badge partnership.');
+  assert(fs.existsSync(file), "HomeTopInsightBadges.tsx mancante.");
+  assert(fs.existsSync("src/features/home/data/weeklyDogTips.ts"), "weeklyDogTips.ts mancante.");
+  assert(includes("src/features/home/HomeScreen.tsx", "HomeTopInsightBadges"), "HomeScreen non importa/usa HomeTopInsightBadges.");
 
-  console.log('OK home badges check passed');
+  assert(text.includes("Tip della settimana"), "Tip della settimana mancante.");
+  assert(text.includes("Chiudi"), "Chiudi mancante nel tip.");
+  assert(text.includes("position: 'absolute'") || text.includes('position: "absolute"'), "Chiudi deve stare assoluto nell'angolo del tip.");
+  assert(text.includes("top: 10") || text.includes("top: 8") || text.includes("top: 12"), "Chiudi deve avere posizione top.");
+  assert(text.includes("right: 10") || text.includes("right: 8") || text.includes("right: 12"), "Chiudi deve avere posizione right.");
+  assert(!/news utile/i.test(text), "Il badge news utile non deve essere nel tip.");
+  assert(text.includes("AsyncStorage"), "Persistenza chiusura tip via AsyncStorage mancante.");
+  assert(text.includes("Richiedi partnership"), "Richiedi partnership mancante.");
+  assert(text.includes("BauBookContactSheet"), "Partnership deve usare form embedded.");
+  assert(!/mailto:/i.test(text), "HomeTopInsightBadges non deve usare mailto.");
+
+  console.log("OK home badges check passed");
 }
 
 main();

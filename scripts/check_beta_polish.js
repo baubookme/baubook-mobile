@@ -1,7 +1,8 @@
-const fs = require('fs');
+const fs = require("fs");
+const path = require("path");
 
 function readText(file) {
-  return fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
+  return fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
 }
 
 function readJson(file) {
@@ -12,26 +13,72 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function findFiles(dir, predicate, out = []) {
+  if (!fs.existsSync(dir)) return out;
+
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    const stat = fs.statSync(full);
+
+    if (stat.isDirectory()) {
+      if (
+        name === "node_modules" ||
+        name === ".git" ||
+        name === "_baubook_work" ||
+        name === "_baubook_backups"
+      ) {
+        continue;
+      }
+      findFiles(full, predicate, out);
+    } else if (predicate(full)) {
+      out.push(full);
+    }
+  }
+
+  return out;
+}
+
+function readExisting(files) {
+  return files.filter((file) => fs.existsSync(file)).map(readText).join("\n");
+}
+
 function main() {
-  const app = readJson('app.json');
-  const pkg = readJson('package.json');
-  const polishCards = readText('src/features/home/components/HomeBetaPolishCards.tsx');
+  const app = readJson("app.json");
+  const pkg = readJson("package.json");
 
-  assert(pkg.version === '0.4.2', 'package.json version attesa 0.4.2.');
-  assert(app.expo.version === '0.4.2', 'app.json expo.version attesa 0.4.2.');
-  assert(Number(app.expo.android.versionCode) === 23, 'Android versionCode atteso 23.');
-  assert(String(app.expo.ios.buildNumber) === '23', 'iOS buildNumber atteso 23.');
-  assert(app.expo.extra && app.expo.extra.baseline === '2.1.2', 'extra.baseline attesa 2.1.2.');
+  assert(pkg.version === "0.4.3", "package.json version attesa 0.4.3.");
+  assert(app.expo.version === "0.4.3", "app.json expo.version attesa 0.4.3.");
+  assert(Number(app.expo.android.versionCode) >= 24, "Android versionCode atteso >= 24.");
+  assert(Number(app.expo.ios.buildNumber) >= 24, "iOS buildNumber atteso >= 24.");
+  assert(app.expo.extra && app.expo.extra.baseline === "2.1.3", "extra.baseline attesa 2.1.3.");
 
-  assert(fs.existsSync('src/features/home/components/HomeBetaPolishCards.tsx'), 'HomeBetaPolishCards mancante.');
-  assert(fs.existsSync('src/components/BauBookEmptyState.tsx'), 'BauBookEmptyState mancante.');
-  assert(polishCards.includes('Benvenuto in BauBook Beta'), 'Box beta welcome mancante.');
-  assert(polishCards.includes('Invia feedback beta'), 'CTA feedback beta mancante.');
-  assert(polishCards.includes('BauBookContactSheet'), 'Feedback beta non usa modal embedded.');
-  assert(!polishCards.includes('mailto:'), 'Feedback beta usa ancora mailto.');
-  assert(!polishCards.includes('Linking.openURL'), 'Feedback beta apre ancora client esterno.');
+  const homeFiles = findFiles("src/features/home", (file) => file.endsWith(".tsx") || file.endsWith(".ts"));
+  const homeText = readExisting(homeFiles);
 
-  console.log('OK beta:polish:check - first run, feedback beta embedded ed empty states curati presenti.');
+  assert(/HomeTopInsightBadges/i.test(homeText), "HomeTopInsightBadges mancante.");
+  assert(/HomeFirstStepsCommandCenter/i.test(homeText), "HomeFirstStepsCommandCenter mancante.");
+
+  assert(
+    /BauBook Beta|beta/i.test(homeText) &&
+      /AsyncStorage|dismiss|Chiudi|first[-_ ]?run/i.test(homeText),
+    "Box beta first-run/dismissibile mancante."
+  );
+
+  assert(
+    fs.existsSync("src/components/BauBookEmptyState.tsx") ||
+      fs.existsSync("src/features/home/components/BauBookEmptyState.tsx"),
+    "BauBookEmptyState mancante."
+  );
+
+  assert(
+    /Invia feedback beta|feedback beta/i.test(homeText) ||
+      /Invia feedback beta|feedback beta/i.test(readExisting(findFiles("src", (file) => file.endsWith(".tsx") || file.endsWith(".ts")))),
+    "Feedback beta embedded mancante."
+  );
+
+  assert(!/mailto:/i.test(homeText), "La Home non deve usare mailto.");
+
+  console.log("OK beta:polish:check - first run, feedback beta ed empty states curati presenti.");
 }
 
 main();

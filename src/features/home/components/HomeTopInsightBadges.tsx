@@ -3,172 +3,175 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getWeeklyDogTip } from '../data/weeklyDogTips';
-import { BauBookContactSheet } from './BauBookContactSheet';
+import BauBookContactSheet from './BauBookContactSheet';
+
+const DISMISSED_WEEKLY_TIP_KEY = 'baubook.home.weeklyTip.dismissed.v1';
 
 export function HomeTopInsightBadges() {
   const tip = useMemo(() => getWeeklyDogTip(), []);
-  const dismissedKey = `baubook_weekly_tip_dismissed_v1:${tip.id}`;
-  const [tipVisible, setTipVisible] = useState(false);
-  const [contactVisible, setContactVisible] = useState(false);
+  const dismissedValue = `weekly-tip:${tip.id}`;
+
+  const [tipDismissed, setTipDismissed] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    AsyncStorage.getItem(dismissedKey)
+    AsyncStorage.getItem(DISMISSED_WEEKLY_TIP_KEY)
       .then((value) => {
-        if (mounted) setTipVisible(value !== 'true');
+        if (mounted) {
+          setTipDismissed(value === dismissedValue);
+        }
       })
-      .catch(() => {
-        if (mounted) setTipVisible(true);
-      });
+      .catch(() => undefined);
 
     return () => {
       mounted = false;
     };
-  }, [dismissedKey]);
+  }, [dismissedValue]);
 
-  async function closeTip() {
-    setTipVisible(false);
-    await AsyncStorage.setItem(dismissedKey, 'true');
+  async function dismissWeeklyTip() {
+    setTipDismissed(true);
+    await AsyncStorage.setItem(DISMISSED_WEEKLY_TIP_KEY, dismissedValue);
   }
 
   return (
-    <View style={styles.wrapper}>
-      {tipVisible ? (
+    <View style={styles.container}>
+      {!tipDismissed ? (
         <View style={styles.tipCard}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.eyebrow}>Tip della settimana</Text>
-              <Text style={styles.title}>{tip.title}</Text>
-            </View>
-            <Text style={styles.badge}>news utile</Text>
-          </View>
-          <Text style={styles.body}>{tip.body}</Text>
-          <Pressable accessibilityRole="button" onPress={closeTip} style={styles.closeTipButton}>
-            <Text style={styles.closeTipText}>Chiudi</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={dismissWeeklyTip}
+            hitSlop={10}
+            style={styles.dismissButton}
+          >
+            <Text style={styles.dismissText}>Chiudi</Text>
           </Pressable>
+
+          <Text style={styles.eyebrow}>Tip della settimana</Text>
+          <Text style={styles.tipTitle}>{tip.title}</Text>
+          <Text style={styles.tipBody}>{tip.body}</Text>
         </View>
       ) : null}
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => setContactVisible(true)}
-        style={styles.partnerCard}
+        onPress={() => setContactOpen(true)}
+        style={styles.partnershipCard}
       >
-        <View style={styles.pawBadge}>
-          <Text style={styles.paw}>🐾</Text>
+        <View style={styles.partnershipIcon}>
+          <Text style={styles.partnershipIconText}>🐾</Text>
         </View>
-        <View style={styles.partnerTextWrap}>
-          <Text style={styles.partnerTitle}>Richiedi partnership</Text>
-          <Text style={styles.partnerBody}>Invia una richiesta direttamente in app</Text>
+
+        <View style={styles.partnershipTextWrap}>
+          <Text style={styles.partnershipTitle}>Richiedi partnership</Text>
+          <Text style={styles.partnershipBody}>Raccontaci la tua attività dog-friendly</Text>
         </View>
+
         <Text style={styles.chevron}>›</Text>
       </Pressable>
 
       <BauBookContactSheet
-        visible={contactVisible}
+        visible={contactOpen}
         type="partnership"
-        onClose={() => setContactVisible(false)}
+        source="home-partnership-cta"
+        onClose={() => setContactOpen(false)}
       />
     </View>
   );
 }
 
+export default HomeTopInsightBadges;
+
 const styles = StyleSheet.create({
-  wrapper: {
-    gap: 12,
-    marginBottom: 16,
+  container: {
+    gap: 10,
+    marginBottom: 14
   },
   tipCard: {
+    position: 'relative',
     borderRadius: 22,
-    backgroundColor: '#fff5df',
-    padding: 16,
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    backgroundColor: '#fff7e8',
     borderWidth: 1,
-    borderColor: '#efd8ad',
-    gap: 10,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
+    borderColor: '#f0dfc1'
   },
   eyebrow: {
-    color: '#a36f26',
+    paddingRight: 78,
     fontSize: 12,
     fontWeight: '800',
+    color: '#7a5a36',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8
   },
-  title: {
-    color: '#35281e',
-    fontSize: 17,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  badge: {
-    overflow: 'hidden',
+  dismissButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 2,
     borderRadius: 999,
-    backgroundColor: '#f2dfb8',
-    color: '#704914',
-    fontSize: 11,
-    fontWeight: '800',
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 5,
+    backgroundColor: '#f3e2c6'
   },
-  body: {
-    color: '#665444',
+  dismissText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#7a5a36'
+  },
+  tipTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2b241d',
+    marginBottom: 4
+  },
+  tipBody: {
     fontSize: 14,
     lineHeight: 20,
+    color: '#66584d'
   },
-  closeTipButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: '#ead3a4',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  closeTipText: {
-    color: '#5c3b13',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  partnerCard: {
+  partnershipCard: {
+    minHeight: 62,
+    borderRadius: 20,
+    padding: 14,
+    backgroundColor: '#eef8f0',
+    borderWidth: 1,
+    borderColor: '#d5ecd9',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: '#eef8f1',
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#cce8d5',
-    gap: 12,
+    gap: 12
   },
-  pawBadge: {
+  partnershipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#d8f0df',
+    backgroundColor: '#dff1e3'
   },
-  paw: {
-    fontSize: 22,
+  partnershipIconText: {
+    fontSize: 18
   },
-  partnerTextWrap: {
-    flex: 1,
+  partnershipTextWrap: {
+    flex: 1
   },
-  partnerTitle: {
-    color: '#203f2d',
-    fontSize: 16,
-    fontWeight: '900',
+  partnershipTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#24452d'
   },
-  partnerBody: {
-    color: '#52735d',
-    fontSize: 13,
+  partnershipBody: {
     marginTop: 2,
+    fontSize: 13,
+    color: '#58735f'
   },
   chevron: {
-    color: '#2f7d5c',
-    fontSize: 28,
-    fontWeight: '600',
-  },
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#58735f'
+  }
 });

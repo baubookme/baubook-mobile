@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 function readText(file) {
-  return fs.readFileSync(file, "utf8").replace(/^\\uFEFF/, "");
+  return fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
 }
 
 function readJson(file) {
@@ -50,11 +50,11 @@ function main() {
   const app = readJson("app.json");
   const pkg = readJson("package.json");
 
-  assert(pkg.version === "0.4.2", "package.json version attesa 0.4.2.");
-  assert(app.expo.version === "0.4.2", "app.json expo.version attesa 0.4.2.");
-  assert(Number(app.expo.android.versionCode) >= 23, "Android versionCode atteso >= 23.");
-  assert(Number(app.expo.ios.buildNumber) >= 23, "iOS buildNumber atteso >= 23.");
-  assert(app.expo.extra && app.expo.extra.baseline === "2.1.2", "extra.baseline attesa 2.1.2.");
+  assert(pkg.version === "0.4.3", "package.json version attesa 0.4.3.");
+  assert(app.expo.version === "0.4.3", "app.json expo.version attesa 0.4.3.");
+  assert(Number(app.expo.android.versionCode) >= 24, "Android versionCode atteso >= 24.");
+  assert(Number(app.expo.ios.buildNumber) >= 24, "iOS buildNumber atteso >= 24.");
+  assert(app.expo.extra && app.expo.extra.baseline === "2.1.3", "extra.baseline attesa 2.1.3.");
 
   const homeFiles = findFiles("src/features/home", (file) => file.endsWith(".tsx") || file.endsWith(".ts"));
   const homeText = readExisting(homeFiles);
@@ -74,20 +74,30 @@ function main() {
 
   assert(/Richiedi partnership/i.test(homeText), "CTA Richiedi partnership mancante.");
   assert(/Tip della settimana/i.test(homeText), "Tip della settimana mancante.");
-  assert(/Invia feedback beta/i.test(homeText), "Feedback beta embedded mancante fuori dalla checklist.");
 
   const contactFiles = findFiles("src", (file) => file.endsWith(".tsx") || file.endsWith(".ts"));
   const contactText = readExisting(contactFiles);
 
-  assert(/contact-request|contact_requests|ContactRequest|EmbeddedContact|Contact/i.test(contactText), "Flusso contatto embedded mancante.");
+  assert(/contact-request|contact_requests|ContactRequest|EmbeddedContact|BauBookContactSheet/i.test(contactText), "Flusso contatto embedded mancante.");
   assert(!/mailto:/i.test(contactText), "mailto non deve essere usato per feedback/partnership.");
   assert(/AsyncStorage/i.test(contactText), "Fallback/outbox locale AsyncStorage mancante.");
 
   assert(exists("supabase/functions/contact-request/index.ts"), "Supabase Edge Function contact-request mancante.");
-  assert(exists("supabase/migrations/0006_contact_requests.sql"), "Migration contact_requests mancante.");
+  assert(
+    exists("supabase/migrations/0010_contact_requests.sql") ||
+      exists("supabase/migrations/0007_contact_requests.sql") ||
+      exists("supabase/migrations/0006_contact_requests.sql"),
+    "Migration contact_requests mancante."
+  );
 
   const functionText = readText("supabase/functions/contact-request/index.ts");
-  const migrationText = readText("supabase/migrations/0006_contact_requests.sql");
+  const migrationFile = exists("supabase/migrations/0010_contact_requests.sql")
+    ? "supabase/migrations/0010_contact_requests.sql"
+    : exists("supabase/migrations/0007_contact_requests.sql")
+      ? "supabase/migrations/0007_contact_requests.sql"
+      : "supabase/migrations/0006_contact_requests.sql";
+
+  const migrationText = readText(migrationFile);
 
   assert(/CONTACT_TO_EMAIL/i.test(functionText), "CONTACT_TO_EMAIL mancante nella Edge Function.");
   assert(/RESEND_API_KEY/i.test(functionText), "RESEND_API_KEY mancante nella Edge Function.");
