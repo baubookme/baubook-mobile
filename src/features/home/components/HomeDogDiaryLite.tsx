@@ -147,7 +147,7 @@ export function HomeDogDiaryLite() {
 
   return (
     <View style={styles.card}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, styles.diaryHeaderAligned]}>
         <View style={styles.titleWrap}>
           <View style={styles.iconBubble}>
             <BauBookIcon name="diary" size={22} />
@@ -158,7 +158,7 @@ export function HomeDogDiaryLite() {
           </View>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => setModalOpen(true)} style={styles.addButton}>
+        <Pressable accessibilityRole="button" onPress={() => setModalOpen(true)} style={[styles.addButton, styles.addButtonAligned]}>
           <Text style={styles.addButtonText}>+ Evento</Text>
         </Pressable>
       </View>
@@ -494,4 +494,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900'
   }
+,
+  diaryHeaderAligned: {
+    alignItems: 'center',
+  },
+  addButtonAligned: {
+    alignSelf: 'center',
+    justifyContent: 'center',
+    minHeight: 34,
+    marginTop: 0,
+    paddingHorizontal: 16,
+  },
 });

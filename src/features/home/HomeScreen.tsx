@@ -10,6 +10,7 @@ import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
 import HomeDogDiaryLite from './components/HomeDogDiaryLite';
+import { ThinkingDogIcon } from './components/ThinkingDogIcon';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -96,14 +97,12 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <View style={styles.heroCard}>
       <HomeDogDiaryLite />
         <View style={styles.heroHeader}>
-          <View style={styles.heroIcon}>
-            <Text style={styles.heroIconText}>BB</Text>
-          </View>
+          <ThinkingDogIcon size={76} />
           <View style={styles.heroCopy}>
             <Text style={styles.kicker}>BauBook</Text>
             <Text style={styles.title}>La giornata del tuo cane</Text>
             <Text style={styles.subtitle}>
-              Home operativa: passeggiate, luoghi e safety in un colpo dâ€™occhio.
+              Home operativa: passeggiate, luoghi e safety in un colpo d'occhio.
             </Text>
           </View>
         </View>
@@ -225,7 +224,7 @@ function QuickActionCard({ action, onPress }: { action: QuickAction; onPress: ()
     >
       <Text style={styles.quickTitle}>{action.title}</Text>
       <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
-      <Text style={styles.quickCta}>Apri â†’</Text>
+      <Text style={styles.quickCta}>Apri</Text>
     </Pressable>
   );
 }
@@ -241,7 +240,7 @@ function RadarAlertRow({ alert, onPress }: { alert: SafetyAlertModel; onPress: (
       <View style={styles.alertRowCopy}>
         <Text style={styles.alertRowTitle}>{alert.title}</Text>
         <Text style={styles.alertRowMeta}>
-          {alert.placeName} Â· {alert.ttlLabel} Â· {alert.radiusLabel}
+          {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
         </Text>
         <Text style={styles.alertRowText} numberOfLines={2}>
           {alert.description}
