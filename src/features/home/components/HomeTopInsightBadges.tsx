@@ -61,7 +61,7 @@ export function HomeTopInsightBadges() {
         style={styles.partnershipCard}
       >
         <View style={styles.partnershipIcon}>
-          <BauBookIcon name="partnership" tone="green" size={22} />
+          <BauBookIcon name="partnership" size={22} />
         </View>
 
         <View style={styles.partnershipTextWrap}>

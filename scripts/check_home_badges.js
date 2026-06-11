@@ -22,11 +22,11 @@ function main() {
   const file = "src/features/home/components/HomeTopInsightBadges.tsx";
   const text = readText(file);
 
-  assert(pkg.version === "0.4.4", "package.json version attesa 0.4.4.");
-  assert(app.expo.version === "0.4.4", "app.json expo.version attesa 0.4.4.");
-  assert(Number(app.expo.android.versionCode) >= 25, "app.json android.versionCode atteso >= 25.");
-  assert(Number(app.expo.ios.buildNumber) >= 25, "app.json ios.buildNumber atteso >= 25.");
-  assert(app.expo.extra && app.expo.extra.baseline === "2.1.4", "extra.baseline attesa 2.1.4.");
+  assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
+  assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
+  assert(Number(app.expo.android.versionCode) >= 26, "app.json android.versionCode atteso >= 26.");
+  assert(Number(app.expo.ios.buildNumber) >= 26, "app.json ios.buildNumber atteso >= 25.");
+  assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
 
   assert(fs.existsSync(file), "HomeTopInsightBadges.tsx mancante.");
   assert(fs.existsSync("src/features/home/data/weeklyDogTips.ts"), "weeklyDogTips.ts mancante.");

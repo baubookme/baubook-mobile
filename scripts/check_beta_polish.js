@@ -46,11 +46,11 @@ function main() {
   const app = readJson("app.json");
   const pkg = readJson("package.json");
 
-  assert(pkg.version === "0.4.4", "package.json version attesa 0.4.4.");
-  assert(app.expo.version === "0.4.4", "app.json expo.version attesa 0.4.4.");
-  assert(Number(app.expo.android.versionCode) >= 25, "Android versionCode atteso >= 25.");
-  assert(Number(app.expo.ios.buildNumber) >= 25, "iOS buildNumber atteso >= 25.");
-  assert(app.expo.extra && app.expo.extra.baseline === "2.1.4", "extra.baseline attesa 2.1.4.");
+  assert(pkg.version === "0.4.5", "package.json version attesa 0.4.5.");
+  assert(app.expo.version === "0.4.5", "app.json expo.version attesa 0.4.5.");
+  assert(Number(app.expo.android.versionCode) >= 26, "Android versionCode atteso >= 26.");
+  assert(Number(app.expo.ios.buildNumber) >= 26, "iOS buildNumber atteso >= 26.");
+  assert(app.expo.extra && app.expo.extra.baseline === "2.1.5", "extra.baseline attesa 2.1.5.");
 
   const homeFiles = findFiles("src/features/home", (file) => file.endsWith(".tsx") || file.endsWith(".ts"));
   const homeText = readExisting(homeFiles);

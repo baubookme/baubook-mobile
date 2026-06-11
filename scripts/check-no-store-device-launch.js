@@ -7,8 +7,8 @@ const failures = [];
 const warnings = [];
 const oks = [];
 
-const TARGET_APP_VERSION = '0.4.4';
-const TARGET_BASELINE = '2.1.4';
+const TARGET_APP_VERSION = '0.4.5';
+const TARGET_BASELINE = '2.1.5';
 const TARGET_ANDROID_VERSION_CODE = 20;
 const TARGET_IOS_BUILD_NUMBER = '20';
 
@@ -193,7 +193,7 @@ function checkCompactDocs() {
     'docs/SPONSOR_LITE_SALES_PACK.md',
   ].filter(exists);
 
-  if (forbidden.length === 0) ok('No extra 2.1.4 docs found; compact documentation rule preserved.');
+  if (forbidden.length === 0) ok('No extra 2.1.5 docs found; compact documentation rule preserved.');
   else fail(`Extra docs not allowed by compact documentation: ${forbidden.join(', ')}`);
 
   const badDocs = walk('docs', (rel, name) => /^HOTFIX_.*\.md$/i.test(name) || /^BASELINE_.*\.md$/i.test(name));
@@ -221,7 +221,7 @@ function checkSponsorPilot() {
 
 function checkStoreFastTrackMode() {
   if (!args.has('--store')) return;
-  warn('Store fast-track is informational only in 2.1.4: no 12-tester dependency is required for device-beta APK.');
+  warn('Store fast-track is informational only in 2.1.5: no 12-tester dependency is required for device-beta APK.');
 }
 
 checkPackageJson();
@@ -239,7 +239,7 @@ if (args.has('--sponsor')) {
 }
 
 console.log('');
-console.log('BauBook 2.1.4 No-Store Device Launch readiness');
+console.log('BauBook 2.1.5 No-Store Device Launch readiness');
 console.log('='.repeat(56));
 for (const message of oks) console.log(`OK: ${message}`);
 for (const message of warnings) console.warn(`WARN: ${message}`);

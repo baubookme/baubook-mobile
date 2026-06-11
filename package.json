@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -45,7 +45,8 @@
     "beta:polish:check": "node scripts/check_beta_polish.js",
     "first-steps:check": "node scripts/check_first_steps.js",
     "contact:embedded:check": "node scripts/check_embedded_contact.js",
-    "dog:diary:check": "node scripts/check_dog_diary.js"
+    "dog:diary:check": "node scripts/check_dog_diary.js",
+    "dog:diary:smart:check": "node scripts/check_dog_diary_smart_summary.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
