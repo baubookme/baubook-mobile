@@ -3,10 +3,10 @@ const path = require('path');
 
 const ROOT = process.cwd();
 const EXPECTED = {
-  appVersion: '0.5.0',
-  baseline: '2.2.0',
-  androidVersionCode: 27,
-  iosBuildNumber: '27',
+  appVersion: '0.6.0',
+  baseline: '2.3.0',
+  androidVersionCode: 28,
+  iosBuildNumber: '28',
 };
 
 function readText(relativePath) {
@@ -117,4 +117,4 @@ if (forbiddenDocs.length) {
 if (process.exitCode) {
   process.exit(process.exitCode);
 }
-console.log('[map-care-check] OK - BauBook 2.2.0 / app 0.5.0 Map & Care Command Center allineato.');
+console.log('[map-care-check] OK - BauBook 2.3.0 / app 0.6.0 Map & Care Command Center allineato.');

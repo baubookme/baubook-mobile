@@ -48,7 +48,7 @@ type NavigatorWithGeolocation = {
 
 interface NearbyState {
   status: NearbyStatus;
-  source: 'supabase' | 'fallback' | null;
+  source: 'supabase' | 'empty' | 'unavailable' | null;
   areas: NearbyDogAreaModel[];
   message: string;
   errorMessage?: string;
@@ -172,7 +172,7 @@ export function MapScreen() {
         <View style={styles.statusHeader}>
           <IconBubble source={isLive ? baubookImages.icons.dogArea : baubookImages.icons.settings} tone={isLive ? 'teal' : 'warm'} />
           <View style={styles.statusCopy}>
-            <Text style={styles.cardTitle}>{isLive ? 'Backend collegato' : 'Backend in fallback controllato'}</Text>
+            <Text style={styles.cardTitle}>{isLive ? 'Backend collegato' : 'Backend non disponibile'}</Text>
             <Text style={styles.bodyText}>{status === 'loading' ? 'Carico i luoghi dal database...' : message}</Text>
             <View style={styles.tagsRow}>
               <Tag label={`${approvedDogAreas.length} aree cani`} tone="teal" />
@@ -205,7 +205,7 @@ export function MapScreen() {
           <View style={styles.searchCopy}>
             <Text style={styles.cardTitle}>Trova area cani nel raggio di X km</Text>
             <Text style={styles.bodyText}>
-              Usa la posizione attuale per interrogare Supabase con PostGIS. Se non hai ancora lanciato la migration 0007, vedrai un fallback controllato.
+              Usa la posizione attuale per interrogare Supabase con PostGIS. Se il database non contiene luoghi pubblici, vedrai uno stato vuoto controllato.
             </Text>
           </View>
         </View>
@@ -238,7 +238,7 @@ export function MapScreen() {
             />
           </View>
           <View style={styles.manualHintWrap}>
-            <Text style={styles.helperText}>Range tecnico: 0,2-50 km. Default consigliato per città: 3 km.</Text>
+            <Text style={styles.helperText}>Raggio supportato: 0,2-50 km. Consigliato in città: 3 km.</Text>
           </View>
         </View>
 
@@ -319,7 +319,7 @@ export function MapScreen() {
           <View style={styles.actionCopy}>
             <Text style={styles.cardTitle}>Mi serve un dottore...</Text>
             <Text style={styles.bodyText}>
-              Qui agganceremo ricerca veterinari su Maps e schede esperienza BauBook con moderazione.
+              Veterinari e servizi verranno mostrati quando saranno disponibili nel database BauBook.
             </Text>
           </View>
         </View>

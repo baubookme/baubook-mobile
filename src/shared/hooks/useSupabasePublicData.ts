@@ -8,7 +8,6 @@ import {
   type SupabasePlacesResult,
   type SupabasePublicStatus,
 } from '../api/supabaseContent';
-import { demoPlaces } from '../data/mockData';
 import type { PlaceModel } from '../types/domain';
 import { supabase } from '../lib/supabase';
 
@@ -30,7 +29,7 @@ function getMapRealtimeClient(): any {
 
 interface PlacesState {
   status: ResourceStatus;
-  source: 'supabase' | 'fallback';
+  source: 'supabase' | 'empty' | 'unavailable';
   places: PlaceModel[];
   message: string;
   errorMessage?: string;
@@ -53,9 +52,9 @@ interface FeatureFlagsState {
 export function useSupabasePlaces() {
   const [state, setState] = useState<PlacesState>({
     status: 'loading',
-    source: 'fallback',
-    places: demoPlaces,
-    message: 'Carico luoghi...',
+    source: 'unavailable',
+    places: [],
+    message: 'Carico luoghi dal backend...',
     errorMessage: undefined,
     realtimeStatus: 'idle',
     lastUpdatedAt: null,
@@ -100,9 +99,9 @@ export function useSupabasePlaces() {
         const message = error instanceof Error ? error.message : 'Errore sconosciuto';
         setState({
           status: 'error',
-          source: 'fallback',
-          places: demoPlaces,
-          message: 'Luoghi demo disponibili. Supabase non raggiungibile.',
+          source: 'unavailable',
+          places: [],
+          message: 'Luoghi non disponibili dal backend.',
           errorMessage: message,
           realtimeStatus: 'error',
           lastUpdatedAt: new Date().toISOString(),

@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useState } from 'react';
+import { loadDogDiaryEvents, saveDogDiaryEvents } from '../dogDiaryBackend'; import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -27,8 +26,6 @@ type CategoryConfig = {
   label: string;
   icon: string;
 };
-
-const STORAGE_KEY = 'baubook.dogDiary.events.v1';
 
 const CATEGORIES: CategoryConfig[] = [
   { key: 'walk', label: 'Passeggiata', icon: 'walk' },
@@ -90,15 +87,17 @@ export function HomeDogDiaryLite() {
   useEffect(() => {
     let mounted = true;
 
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (!mounted || !raw) return;
-        const parsed = JSON.parse(raw) as DogDiaryEvent[];
-        if (Array.isArray(parsed)) {
-          setEvents(parsed);
+    loadDogDiaryEvents<DogDiaryEvent>()
+      .then((loadedEvents) => {
+        if (mounted) {
+          setEvents(loadedEvents);
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (mounted) {
+          setEvents([]);
+        }
+      });
 
     return () => {
       mounted = false;
@@ -106,8 +105,8 @@ export function HomeDogDiaryLite() {
   }, []);
 
   async function persist(nextEvents: DogDiaryEvent[]) {
-    setEvents(nextEvents);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextEvents));
+    const savedEvents = await saveDogDiaryEvents<DogDiaryEvent>(nextEvents);
+    setEvents(savedEvents);
   }
 
   async function addEvent() {
@@ -215,7 +214,7 @@ export function HomeDogDiaryLite() {
       ) : (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyTitle}>Nessun evento in questo filtro</Text>
-          <Text style={styles.emptyText}>Aggiungi una passeggiata, una nota salute o un promemoria leggero per iniziare.</Text>
+          <Text style={styles.emptyText}>Aggiungi una passeggiata, una nota salute o un evento per iniziare.</Text>
         </View>
       )}
 

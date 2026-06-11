@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -47,7 +47,11 @@
     "contact:embedded:check": "node scripts/check_embedded_contact.js",
     "dog:diary:check": "node scripts/check_dog_diary.js",
     "dog:diary:smart:check": "node scripts/check_dog_diary_smart_summary.js",
-    "map:care:check": "node scripts/check_map_care_command_center.js"
+    "map:care:check": "node scripts/check_map_care_command_center.js",
+    "production:backend:check": "node scripts/check_production_backend_cutover.js",
+    "production:no-demo-check": "node scripts/check_no_demo_runtime.js",
+    "presentability:check": "node scripts/check_presentability.js",
+    "production:cutover:check": "npm run production:backend:check && npm run production:no-demo-check && npm run presentability:check"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
@@ -67,10 +71,10 @@
     "typescript": "~6.0.3"
   },
   "baubook": {
-    "baseline": "2.2.0",
-    "releaseName": "Map & Care Command Center",
-    "releaseTag": "v0.5.0-map-care-command-center",
+    "baseline": "2.3.0",
+    "releaseName": "Production Backend Cutover",
+    "releaseTag": "v0.6.0-production-backend-cutover",
     "releaseDate": "2026-06-11",
-    "label": "Map & Care Command Center"
+    "label": "Production Backend Cutover"
   }
 }

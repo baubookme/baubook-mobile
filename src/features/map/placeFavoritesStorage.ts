@@ -1,6 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const PLACE_FAVORITES_KEY = 'baubook.map.placeFavorites.v1';
+import { getSupabaseClient } from '../../shared/lib/supabase';
 
 function normalizeIds(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -17,22 +15,64 @@ function normalizeIds(value: unknown): string[] {
   return Array.from(unique);
 }
 
-export async function readPlaceFavoriteIds(): Promise<string[]> {
-  try {
-    const raw = await AsyncStorage.getItem(PLACE_FAVORITES_KEY);
-    if (!raw) {
-      return [];
-    }
+async function getCurrentUserId(): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
 
-    return normalizeIds(JSON.parse(raw));
-  } catch {
+  const { data, error } = await client.auth.getUser();
+  if (error || !data.user) {
+    return null;
+  }
+
+  return data.user.id;
+}
+
+export async function readPlaceFavoriteIds(): Promise<string[]> {
+  const client = getSupabaseClient();
+  const userId = await getCurrentUserId();
+  if (!client || !userId) {
     return [];
   }
+
+  const { data, error } = await client
+    .from('place_favorites')
+    .select('place_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return [];
+  }
+
+  return normalizeIds((data ?? []).map((row) => row.place_id));
 }
 
 export async function savePlaceFavoriteIds(ids: string[]): Promise<string[]> {
+  const client = getSupabaseClient();
+  const userId = await getCurrentUserId();
   const normalized = normalizeIds(ids);
-  await AsyncStorage.setItem(PLACE_FAVORITES_KEY, JSON.stringify(normalized));
+
+  if (!client || !userId) {
+    return [];
+  }
+
+  const { error: deleteError } = await client.from('place_favorites').delete().eq('user_id', userId);
+  if (deleteError) {
+    return readPlaceFavoriteIds();
+  }
+
+  if (!normalized.length) {
+    return [];
+  }
+
+  const rows = normalized.map((placeId) => ({ user_id: userId, place_id: placeId }));
+  const { error: insertError } = await client.from('place_favorites').insert(rows);
+  if (insertError) {
+    return readPlaceFavoriteIds();
+  }
+
   return normalized;
 }
 

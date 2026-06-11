@@ -1,5 +1,4 @@
 import { baubookImages } from '../assets/images';
-import { demoPlaces } from '../data/mockData';
 import { hasSupabaseConfig } from '../lib/env';
 import { getSupabaseClient } from '../lib/supabase';
 import type { ModerationStatus, PlaceKind, PlaceModel } from '../types/domain';
@@ -27,7 +26,7 @@ export interface SupabasePublicStatus {
 }
 
 export interface SupabasePlacesResult {
-  source: 'supabase' | 'fallback';
+  source: 'supabase' | 'empty' | 'unavailable';
   places: PlaceModel[];
   message: string;
   errorMessage?: string;
@@ -42,7 +41,7 @@ export interface NearbyDogAreaModel extends PlaceModel {
 }
 
 export interface NearbyDogAreasResult {
-  source: 'supabase' | 'fallback';
+  source: 'supabase' | 'empty' | 'unavailable';
   areas: NearbyDogAreaModel[];
   message: string;
   errorMessage?: string;
@@ -185,7 +184,7 @@ function remotePlaceToModel(row: RemotePlaceRow): PlaceModel {
     ? geocodingStatus === 'beta_geocoded'
       ? 'ufficiale · geocodificata beta'
       : 'ufficiale · indirizzo'
-    : row.source === 'demo'
+    : row.source === 'backend'
       ? 'seed Supabase'
       : 'database';
 
@@ -195,9 +194,9 @@ function remotePlaceToModel(row: RemotePlaceRow): PlaceModel {
     kind,
     area: areaName,
     distanceLabel,
-    description: row.description ?? (address ? `Indirizzo: ${address}` : 'Scheda luogo BauBook in preparazione.'),
+    description: row.description ?? (address ? `Indirizzo: ${address}` : 'Scheda luogo BauBook.'),
     tags: row.tags?.length ? row.tags : ['da verificare'],
-    scoreLabel: isOfficialDogArea ? 'ufficiale' : row.source === 'demo' ? 'demo' : 'BauBook',
+    scoreLabel: isOfficialDogArea ? 'ufficiale' : 'BauBook',
     icon: iconForPlaceKind(kind),
     moderationStatus: normalizeModerationStatus(row.moderation_status),
   };
@@ -230,34 +229,14 @@ function remoteNearbyDogAreaToModel(row: RemoteNearbyDogAreaRow): NearbyDogAreaM
   };
 }
 
-function fallbackNearbyDogAreas(message: string, errorMessage?: string): NearbyDogAreasResult {
-  const areas = demoPlaces
-    .filter((place) => place.kind === 'dog_area')
-    .map((place, index) => ({
-      ...place,
-      addressLabel: 'Demo locale: indirizzo non live',
-      distanceKm: index + 1,
-      latitude: 0,
-      longitude: 0,
-      geocodingStatus: 'fallback_demo',
-    }));
-
-  return {
-    source: 'fallback',
-    areas,
-    message,
-    errorMessage,
-  };
-}
-
-export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
+function fallbackNearbyDogAreas(message: string, errorMessage?: string): NearbyDogAreasResult { return { source: 'unavailable', areas: [], message, errorMessage }; } export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
   const client = getSupabaseClient();
 
   if (!hasSupabaseConfig || !client) {
     return {
-      source: 'fallback',
-      places: demoPlaces,
-      message: 'Supabase non configurato: uso dati demo locali.',
+      source: 'unavailable',
+      places: [],
+      message: 'Supabase non configurato: Nessun luogo pubblico disponibile.',
     };
   }
 
@@ -270,8 +249,8 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
 
     if (error) {
       return {
-        source: 'fallback',
-        places: demoPlaces,
+        source: 'unavailable',
+        places: [],
         message: 'Supabase configurato, ma la lettura luoghi non e\' ancora disponibile.',
         errorMessage: normalizeError(error),
       };
@@ -281,9 +260,9 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
 
     if (!places.length) {
       return {
-        source: 'fallback',
-        places: demoPlaces,
-        message: 'Supabase raggiungibile, ma non ci sono ancora luoghi pubblici: uso dati demo locali.',
+        source: 'unavailable',
+        places: [],
+        message: 'Supabase raggiungibile, ma non ci sono ancora luoghi pubblici: Nessun luogo pubblico disponibile.',
       };
     }
 
@@ -294,9 +273,9 @@ export async function fetchPublicPlaces(): Promise<SupabasePlacesResult> {
     };
   } catch (error) {
     return {
-      source: 'fallback',
-      places: demoPlaces,
-      message: 'Errore runtime durante la lettura luoghi: uso dati demo locali.',
+      source: 'unavailable',
+      places: [],
+      message: 'Errore runtime durante la lettura luoghi: Nessun luogo pubblico disponibile.',
       errorMessage: normalizeError(error),
     };
   }
@@ -311,7 +290,7 @@ export async function fetchNearbyDogAreas(params: {
   const client = getSupabaseClient();
 
   if (!hasSupabaseConfig || !client) {
-    return fallbackNearbyDogAreas('Supabase non configurato: ricerca nel raggio disponibile solo con backend live.');
+    return fallbackNearbyDogAreas('Backend Supabase non configurato: ricerca nel raggio disponibile solo con backend attivo.');
   }
 
   try {
@@ -324,7 +303,7 @@ export async function fetchNearbyDogAreas(params: {
 
     if (error) {
       return fallbackNearbyDogAreas(
-        'Ricerca nel raggio non ancora disponibile: applica la migration 0007 su Supabase.',
+        'Ricerca nel raggio non disponibile in questo momento.',
         normalizeError(error),
       );
     }
@@ -340,7 +319,7 @@ export async function fetchNearbyDogAreas(params: {
     };
   } catch (error) {
     return fallbackNearbyDogAreas(
-      'Errore runtime durante la ricerca nel raggio: uso fallback controllato.',
+      'Non riesco a completare la ricerca nel raggio.',
       normalizeError(error),
     );
   }
