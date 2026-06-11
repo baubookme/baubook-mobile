@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+﻿import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View , Image} from 'react-native';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
@@ -10,7 +10,6 @@ import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
 import HomeDogDiaryLite from './components/HomeDogDiaryLite';
-import { ThinkingDogIcon } from './components/ThinkingDogIcon';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -97,13 +96,14 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <View style={styles.heroCard}>
       <HomeDogDiaryLite />
         <View style={styles.heroHeader}>
-          <ThinkingDogIcon size={76} />
+          <Image
+            source={require('../../../assets/baubook/cartoon-icons/home_today_pilot.png')}
+            style={{ width: 119, height: 119, resizeMode: 'contain' }}
+          />
           <View style={styles.heroCopy}>
-            <Text style={styles.kicker}>BauBook</Text>
-            <Text style={styles.title}>La giornata del tuo cane</Text>
-            <Text style={styles.subtitle}>
-              Home operativa: passeggiate, luoghi e safety in un colpo d'occhio.
-            </Text>
+            <Text style={styles.kicker}>Woof!</Text>
+            <Text style={styles.title}>Cosa potrei fare oggi?</Text>
+            
           </View>
         </View>
 
@@ -240,7 +240,7 @@ function RadarAlertRow({ alert, onPress }: { alert: SafetyAlertModel; onPress: (
       <View style={styles.alertRowCopy}>
         <Text style={styles.alertRowTitle}>{alert.title}</Text>
         <Text style={styles.alertRowMeta}>
-          {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
+          {alert.placeName} Â· {alert.ttlLabel} Â· {alert.radiusLabel}
         </Text>
         <Text style={styles.alertRowText} numberOfLines={2}>
           {alert.description}
@@ -544,4 +544,6 @@ const toneStyles = StyleSheet.create({
     backgroundColor: colors.greenSoft,
   },
 });
+
+
 
