@@ -244,7 +244,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       </AppCard>
 
       <View style={styles.kpiGrid}>
-        <MetricBox title="Walk" value={String(walksBoard.walks.length)} label={walksBoard.source === 'supabase' ? 'live' : 'demo'} tone="teal" />
+        <MetricBox title="Walk" value={String(walksBoard.walks.length)} label={walksBoard.source === 'supabase' ? 'online' : 'offline'} tone="teal" />
         <MetricBox title="Presenze" value={String(walksBoard.presences.length)} label="90 min" tone="green" />
         <MetricBox title="Alert" value={String(activeAlerts.length)} label={`${lostDogCount} persi · ${activeDangerCount} pericoli`} tone={activeAlerts.length ? 'red' : 'green'} />
         <MetricBox title="Luoghi" value={String(livePlaces.length)} label={placesLive ? 'Supabase' : 'fallback'} tone={placesLive ? 'teal' : 'orange'} />

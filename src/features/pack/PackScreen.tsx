@@ -193,7 +193,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
       </AppCard>
 
       <View style={styles.kpiGrid}>
-        <PulseKpi title="Luoghi" value={`${placesForBrief.length}`} label={placesState.source === 'supabase' ? 'live' : 'demo'} tone="teal" />
+        <PulseKpi title="Luoghi" value={`${placesForBrief.length}`} label={placesState.source === 'supabase' ? 'online' : 'offline'} tone="teal" />
         <PulseKpi title="Alert" value={`${activeAlerts.length}`} label={safetyBoard.source === 'supabase' ? 'safety' : 'fallback'} tone={activeAlerts.length ? 'red' : 'green'} />
         <PulseKpi title="Cani" value={`${auth.dogs.length}`} label={dogReady ? 'profilo ok' : 'manca'} tone={dogReady ? 'green' : 'orange'} />
         <PulseKpi title="Account" value={auth.isSignedIn ? 'ON' : 'OFF'} label={auth.status} tone={auth.isSignedIn ? 'green' : 'orange'} />

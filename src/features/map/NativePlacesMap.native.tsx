@@ -151,7 +151,7 @@ function statusLabel(realtimeStatus?: RealtimeStatus, source?: string): string {
     return 'Live Supabase';
   }
 
-  return 'Demo locale';
+  return 'Servizio non disponibile';
 }
 
 export function NativePlacesMap({ places, source, realtimeStatus, message, errorMessage }: NativePlacesMapProps) {

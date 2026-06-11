@@ -9,12 +9,7 @@ import { colors, radius, shadows, spacing, typography } from '../../shared/theme
 import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
-import { BetaTrustCommandCenter } from '../beta';
-import { HomeTopInsightBadges } from './components/HomeTopInsightBadges';
-import { HomeBetaPolishCards } from './components/HomeBetaPolishCards';
-import { HomeFirstStepsCommandCenter } from './components/HomeFirstStepsCommandCenter';
 import HomeDogDiaryLite from './components/HomeDogDiaryLite';
-import { HomeTodayCommandCenter } from './components/HomeTodayCommandCenter';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -71,8 +66,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   );
 
   const dangerCount = activeAlerts.length - lostCount;
-  const livePlacesCount = placesState.places.filter((place) => !place.id.endsWith('-demo')).length;
-  const visiblePlacesCount = livePlacesCount || placesState.places.length;
+  const visiblePlacesCount = placesState.places.length;
 
   const setupItems = useMemo(
     () => [
@@ -88,8 +82,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       },
       {
         label: 'Luoghi',
-        value: placesState.source === 'supabase' ? 'live' : 'demo',
-        ok: placesState.source === 'supabase',
+        value: placesState.places.length ? 'disponibili' : 'nessuno',
+        ok: placesState.places.length > 0,
       },
     ],
     [auth.dogs, auth.isSignedIn, placesState.source],
@@ -100,23 +94,14 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <Screen>
       <View style={styles.heroCard}>
-      <HomeTopInsightBadges />
-      <HomeTodayCommandCenter
-        dogName={auth.dogs[0]?.name}
-        placesCount={visiblePlacesCount}
-        activeAlertsCount={activeAlerts.length}
-        onNavigate={onNavigate}
-      />
-      <HomeBetaPolishCards />
-      <HomeFirstStepsCommandCenter />
       <HomeDogDiaryLite />
         <View style={styles.heroHeader}>
           <View style={styles.heroIcon}>
             <Text style={styles.heroIconText}>BB</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.kicker}>BauBook live cockpit</Text>
-            <Text style={styles.title}>Cosa succede vicino a te?</Text>
+            <Text style={styles.kicker}>BauBook</Text>
+            <Text style={styles.title}>La giornata del tuo cane</Text>
             <Text style={styles.subtitle}>
               Home operativa: passeggiate, luoghi e safety in un colpo dâ€™occhio.
             </Text>
@@ -135,8 +120,6 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           <AppButton label="Vai alla Mappa" onPress={() => onNavigate('map')} variant="ghost" />
         </View>
       </View>
-
-      <BetaTrustCommandCenter />
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -175,7 +158,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                 ? 'Carico safety board...'
                 : safetyBoard.source === 'supabase'
                   ? safetyBoard.message
-                  : `Demo locale: ${safetyBoard.message}`}
+                  : `${safetyBoard.message}`}
             </Text>
           </View>
 
@@ -204,8 +187,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.kicker}>Setup beta</Text>
-            <Text style={styles.sectionTitle}>Prontezza profilo</Text>
+            <Text style={styles.kicker}>Profilo cane</Text>
+            <Text style={styles.sectionTitle}>Stato profilo</Text>
           </View>
           <AppButton label="Setup" onPress={() => onNavigate('profile')} variant="ghost" />
         </View>
@@ -220,6 +203,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           ))}
         </View>
       </View>
+      <Text style={styles.versionFooter}>BauBook v0.6.0</Text>
     </Screen>
   );
 }
@@ -542,8 +526,7 @@ const styles = StyleSheet.create({
   statusDotWarn: {
     backgroundColor: colors.warning,
   },
-  pressed: {
-    opacity: 0.86,
+  versionFooter: { color: colors.muted, fontSize: typography.tiny, fontWeight: '800', textAlign: 'center', paddingVertical: spacing.md, }, pressed: { opacity: 0.86,
     transform: [{ scale: 0.98 }],
   },
 });

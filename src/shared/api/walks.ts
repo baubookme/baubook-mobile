@@ -255,7 +255,7 @@ export async function fetchWalksBoard(currentProfileId?: string | null): Promise
       source: 'fallback',
       walks: demoWalkPlans.map(demoWalkToLive),
       presences: [],
-      message: 'Errore runtime passeggiate: uso dati demo locali.',
+      message: 'Errore runtime passeggiate: uso dati non disponibili.',
       errorMessage: normalizeError(error),
     };
   }

@@ -189,7 +189,7 @@ export function MapScreen() {
                 }`}
                 tone="orange"
               />
-              <Tag label={source === 'supabase' ? 'Supabase live' : 'demo locale'} tone={source === 'supabase' ? 'green' : 'orange'} />
+              <Tag label={source === 'supabase' ? 'Supabase live' : 'servizio non disponibile'} tone={source === 'supabase' ? 'green' : 'orange'} />
             </View>
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             <View style={styles.buttonWrap}>

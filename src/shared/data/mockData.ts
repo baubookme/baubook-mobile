@@ -117,7 +117,7 @@ export const demoDog: DogProfileDraft = {
   ],
 };
 
-export const demoPlaces: PlaceModel[] = [
+export const productionSeedPlaces: PlaceModel[] = [
   {
     id: 'parco-san-giuliano-demo',
     name: 'Parco San Giuliano',

@@ -55,7 +55,8 @@
         "label": "Production Backend Cutover"
       },
       "mapCareCommandCenter": true,
-      "productionBackendCutover": true
+      "productionBackendCutover": true,
+      "productizedHome": true
     }
   }
 }

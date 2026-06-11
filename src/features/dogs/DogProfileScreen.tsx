@@ -60,7 +60,7 @@ export function DogProfileScreen() {
         </View>
         <Text style={styles.quote}>“{headline || 'Scrivi una bio in prima persona.'}”</Text>
         <View style={styles.statusRow}>
-          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Demo locale'} tone={auth.isSignedIn ? 'green' : 'orange'} />
+          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Servizio non disponibile'} tone={auth.isSignedIn ? 'green' : 'orange'} />
           <Tag label={firstDog ? 'DB salvato' : 'non salvato'} tone={firstDog ? 'green' : 'orange'} />
           <Tag label={`cani ${auth.dogs.length}`} tone="teal" />
         </View>

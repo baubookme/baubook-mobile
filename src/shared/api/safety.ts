@@ -332,7 +332,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
     return {
       source: 'fallback',
       alerts: demoAlerts.map(demoToSafety),
-      message: 'Errore runtime safety: uso dati demo locali.',
+      message: 'Errore runtime safety: uso dati non disponibili.',
       errorMessage: normalizeError(error),
     };
   }
