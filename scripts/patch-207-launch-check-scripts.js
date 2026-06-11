@@ -30,7 +30,7 @@ backup(appPath);
 if (fs.existsSync(easPath)) backup(easPath);
 
 const pkg = readJson(pkgPath);
-pkg.version = '0.4.3';
+pkg.version = '0.4.4';
 pkg.scripts = pkg.scripts || {};
 pkg.scripts['launch:check'] = 'node scripts/check-launch-readiness-207.js';
 pkg.scripts['launch:check:strict'] = 'node scripts/check-launch-readiness-207.js --strict';
@@ -42,14 +42,14 @@ writeJson(pkgPath, pkg);
 
 const app = readJson(appPath);
 app.expo = app.expo || {};
-app.expo.version = '0.4.3';
+app.expo.version = '0.4.4';
 app.expo.android = app.expo.android || {};
 const currentVersionCode = Number(app.expo.android.versionCode || 0);
 app.expo.android.versionCode = Math.max(currentVersionCode, 22);
 app.expo.ios = app.expo.ios || {};
 app.expo.ios.buildNumber = "22";
 app.expo.extra = app.expo.extra || {};
-app.expo.extra.baseline = '2.1.3';
+app.expo.extra.baseline = '2.1.4';
 writeJson(appPath, app);
 
 if (fs.existsSync(easPath)) {
@@ -75,4 +75,4 @@ for (const name of ['DEVICE_BETA_QA.md', 'NO_STORE_DEVICE_LAUNCH.md', 'PLAY_STOR
   }
 }
 
-console.log('OK check scripts allineati a BauBook 2.1.3 / app 0.4.3.');
+console.log('OK check scripts allineati a BauBook 2.1.4 / app 0.4.4.');

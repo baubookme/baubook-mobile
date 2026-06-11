@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getWeeklyDogTip } from '../data/weeklyDogTips';
+import BauBookIcon from '../../../components/BauBookIcon';
 import BauBookContactSheet from './BauBookContactSheet';
 
 const DISMISSED_WEEKLY_TIP_KEY = 'baubook.home.weeklyTip.dismissed.v1';
@@ -60,7 +61,7 @@ export function HomeTopInsightBadges() {
         style={styles.partnershipCard}
       >
         <View style={styles.partnershipIcon}>
-          <Text style={styles.partnershipIconText}>🐾</Text>
+          <BauBookIcon name="partnership" tone="green" size={22} />
         </View>
 
         <View style={styles.partnershipTextWrap}>

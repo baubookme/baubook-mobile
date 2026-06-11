@@ -13,6 +13,7 @@ import { BetaTrustCommandCenter } from '../beta';
 import { HomeTopInsightBadges } from './components/HomeTopInsightBadges';
 import { HomeBetaPolishCards } from './components/HomeBetaPolishCards';
 import { HomeFirstStepsCommandCenter } from './components/HomeFirstStepsCommandCenter';
+import HomeDogDiaryLite from './components/HomeDogDiaryLite';
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -101,6 +102,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <HomeTopInsightBadges />
       <HomeBetaPolishCards />
       <HomeFirstStepsCommandCenter />
+      <HomeDogDiaryLite />
         <View style={styles.heroHeader}>
           <View style={styles.heroIcon}>
             <Text style={styles.heroIconText}>BB</Text>
