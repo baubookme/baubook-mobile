@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -11,6 +11,7 @@ import {
 import {
   labelForDangerType,
   formatSafetyCreatedAt,
+  dangerIconForType,
   type DangerType,
   type SafetyAlertModel,
 } from "../../shared/api/safety";
@@ -31,6 +32,8 @@ const lostTtlOptions = [6, 24, 48];
 const dangerTtlOptions = [2, 6, 24, 72];
 const lastSeenOptions = [15, 30, 60, 180];
 const severityOptions = [1, 2, 3, 4, 5];
+const LOST_DESCRIPTION_MIN_LENGTH = 15;
+const DANGER_DESCRIPTION_MIN_LENGTH = 15;
 
 const dangerTypeOptions: Array<{ type: DangerType; label: string }> = [
   { type: "suspected_poison", label: "Bocconi sospetti" },
@@ -96,7 +99,11 @@ export function AlertsScreen() {
   const [dangerType, setDangerType] = useState<DangerType>("suspected_poison");
   const [severity, setSeverity] = useState(2);
   const [lostAccepted, setLostAccepted] = useState(false);
+  const lostCreateInFlightRef = useRef(false);
+  const [lostCreateInFlight, setLostCreateInFlight] = useState(false);
   const [dangerAccepted, setDangerAccepted] = useState(false);
+  const dangerCreateInFlightRef = useRef(false);
+  const [dangerCreateInFlight, setDangerCreateInFlight] = useState(false);
   const [sightingAccepted, setSightingAccepted] = useState(false);
 
   useEffect(() => {
@@ -121,42 +128,89 @@ export function AlertsScreen() {
     auth.isSignedIn &&
     placesState.source === "supabase" &&
     Boolean(selectedPlace);
+  const lostDescriptionReady =
+    lostDescription.trim().length >= LOST_DESCRIPTION_MIN_LENGTH;
+  const dangerDescriptionReady =
+    dangerDescription.trim().length >= DANGER_DESCRIPTION_MIN_LENGTH;
   const canCreateLost =
     canUseLiveWrites &&
     Boolean(selectedDog) &&
     lostAccepted &&
-    safetyBoard.status !== "loading";
+    lostDescriptionReady &&
+    !lostCreateInFlight &&
+    safetyBoard.status !== "loading"
   const canCreateDanger =
-    canUseLiveWrites && dangerAccepted && safetyBoard.status !== "loading";
+    canUseLiveWrites &&
+    dangerAccepted &&
+    dangerDescriptionReady &&
+    !dangerCreateInFlight &&
+    safetyBoard.status !== "loading";
   const canCreateSighting =
     canUseLiveWrites && sightingAccepted && safetyBoard.status !== "loading";
 
-  const handleCreateLost = () => {
-    if (!selectedDog || !selectedPlace || !canCreateLost) {
+  const handleCreateLost = async () => {
+    if (
+      !selectedDog ||
+      !selectedPlace ||
+      !canCreateLost ||
+      lostCreateInFlightRef.current
+    ) {
       return;
     }
-    void safetyBoard.createLostAlert({
-      dogId: selectedDog.id,
-      placeId: selectedPlace.id,
-      description: lostDescription,
-      lastSeenMinutesAgo,
-      ttlHours: lostTtlHours,
-      disclaimerAccepted: lostAccepted,
-    });
+
+    const dogId = selectedDog.id;
+    const placeId = selectedPlace.id;
+    const descriptionToPublish = lostDescription.trim();
+    const lastSeen = lastSeenMinutesAgo;
+    const ttlHours = lostTtlHours;
+    const disclaimerAccepted = lostAccepted;
+
+    lostCreateInFlightRef.current = true;
+    setLostCreateInFlight(true);
+    setLostAccepted(false);
+    setLostDescription("");
+
+    try {
+      await safetyBoard.createLostAlert({
+        dogId,
+        placeId,
+        description: descriptionToPublish,
+        lastSeenMinutesAgo: lastSeen,
+        ttlHours,
+        disclaimerAccepted,
+      });
+    } finally {
+      lostCreateInFlightRef.current = false;
+      setLostCreateInFlight(false);
+    }
   };
 
-  const handleCreateDanger = () => {
-    if (!selectedPlace || !canCreateDanger) {
+  const handleCreateDanger = async () => {
+    if (!selectedPlace || !canCreateDanger || dangerCreateInFlightRef.current) {
       return;
     }
-    void safetyBoard.createDanger({
-      placeId: selectedPlace.id,
-      dangerType,
-      description: dangerDescription,
-      severity,
-      ttlHours: dangerTtlHours,
-      disclaimerAccepted: dangerAccepted,
-    });
+
+    const descriptionToPublish = dangerDescription.trim();
+    const disclaimerAccepted = dangerAccepted;
+
+    dangerCreateInFlightRef.current = true;
+    setDangerCreateInFlight(true);
+    setDangerAccepted(false);
+    setDangerDescription("");
+
+    try {
+      await safetyBoard.createDanger({
+        placeId: selectedPlace.id,
+        dangerType,
+        description: descriptionToPublish,
+        severity,
+        ttlHours: dangerTtlHours,
+        disclaimerAccepted,
+      });
+    } finally {
+      dangerCreateInFlightRef.current = false;
+      setDangerCreateInFlight(false);
+    }
   };
 
   const handleSighting = (
@@ -339,7 +393,10 @@ export function AlertsScreen() {
             multiline
             style={[styles.input, styles.textArea]}
           />
-        </View>
+          <Text style={[styles.helperText, !lostDescriptionReady ? styles.helperTextDanger : null]}>
+            Descrizione smarrimento obbligatoria: almeno {LOST_DESCRIPTION_MIN_LENGTH} caratteri.
+          </Text>
+</View>
 
         <DisclaimerBox
           title="Disclaimer smarrimento"
@@ -350,7 +407,7 @@ export function AlertsScreen() {
 
         <View style={styles.actionRow}>
           <AppButton
-            label={safetyBoard.status === "loading" ? "Creo..." : "Crea alert"}
+            label={(safetyBoard.status === "loading" || lostCreateInFlight) ? "Creo..." : "Crea alert"}
             variant="danger"
             icon={baubookImages.icons.lostDog}
             disabled={!canCreateLost}
@@ -367,15 +424,7 @@ export function AlertsScreen() {
 
       <AppCard tone="warm">
         <View style={styles.criticalHeader}>
-          <IconBubble
-            source={
-              dangerType === "suspected_poison"
-                ? baubookImages.icons.suspiciousFood
-                : baubookImages.icons.danger
-            }
-            size={70}
-            tone="plain"
-          />
+          <Image source={dangerIconForType(dangerType)} style={styles.dangerTypeCircleIcon} />
           <View style={styles.criticalCopy}>
             <Text style={styles.eyebrow}>Pericolo!</Text>
             <Text style={styles.cardTitle}>Segnalazioni temporanee</Text>
@@ -436,7 +485,10 @@ export function AlertsScreen() {
             multiline
             style={[styles.input, styles.textArea]}
           />
-        </View>
+          <Text style={[styles.helperText, !dangerDescriptionReady ? styles.helperTextDanger : null]}>
+            Descrizione obbligatoria: almeno {DANGER_DESCRIPTION_MIN_LENGTH} caratteri.
+          </Text>
+</View>
 
         <DisclaimerBox
           title="Disclaimer pericolo"
@@ -448,7 +500,7 @@ export function AlertsScreen() {
         <View style={styles.actionRow}>
           <AppButton
             label={
-              safetyBoard.status === "loading" ? "Creo..." : "Crea Pericolo"
+              (safetyBoard.status === "loading" || dangerCreateInFlight) ? "Creo..." : "Crea Pericolo"
             }
             variant="danger"
             icon={baubookImages.icons.danger}
@@ -523,10 +575,7 @@ export function AlertsScreen() {
         ) : (
           <AppCard>
             <Text style={styles.cardTitle}>Nessun alert attivo</Text>
-            <Text style={styles.bodyText}>
-              Quando creerai un alert, Table Editor mostrerà `lost_dog_alerts`,
-              `danger_reports`, `lost_dog_sightings`, `reports` e `audit_logs`.
-            </Text>
+
           </AppCard>
         )}
       </View>
@@ -636,11 +685,15 @@ function SafetyCard({
   return (
     <AppCard tone={danger ? "warm" : "danger"}>
       <View style={styles.alertHeader}>
-        <IconBubble
-          source={alert.icon}
-          size={62}
-          tone={danger ? "danger" : "pink"}
-        />
+        {danger ? (
+          <Image source={alert.icon} style={styles.alertCircleIcon} />
+        ) : (
+          <IconBubble
+            source={alert.icon}
+            size={62}
+            tone="pink"
+          />
+        )}
         <View style={styles.alertCopy}>
           <Text style={styles.alertTitle}>{alert.title}</Text>
           <Text style={styles.alertMeta}>
@@ -727,7 +780,14 @@ function SafetyCard({
 }
 
 const styles = StyleSheet.create({
-  criticalHeader: {
+  dangerTypeCircleIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    resizeMode: "contain",
+    flexShrink: 0,
+  },
+    criticalHeader: {
     flexDirection: "row",
     gap: spacing.md,
     alignItems: "center",
@@ -753,7 +813,10 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 22,
   },
-  helperText: {
+  helperTextDanger: {
+    color: colors.danger,
+  },
+    helperText: {
     color: colors.muted,
     fontSize: typography.small,
     lineHeight: 19,
@@ -928,7 +991,14 @@ const styles = StyleSheet.create({
   alertList: {
     gap: spacing.md,
   },
-  alertHeader: {
+  alertCircleIcon: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    resizeMode: "contain",
+    flexShrink: 0,
+  },
+    alertHeader: {
     flexDirection: "row",
     gap: spacing.md,
   },

@@ -121,6 +121,24 @@ const dangerHints: Record<DangerType, string> = {
   other: 'Descrivi solo fatti osservati e non pubblicare accuse verso persone identificabili.',
 };
 
+export function dangerIconForType(type: DangerType) {
+  switch (type) {
+    case 'suspected_poison':
+      return baubookImages.dangerCircles.suspectedPoison;
+    case 'loose_dog':
+      return baubookImages.dangerCircles.looseDog;
+    case 'unsafe_area':
+      return baubookImages.dangerCircles.unsafeArea;
+    case 'traffic':
+      return baubookImages.dangerCircles.traffic;
+    case 'broken_fence':
+      return baubookImages.dangerCircles.brokenFence;
+    case 'other':
+    default:
+      return baubookImages.dangerCircles.other;
+  }
+}
+
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) {
     return null;
@@ -221,7 +239,7 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     status: alertStatus,
     ttlLabel: formatExpiry(row.expires_at),
     description: row.description ?? 'Segnalazione temporanea senza dettagli aggiuntivi.',
-    icon: dangerType === 'suspected_poison' ? baubookImages.icons.suspiciousFood : baubookImages.icons.danger,
+    icon: dangerIconForType(dangerType),
     source: 'supabase',
     ownerId: null,
     reporterId: row.reporter_id,
@@ -246,6 +264,7 @@ function demoToSafety(alert: AlertModel): SafetyAlertModel {
   const danger = alert.type === 'danger';
   return {
     ...alert,
+    icon: danger ? dangerIconForType('suspected_poison') : alert.icon,
     source: 'fallback',
     ownerId: null,
     reporterId: null,
@@ -325,7 +344,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
       alerts,
       message: alerts.length
         ? `${lost.length} smarrimento/i e ${dangers.length} pericolo/i caricati.`
-        : 'Nessun alert sicurezza attivo nella beta Venezia-Mestre.',
+        : 'Niente da segnalare. 📓',
     };
   }
   catch (error) {

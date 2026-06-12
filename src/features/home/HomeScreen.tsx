@@ -117,10 +117,6 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           <MetricPill label="Luoghi" value={String(visiblePlacesCount)} tone="teal" />
         </View>
 
-        <View style={styles.heroActions}>
-          <AppButton label="Apri Aiuto" onPress={() => onNavigate('alerts')} variant="danger" />
-          <AppButton label="Vai alla Mappa" onPress={() => onNavigate('map')} variant="ghost" />
-        </View>
       </View>
 
       <View style={styles.section}>
@@ -142,7 +138,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.kicker}>Safety radar</Text>
-            <Text style={styles.sectionTitle}>Alert e zone da tenere d'occhio</Text>
+            <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
           </View>
           <Pressable
             onPress={safetyBoard.reload}
@@ -178,7 +174,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             <View style={styles.emptyRadar}>
               <Text style={styles.emptyTitle}>Nessun alert attivo vicino a te</Text>
               <Text style={styles.emptyText}>
-                Se nasce un pericolo o uno smarrimento, lo vedrai qui subito dalla Home.
+                Se viene creato un pericolo o uno smarrimento, lo vedrai qui subito dalla Home.
               </Text>
               <AppButton label="Apri Aiuto" onPress={() => onNavigate('alerts')} variant="ghost" />
             </View>
@@ -242,7 +238,11 @@ function RadarAlertRow({ alert, onPress }: { alert: SafetyAlertModel; onPress: (
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.alertRow, pressed && styles.pressed]}>
       <View style={[styles.alertBadge, danger ? styles.alertBadgeDanger : styles.alertBadgeLost]}>
-        <Text style={styles.alertBadgeText}>{danger ? '!' : '?'}</Text>
+        {danger ? (
+          <Image source={alert.icon} style={styles.alertBadgeImage} />
+        ) : (
+          <Text style={styles.alertBadgeText}>?</Text>
+        )}
       </View>
       <View style={styles.alertRowCopy}>
         <Text style={styles.alertRowTitle}>{alert.title}</Text>
@@ -441,19 +441,27 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   alertBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
   },
   alertBadgeDanger: {
-    backgroundColor: colors.redSoft,
+    backgroundColor: 'transparent',
   },
   alertBadgeLost: {
     backgroundColor: colors.orangeSoft,
   },
-  alertBadgeText: {
+  alertBadgeImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 38,
+    resizeMode: 'contain',
+  },
+    alertBadgeText: {
     color: colors.danger,
     fontSize: typography.h2,
     fontWeight: '900',

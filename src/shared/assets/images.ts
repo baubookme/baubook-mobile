@@ -24,6 +24,14 @@ export const baubookImages = {
     nonDisponibile: require('../../../assets/baubook/badges/non-disponibile.png') as ImageSourcePropType,
     betaAndroidStore: require('../../../assets/baubook/badges/beta-android-store.png') as ImageSourcePropType,
   },
+  dangerCircles: {
+    suspectedPoison: require('../../../assets/baubook/danger-circles/suspicious_food.png') as ImageSourcePropType,
+    looseDog: require('../../../assets/baubook/danger-circles/loose_dog.png') as ImageSourcePropType,
+    unsafeArea: require('../../../assets/baubook/danger-circles/unsafe_area.png') as ImageSourcePropType,
+    traffic: require('../../../assets/baubook/danger-circles/traffic.png') as ImageSourcePropType,
+    brokenFence: require('../../../assets/baubook/danger-circles/broken_fence.png') as ImageSourcePropType,
+    other: require('../../../assets/baubook/danger-circles/other.png') as ImageSourcePropType,
+  },
   icons: {
     map: require('../../../assets/baubook/icons/01_dove_andare_mappa.png') as ImageSourcePropType,
     dogArea: require('../../../assets/baubook/icons/02_aree_cani.png') as ImageSourcePropType,
