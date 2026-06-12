@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../../shared/lib/supabase';
+﻿import { getSupabaseClient } from '../../shared/lib/supabase';
 
 export type BackendDogDiaryCategory = 'walk' | 'food' | 'vet' | 'medicine' | 'grooming' | 'note';
 
@@ -100,7 +100,7 @@ export async function saveDogDiaryEvents<T extends BackendDogDiaryEvent = Backen
   });
 
   if (rows.length) {
-    const { error } = await client.from('dog_diary_events').upsert(rows, { onConflict: 'id' });
+    const { error } = await client.from('dog_diary_events').upsert(rows, { onConflict: 'id', defaultToNull: false });
     if (error) {
       throw error;
     }
@@ -108,3 +108,4 @@ export async function saveDogDiaryEvents<T extends BackendDogDiaryEvent = Backen
 
   return loadDogDiaryEvents<T>();
 }
+
