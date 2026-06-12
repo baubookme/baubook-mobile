@@ -144,7 +144,7 @@ export function ProfileScreen() {
               />
             </View>
             <AppButton label="Verifica codice OTP" variant="secondary" disabled={auth.isBusy} onPress={() => void auth.verifyOtpCode(email, otp)} />
-            <Text style={styles.helperText}>Per la beta pubblica restiamo email-first: meno attrito store, niente Google/Apple obbligatori ora.</Text>
+            <Text style={styles.helperText}>Per la beta pubblica la registrazione avviene tramite email. Accesso Google/Apple account in progress. ⏳</Text>
           </View>
         ) : (
           <View style={styles.formStack}>
