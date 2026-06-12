@@ -109,3 +109,21 @@ export async function saveDogDiaryEvents<T extends BackendDogDiaryEvent = Backen
   return loadDogDiaryEvents<T>();
 }
 
+export async function deleteDogDiaryEvent(eventId: string): Promise<void> {
+  if (!UUID_RE.test(eventId)) {
+    return;
+  }
+
+  const { client, user } = await requireUser();
+
+  const { error } = await client
+      .from('dog_diary_events')
+      .delete()
+      .eq('id', eventId)
+      .eq('user_id', user.id);
+
+  if (error) {
+    throw error;
+  }
+}
+

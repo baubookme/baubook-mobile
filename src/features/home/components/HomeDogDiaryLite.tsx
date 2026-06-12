@@ -1,6 +1,9 @@
-import { loadDogDiaryEvents, saveDogDiaryEvents } from '../dogDiaryBackend'; import React, { useEffect, useMemo, useState } from 'react';
+import { deleteDogDiaryEvent, loadDogDiaryEvents, saveDogDiaryEvents } from '../dogDiaryBackend';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +29,15 @@ type CategoryConfig = {
   label: string;
   icon: string;
 };
+
+type DogDiaryEventRowProps = {
+  event: DogDiaryEvent;
+  category: CategoryConfig;
+  deleting: boolean;
+  onDelete: () => void;
+};
+
+const DELETE_ACTION_WIDTH = 104;
 
 const CATEGORIES: CategoryConfig[] = [
   { key: 'walk', label: 'Passeggiata', icon: 'walk' },
@@ -77,27 +89,109 @@ function makeId(): string {
   return 'dog-diary-' + Date.now() + '-' + Math.round(Math.random() * 100000);
 }
 
+function DogDiaryEventRow({ event, category, deleting, onDelete }: DogDiaryEventRowProps) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const openRef = useRef(false);
+
+  const panResponder = useMemo(
+      () =>
+          PanResponder.create({
+            onMoveShouldSetPanResponder: (_evt, gesture) => {
+              return Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+            },
+            onPanResponderMove: (_evt, gesture) => {
+              const start = openRef.current ? -DELETE_ACTION_WIDTH : 0;
+              const next = Math.max(-DELETE_ACTION_WIDTH, Math.min(0, start + gesture.dx));
+              translateX.setValue(next);
+            },
+            onPanResponderRelease: (_evt, gesture) => {
+              const shouldOpen = gesture.dx < -32 || gesture.vx < -0.45;
+              const shouldClose = gesture.dx > 24 || gesture.vx > 0.45;
+              const nextOpen = shouldClose ? false : shouldOpen ? true : openRef.current;
+
+              openRef.current = nextOpen;
+
+              Animated.spring(translateX, {
+                toValue: nextOpen ? -DELETE_ACTION_WIDTH : 0,
+                useNativeDriver: true,
+                friction: 9,
+                tension: 80
+              }).start();
+            },
+            onPanResponderTerminate: () => {
+              Animated.spring(translateX, {
+                toValue: openRef.current ? -DELETE_ACTION_WIDTH : 0,
+                useNativeDriver: true,
+                friction: 9,
+                tension: 80
+              }).start();
+            }
+          }),
+      [translateX]
+  );
+
+  return (
+      <View style={styles.swipeClip}>
+        <View style={styles.deleteBehind}>
+          <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Elimina evento ${category.label}`}
+              disabled={deleting}
+              onPress={onDelete}
+              style={({ pressed }) => [
+                styles.deleteAction,
+                pressed ? styles.deleteActionPressed : null,
+                deleting ? styles.deleteActionDisabled : null
+              ]}
+          >
+            <Text style={styles.deleteActionText}>{deleting ? '...' : 'Elimina'}</Text>
+          </Pressable>
+        </View>
+
+        <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+              styles.eventRow,
+              {
+                transform: [{ translateX }]
+              }
+            ]}
+        >
+          <View style={styles.eventIcon}>
+            <BauBookIcon name={category.icon} size={18} />
+          </View>
+          <View style={styles.eventTextWrap}>
+            <Text style={styles.eventTitle} numberOfLines={1}>{category.label}</Text>
+            <Text style={styles.eventNote} numberOfLines={1}>{event.note}</Text>
+          </View>
+          <Text style={styles.eventDate} numberOfLines={1}>{formatDay(event.createdAt)}</Text>
+        </Animated.View>
+      </View>
+  );
+}
+
 export function HomeDogDiaryLite() {
   const [events, setEvents] = useState<DogDiaryEvent[]>([]);
   const [filter, setFilter] = useState<DogDiaryFilter>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<DogDiaryCategory>('walk');
   const [note, setNote] = useState('');
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     loadDogDiaryEvents<DogDiaryEvent>()
-      .then((loadedEvents) => {
-        if (mounted) {
-          setEvents(loadedEvents);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setEvents([]);
-        }
-      });
+        .then((loadedEvents) => {
+          if (mounted) {
+            setEvents(loadedEvents);
+          }
+        })
+        .catch(() => {
+          if (mounted) {
+            setEvents([]);
+          }
+        });
 
     return () => {
       mounted = false;
@@ -107,6 +201,26 @@ export function HomeDogDiaryLite() {
   async function persist(nextEvents: DogDiaryEvent[]) {
     const savedEvents = await saveDogDiaryEvents<DogDiaryEvent>(nextEvents);
     setEvents(savedEvents);
+  }
+
+  async function removeEvent(eventId: string) {
+    if (deletingEventId) {
+      return;
+    }
+
+    const previousEvents = events;
+    const nextEvents = events.filter((event) => event.id !== eventId);
+
+    setDeletingEventId(eventId);
+    setEvents(nextEvents);
+
+    try {
+      await deleteDogDiaryEvent(eventId);
+    } catch {
+      setEvents(previousEvents);
+    } finally {
+      setDeletingEventId(null);
+    }
   }
 
   async function addEvent() {
@@ -146,122 +260,122 @@ export function HomeDogDiaryLite() {
   }, [events, filter]);
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.headerRow, styles.diaryHeaderAligned]}>
-        <View style={styles.titleWrap}>
-          <View style={styles.iconBubble}>
-            <BauBookIcon name="diary" size={22} />
+      <View style={styles.card}>
+        <View style={[styles.headerRow, styles.diaryHeaderAligned]}>
+          <View style={styles.titleWrap}>
+            <View style={styles.iconBubble}>
+              <BauBookIcon name="diary" size={22} />
+            </View>
+            <View style={styles.titleTextWrap}>
+              <Text style={styles.eyebrow}>Dog Diary</Text>
+              <Text style={styles.title} numberOfLines={2}>
+                Piccole cose.. il mio diario smart!
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.eyebrow}>Dog Diary</Text>
-            <Text style={styles.title}>Piccole cose, grandi emozioni: il mio diario leggero!</Text>
-          </View>
+
+          <Pressable accessibilityRole="button" onPress={() => setModalOpen(true)} style={[styles.addButton, styles.addButtonAligned]}>
+            <Text style={styles.addButtonText}>+ Evento</Text>
+          </Pressable>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => setModalOpen(true)} style={[styles.addButton, styles.addButtonAligned]}>
-          <Text style={styles.addButtonText}>+ Evento</Text>
-        </Pressable>
-      </View>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryLine}>{summary.last7DaysCount} eventi negli ultimi 7 giorni</Text>
+          <Text style={styles.summaryLine}>
+            Ultimo evento: {summary.lastEvent ? getCategory(summary.lastEvent.category).label + ' - ' + formatDay(summary.lastEvent.createdAt) : 'nessun evento registrato'}
+          </Text>
+          <Text style={styles.summaryLine}>
+            Ultima passeggiata: {summary.lastWalk ? formatDay(summary.lastWalk.createdAt) : 'non ancora registrata'}
+          </Text>
+          <Text style={styles.summaryLine}>
+            Salute: {summary.lastHealth ? getCategory(summary.lastHealth.category).label + ' - ' + formatDay(summary.lastHealth.createdAt) : 'nessuna nota salute recente'}
+          </Text>
+        </View>
 
-      <View style={styles.summaryBox}>
-
-        <Text style={styles.summaryLine}>{summary.last7DaysCount} eventi negli ultimi 7 giorni</Text>
-        <Text style={styles.summaryLine}>
-          Ultimo evento: {summary.lastEvent ? getCategory(summary.lastEvent.category).label + ' - ' + formatDay(summary.lastEvent.createdAt) : 'nessun evento registrato'}
-        </Text>
-        <Text style={styles.summaryLine}>
-          Ultima passeggiata: {summary.lastWalk ? formatDay(summary.lastWalk.createdAt) : 'non ancora registrata'}
-        </Text>
-        <Text style={styles.summaryLine}>
-          Salute: {summary.lastHealth ? getCategory(summary.lastHealth.category).label + ' - ' + formatDay(summary.lastHealth.createdAt) : 'nessuna nota salute recente'}
-        </Text>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {FILTERS.map((item) => {
-          const active = item.key === filter;
-          return (
-            <Pressable
-              key={item.key}
-              accessibilityRole="button"
-              onPress={() => setFilter(item.key)}
-              style={[styles.filterChip, active ? styles.filterChipActive : null]}
-            >
-              <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>{item.label}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {visibleEvents.length ? (
-        <View style={styles.eventList}>
-          {visibleEvents.map((event) => {
-            const category = getCategory(event.category);
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {FILTERS.map((item) => {
+            const active = item.key === filter;
             return (
-              <View key={event.id} style={styles.eventRow}>
-                <View style={styles.eventIcon}>
-                  <BauBookIcon name={category.icon} size={18} />
-                </View>
-                <View style={styles.eventTextWrap}>
-                  <Text style={styles.eventTitle}>{category.label}</Text>
-                  <Text style={styles.eventNote}>{event.note}</Text>
-                </View>
-                <Text style={styles.eventDate}>{formatDay(event.createdAt)}</Text>
-              </View>
+                <Pressable
+                    key={item.key}
+                    accessibilityRole="button"
+                    onPress={() => setFilter(item.key)}
+                    style={[styles.filterChip, active ? styles.filterChipActive : null]}
+                >
+                  <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>{item.label}</Text>
+                </Pressable>
             );
           })}
-        </View>
-      ) : (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>Nessun evento in questo filtro</Text>
-          <Text style={styles.emptyText}>Aggiungi una passeggiata, una nota salute o un evento per iniziare.</Text>
-        </View>
-      )}
+        </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
-        <View style={styles.backdrop}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Aggiungi evento</Text>
-              <Pressable accessibilityRole="button" onPress={() => setModalOpen(false)}>
-                <Text style={styles.closeText}>Chiudi</Text>
-              </Pressable>
-            </View>
+        {visibleEvents.length ? (
+            <View style={styles.eventList}>
+              {visibleEvents.map((event) => {
+                const category = getCategory(event.category);
+                const deleting = deletingEventId === event.id;
 
-            <Text style={styles.inputLabel}>Categoria</Text>
-            <View style={styles.categoryGrid}>
-              {CATEGORIES.map((category) => {
-                const active = category.key === selectedCategory;
                 return (
-                  <Pressable
-                    key={category.key}
-                    accessibilityRole="button"
-                    onPress={() => setSelectedCategory(category.key)}
-                    style={[styles.categoryChip, active ? styles.categoryChipActive : null]}
-                  >
-                    <BauBookIcon name={category.icon} size={16} />
-                    <Text style={[styles.categoryText, active ? styles.categoryTextActive : null]}>{category.label}</Text>
-                  </Pressable>
+                    <DogDiaryEventRow
+                        key={event.id}
+                        event={event}
+                        category={category}
+                        deleting={deleting}
+                        onDelete={() => void removeEvent(event.id)}
+                    />
                 );
               })}
             </View>
+        ) : (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>Nessun evento in questo filtro</Text>
+              <Text style={styles.emptyText}>Aggiungi una passeggiata, una nota salute o un evento per iniziare.</Text>
+            </View>
+        )}
 
-            <Text style={styles.inputLabel}>Nota</Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder="Scrivi una nota breve"
-              multiline
-              style={styles.noteInput}
-            />
+        <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+          <View style={styles.backdrop}>
+            <View style={styles.sheet}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Aggiungi evento</Text>
+                <Pressable accessibilityRole="button" onPress={() => setModalOpen(false)}>
+                  <Text style={styles.closeText}>Chiudi</Text>
+                </Pressable>
+              </View>
 
-            <Pressable accessibilityRole="button" onPress={addEvent} style={styles.saveButton}>
-              <Text style={styles.saveButtonText}>Salva evento</Text>
-            </Pressable>
+              <Text style={styles.inputLabel}>Categoria</Text>
+              <View style={styles.categoryGrid}>
+                {CATEGORIES.map((category) => {
+                  const active = category.key === selectedCategory;
+                  return (
+                      <Pressable
+                          key={category.key}
+                          accessibilityRole="button"
+                          onPress={() => setSelectedCategory(category.key)}
+                          style={[styles.categoryChip, active ? styles.categoryChipActive : null]}
+                      >
+                        <BauBookIcon name={category.icon} size={16} />
+                        <Text style={[styles.categoryText, active ? styles.categoryTextActive : null]}>{category.label}</Text>
+                      </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Nota</Text>
+              <TextInput
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Scrivi una nota breve"
+                  multiline
+                  style={styles.noteInput}
+              />
+
+              <Pressable accessibilityRole="button" onPress={addEvent} style={styles.saveButton}>
+                <Text style={styles.saveButtonText}>Salva evento</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
   );
 }
 
@@ -288,6 +402,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10
+  },
+  titleTextWrap: {
+    flex: 1,
+    minWidth: 0
   },
   iconBubble: {
     width: 42,
@@ -362,12 +480,26 @@ const styles = StyleSheet.create({
   eventList: {
     gap: 8
   },
+  swipeClip: {
+    position: 'relative',
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden'
+  },
+  deleteBehind: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'flex-end',
+    backgroundColor: '#ffffff'
+  },
   eventRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 16,
-    padding: 10,
+    borderRadius: 0,
+    paddingVertical: 10,
+    paddingLeft: 10,
+    paddingRight: 16,
     backgroundColor: '#ffffff'
   },
   eventIcon: {
@@ -379,7 +511,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef8f0'
   },
   eventTextWrap: {
-    flex: 1
+    flex: 1,
+    minWidth: 0
   },
   eventTitle: {
     color: '#2b241d',
@@ -392,9 +525,33 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   eventDate: {
+    minWidth: 58,
+    marginLeft: 8,
     color: '#7a5a36',
     fontSize: 12,
-    fontWeight: '800'
+    fontWeight: '800',
+    textAlign: 'right'
+  },
+  deleteAction: {
+    width: DELETE_ACTION_WIDTH,
+    height: '100%',
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    backgroundColor: '#ef4a3f'
+  },
+  deleteActionPressed: {
+    opacity: 0.82
+  },
+  deleteActionDisabled: {
+    opacity: 0.55
+  },
+  deleteActionText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900'
   },
   emptyBox: {
     borderRadius: 18,
@@ -493,16 +650,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '900'
-  }
-,
+  },
   diaryHeaderAligned: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   addButtonAligned: {
     alignSelf: 'center',
     justifyContent: 'center',
     minHeight: 34,
     marginTop: 0,
-    paddingHorizontal: 16,
-  },
+    paddingHorizontal: 16
+  }
 });
