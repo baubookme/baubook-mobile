@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View , Image} from 'react-native';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontSize: typography.h1,
-    lineHeight: 31,
+    fontSize: Math.round(typography.h1 * 0.80),
+    lineHeight: Math.round(31 * 0.80),
     fontWeight: '900',
   },
   subtitle: {
