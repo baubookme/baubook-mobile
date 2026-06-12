@@ -103,22 +103,7 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <AppCard tone="warm">
-        <View style={styles.identityHeader}>
-          <Image source={baubookImages.logo} style={styles.appIcon} />
-          <View style={styles.identityCopy}>
-            <Text style={styles.eyebrow}>BauBook! Venezia-Mestre</Text>
-            <Text style={styles.cardTitle}>Launch readiness cockpit</Text>
-            <Text style={styles.bodyText}>Account, privacy, sponsor nativi e stato beta in un solo punto.</Text>
-          </View>
-        </View>
-        <View style={styles.statusRow}>
-          <Tag label={`Launch ${launchScore}%`} tone={readinessTone} />
-          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Login richiesto'} tone={auth.isSignedIn ? 'green' : 'orange'} />
-          <Tag label={hasSupabaseConfig ? 'Supabase configurato' : 'Supabase assente'} tone={hasSupabaseConfig ? 'green' : 'red'} />
-          <Tag label={hasGoogleMapsConfig ? 'Maps configurato' : 'Maps opzionale'} tone={hasGoogleMapsConfig ? 'green' : 'default'} />
-        </View>
-      </AppCard>
+
 
       <AppCard>
         <View style={styles.headerRow}>
@@ -169,7 +154,7 @@ export function ProfileScreen() {
               <Metric label="Cani salvati" value={String(auth.dogs.length)} />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Nome umano visibile</Text>
+              <Text style={styles.label}>Nome profilo visibile</Text>
               <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome" placeholderTextColor={colors.muted} style={styles.input} />
             </View>
             <View style={styles.actionsRow}>
@@ -180,41 +165,22 @@ export function ProfileScreen() {
         )}
       </AppCard>
 
-      <AppCard tone="teal">
-        <SectionHeader
-          eyebrow="Pronti alla beta"
-          title="Launch readiness"
-          description="Questa card indica cosa manca prima di una beta pubblica seria, senza introdurre SDK invasivi."
-        />
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${launchScore}%` }]} />
-        </View>
-        <View style={styles.checkList}>
-          {launchChecklist.map((item) => (
-            <View key={item} style={styles.checkItem}>
-              <Text style={styles.checkBullet}>✓</Text>
-              <Text style={styles.checkText}>{item}</Text>
-            </View>
-          ))}
-        </View>
-      </AppCard>
+
 
       <AppCard tone="pink">
         <SectionHeader
           eyebrow="Privacy & Terms"
-          title="Trasparenza beta"
-          description="Testi brevi in-app per ridurre attrito di review e rendere chiaro cosa raccoglie BauBook."
+          title="Trasparenza e condizioni"
         />
         <View style={styles.legalStack}>
-          <LegalBlock title="Privacy beta" body="Raccogliamo email, profilo umano, profilo cane, contenuti safety e presenza temporanea solo per far funzionare la community locale." />
-          <LegalBlock title="Localizzazione" body="La posizione e' usata solo quando l'utente chiede funzioni di prossimita. BauBook non abilita live tracking continuo di default." />
-          <LegalBlock title="Sponsor nativi" body="Gli spazi partner sono sponsorizzazioni locali dichiarate. Niente tracking cross-app, niente SDK ads, niente advertising ID nella beta." />
-          <LegalBlock title="Cancellazione account" body="L'utente loggato puo richiedere cancellazione account dall'app. La richiesta resta tracciata per gestione operativa e audit minimo." />
+          <LegalBlock title="Privacy e dati in-app" body="Raccogliamo email, profilo, profilo cane, contenuti e presenza temporanea solo per far funzionare la community locale." />
+          <LegalBlock title="Localizzazione" body="La posizione e' usata solo quando l'utente chiede funzioni di prossimità. BauBook non abilita live tracking continuo di default." />
+          <LegalBlock title="Cancellazione account" body="L'utente loggato puo richiedere cancellazione account dall'app. La richiesta resta tracciata per gestione operativa e audit." />
         </View>
       </AppCard>
 
       <AppCard>
-        <SectionHeader eyebrow="Account deletion" title="Richiesta cancellazione account" description="Flusso leggero, utile per beta e review store. Richiede login e migration 0008 applicata." />
+        <SectionHeader eyebrow="Cancellazione account" title="Richiesta cancellazione account" description="Flusso leggero, utile per beta e review store. Richiede login e migration 0008 applicata." />
         <View style={styles.formStack}>
           <TextInput
             value={deletionReason}
@@ -236,24 +202,6 @@ export function ProfileScreen() {
         </View>
       </AppCard>
 
-      <AppCard tone="warm">
-        <SectionHeader
-          eyebrow="Sponsored Places Lite"
-          title="Sponsor nativo, non ad network"
-          description="Primo spazio partner controllato da Supabase: utile per monetizzare senza AdMob nella beta."
-        />
-        {primarySponsoredSlot ? (
-          <View style={styles.sponsorBox}>
-            <Text style={styles.sponsorLabel}>Partner</Text>
-            <Text style={styles.sponsorName}>{primarySponsoredSlot.sponsorName}</Text>
-            <Text style={styles.sponsorTitle}>{primarySponsoredSlot.title}</Text>
-            <Text style={styles.bodyText}>{primarySponsoredSlot.body}</Text>
-            <Tag label={primarySponsoredSlot.ctaLabel} tone="orange" />
-          </View>
-        ) : (
-          <Text style={styles.bodyText}>Nessuno slot sponsor attivo. App pronta a mostrarli appena li abiliti da Supabase.</Text>
-        )}
-      </AppCard>
 
       <AppCard>
         <SectionHeader eyebrow="Supabase live check" title="Backend" description={supabaseStatus.status === 'loading' ? 'Controllo app_config, feature_flags, places, passeggiate, presenze e safety...' : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'} />
@@ -273,17 +221,7 @@ export function ProfileScreen() {
         </View>
       </AppCard>
 
-      <AppCard>
-        <SectionHeader eyebrow="Prossimi comandi" title="Operativita" />
-        <View style={styles.stepsList}>
-          {setupSteps.map((step, index) => (
-            <View key={step} style={styles.stepItem}>
-              <Text style={styles.stepNumber}>{index + 1}</Text>
-              <Text style={styles.stepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
-      </AppCard>
+
     </Screen>
   );
 }

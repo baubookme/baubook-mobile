@@ -179,8 +179,8 @@ export function AlertsScreen() {
     <Screen>
       <SectionHeader
         eyebrow="Community locale"
-        title="Emergenze vere, ma con cintura di sicurezza"
-        description="Mi sono perso! e Pericolo! ora scrivono su Supabase tramite RPC controllate: TTL obbligatorio, disclaimer richiesto, rate limit beta, chiusura esplicita, report abuso e audit minimo."
+        title="Emergenze vere, niente panico globale!"
+
       />
 
       <AppCard tone="danger">
@@ -191,12 +191,11 @@ export function AlertsScreen() {
             tone="plain"
           />
           <View style={styles.criticalCopy}>
-            <Text style={styles.eyebrow}>Safety mode</Text>
-            <Text style={styles.cardTitle}>Niente panico globale.</Text>
+            <Text style={styles.eyebrow}>Sicurezza</Text>
+            <Text style={styles.cardTitle}>Utilizza queste funzioni responsabilmente. ℹ️</Text>
             <Text style={styles.bodyText}>
               Tutti gli alert sono temporanei, geolocalizzati in modo
-              approssimativo e segnalabili. Il database rifiuta creazioni senza
-              disclaimer.
+              approssimativo e segnalabili.
             </Text>
           </View>
         </View>
@@ -231,7 +230,7 @@ export function AlertsScreen() {
       </AppCard>
 
       <AppCard tone="warm">
-        <Text style={styles.cardTitle}>Contesto comune</Text>
+        <Text style={styles.cardTitle}>Spazio condiviso</Text>
         <Text style={styles.bodyText}>
           Le azioni sotto usano il cane e il luogo selezionati. Per ora l’area è
           costruita attorno a un luogo BauBook, non a un disegno libero su
@@ -296,7 +295,7 @@ export function AlertsScreen() {
           />
           <View style={styles.criticalCopy}>
             <Text style={styles.eyebrow}>Mi sono perso!</Text>
-            <Text style={styles.cardTitle}>Alert smarrimento con TTL</Text>
+            <Text style={styles.cardTitle}>Alert smarrimento con scadenza obbligatoria</Text>
             <Text style={styles.bodyText}>
               Default 24h, massimo beta 48h. Un solo alert attivo per cane: se
               lo ritrovi, lo chiudi.
@@ -333,7 +332,7 @@ export function AlertsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Descrizione pubblica prudente</Text>
+          <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy 🔒</Text>
           <TextInput
             value={lostDescription}
             onChangeText={setLostDescription}
@@ -381,7 +380,7 @@ export function AlertsScreen() {
             <Text style={styles.eyebrow}>Pericolo!</Text>
             <Text style={styles.cardTitle}>Segnalazioni temporanee</Text>
             <Text style={styles.bodyText}>
-              TTL 2/6/24/72h, severità 1-5, moderazione iniziale pending ma
+              Durata variabile, gravità da 1-5, moderazione iniziale pending ma
               visibile in beta locale.
             </Text>
           </View>
@@ -402,7 +401,7 @@ export function AlertsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>TTL segnalazione</Text>
+          <Text style={styles.label}>Durata segnalazione</Text>
           <View style={styles.chipRow}>
             {dangerTtlOptions.map((hours) => (
               <ChoiceChip
@@ -416,7 +415,7 @@ export function AlertsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Severità</Text>
+          <Text style={styles.label}>Gravità</Text>
           <View style={styles.chipRow}>
             {severityOptions.map((value) => (
               <ChoiceChip
@@ -430,7 +429,7 @@ export function AlertsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Descrizione pubblica prudente</Text>
+          <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy 🔒</Text>
           <TextInput
             value={dangerDescription}
             onChangeText={setDangerDescription}
@@ -440,7 +439,7 @@ export function AlertsScreen() {
         </View>
 
         <DisclaimerBox
-          title="Disclaimer Pericolo"
+          title="Disclaimer pericolo"
           items={dangerDisclaimer}
           accepted={dangerAccepted}
           onToggle={() => setDangerAccepted((value) => !value)}
@@ -481,7 +480,7 @@ export function AlertsScreen() {
           />
         </View>
         <DisclaimerBox
-          title="Disclaimer avvistamento"
+          title="Disclaimer Avvistamento"
           items={sightingDisclaimer}
           accepted={sightingAccepted}
           onToggle={() => setSightingAccepted((value) => !value)}
@@ -491,11 +490,11 @@ export function AlertsScreen() {
 
       <View style={styles.alertList}>
         <SectionHeader
-          eyebrow="Bacheca safety"
+          eyebrow="Bacheca sicurezza"
           title={
             safetyBoard.status === "loading"
               ? "Carico alert..."
-              : "Alert attivi"
+              : "Segnalazioni attive"
           }
           description={safetyBoard.message}
         />
@@ -532,35 +531,6 @@ export function AlertsScreen() {
         )}
       </View>
 
-      <AppCard>
-        <View style={styles.moderationHeader}>
-          <Image
-            source={baubookImages.icons.moderation}
-            style={styles.moderationIcon}
-          />
-          <View style={styles.criticalCopy}>
-            <Text style={styles.eyebrow}>Spalle coperte</Text>
-            <Text style={styles.cardTitle}>
-              Moderazione e audit già agganciati.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.checkList}>
-          {moderationChecklist.map((item) => (
-            <View key={item} style={styles.checkItem}>
-              <Text style={styles.checkMark}>✓</Text>
-              <Text style={styles.checkText}>{item}</Text>
-            </View>
-          ))}
-          <View style={styles.checkItem}>
-            <Text style={styles.checkMark}>✓</Text>
-            <Text style={styles.checkText}>
-              RPC safety con disclaimer obbligatorio e TTL clampato anche lato
-              database.
-            </Text>
-          </View>
-        </View>
-      </AppCard>
     </Screen>
   );
 }

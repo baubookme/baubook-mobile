@@ -269,7 +269,7 @@ function fallbackNearbyDogAreas(message: string, errorMessage?: string): NearbyD
     return {
       source: 'supabase',
       places,
-      message: `${places.length} luogo/i caricati da Supabase.`,
+      message: `${places.length} luogo/i caricati.`,
     };
   } catch (error) {
     return {

@@ -165,14 +165,14 @@ export function MapScreen() {
       <SectionHeader
         eyebrow="Mappa BauBook"
         title="Aree cani vicino a te"
-        description="Catalogo ufficiale Venezia-Mestre, geocoding beta e ricerca nel raggio dalla posizione attuale. La posizione serve solo per il calcolo immediato."
+        description="Aree censite a Venezia-Mestre, geocoding beta e ricerca nel raggio dalla posizione attuale. La posizione serve solo per il calcolo immediato. 📌"
       />
 
       <AppCard tone={isLive ? 'teal' : 'warm'}>
         <View style={styles.statusHeader}>
           <IconBubble source={isLive ? baubookImages.icons.dogArea : baubookImages.icons.settings} tone={isLive ? 'teal' : 'warm'} />
           <View style={styles.statusCopy}>
-            <Text style={styles.cardTitle}>{isLive ? 'Backend collegato' : 'Backend non disponibile'}</Text>
+
             <Text style={styles.bodyText}>{status === 'loading' ? 'Carico i luoghi dal database...' : message}</Text>
             <View style={styles.tagsRow}>
               <Tag label={`${approvedDogAreas.length} aree cani`} tone="teal" />
@@ -189,7 +189,7 @@ export function MapScreen() {
                 }`}
                 tone="orange"
               />
-              <Tag label={source === 'supabase' ? 'Supabase live' : 'servizio non disponibile'} tone={source === 'supabase' ? 'green' : 'orange'} />
+
             </View>
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             <View style={styles.buttonWrap}>
@@ -205,7 +205,7 @@ export function MapScreen() {
           <View style={styles.searchCopy}>
             <Text style={styles.cardTitle}>Trova area cani nel raggio di X km</Text>
             <Text style={styles.bodyText}>
-              Usa la posizione attuale per interrogare Supabase con PostGIS. Se il database non contiene luoghi pubblici, vedrai uno stato vuoto controllato.
+              Usa la posizione attuale per la ricerca. 🗺️
             </Text>
           </View>
         </View>

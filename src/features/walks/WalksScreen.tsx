@@ -212,10 +212,9 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         <View style={styles.heroHeader}>
           <IconBubble source={baubookImages.icons.walks} tone="teal" size={70} />
           <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>Atomic block 1.9.4</Text>
-            <Text style={styles.title}>Walk Command Center</Text>
+            <Text style={styles.title}>Hub passeggiate 🐾</Text>
             <Text style={styles.bodyText}>
-              Il punto operativo per uscire: cane, luogo, safety, presenza e passeggiata reale in una schermata sola.
+              Il punto operativo per uscire: amici, luoghi, sicurezza, presenza e passeggiata in corso in una sola schermata.
             </Text>
           </View>
         </View>
@@ -259,10 +258,10 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           </View>
         </View>
         <View style={styles.checkList}>
-          <ChecklistRow title="Account" description={profileReady ? 'Profilo umano attivo.' : 'Accedi in Setup per scrivere dati reali.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
-          <ChecklistRow title="Cane" description={dogReady ? `${selectedDog?.name ?? 'Cane'} pronto.` : 'Crea il primo cane in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
-          <ChecklistRow title="Luogo" description={placeReady ? `${selectedPlace?.name ?? 'Luogo'} selezionato.` : 'Aspetta i luoghi o apri la Mappa.'} ok={placeReady} action="Mappa" onPress={onNavigate ? () => onNavigate('map') : undefined} />
-          <ChecklistRow title="Safety" description={activeAlerts.length ? `${activeAlerts.length} alert attivi da leggere.` : 'Nessun alert attivo nella board.'} ok={activeAlerts.length === 0} action="Aiuto" onPress={onNavigate ? () => onNavigate('alerts') : undefined} />
+          <ChecklistRow title="Account 👤" description={profileReady ? 'Profilo attivo.' : 'Accedi in Setup per scrivere dati reali.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
+          <ChecklistRow title="Attore 🐾" description={dogReady ? `${selectedDog?.name ?? 'Attore'} pronto.` : 'Crea il primo amico in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
+          <ChecklistRow title="Luogo 📍" description={placeReady ? `${selectedPlace?.name ?? 'Luogo'} selezionato.` : 'Aspetta i luoghi o apri la Mappa.'} ok={placeReady} action="Mappa" onPress={onNavigate ? () => onNavigate('map') : undefined} />
+          <ChecklistRow title="Sicurezza 🛡️" description={activeAlerts.length ? `${activeAlerts.length} alert attivi da leggere.` : 'Nessun alert attivo nella board.'} ok={activeAlerts.length === 0} action="Aiuto" onPress={onNavigate ? () => onNavigate('alerts') : undefined} />
         </View>
       </AppCard>
 
@@ -270,8 +269,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         <View style={styles.sectionTitleRow}>
           <IconBubble source={baubookImages.icons.route} tone="teal" />
           <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Rotta consigliata</Text>
-            <Text style={styles.bodyText}>Scegli dove uscire. Il punteggio tiene conto di safety, tipo luogo e moderazione.</Text>
+            <Text style={styles.cardTitle}>Itinerari consigliati</Text>
+            <Text style={styles.bodyText}>Scegli dove e come uscire con un occhio alla sicurezza.</Text>
           </View>
         </View>
 
@@ -313,12 +312,12 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           <IconBubble source={baubookImages.icons.calendar} tone="warm" />
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Crea passeggiata</Text>
-            <Text style={styles.bodyText}>Programma un'uscita e lascia agli altri umani un messaggio chiaro.</Text>
+            <Text style={styles.bodyText}>Programma un'uscita e lascia agli altri un messaggio chiaro.</Text>
           </View>
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Cane protagonista</Text>
+          <Text style={styles.label}>Attore protagonista 👉</Text>
           <View style={styles.chipRow}>
             {auth.dogs.length ? (
               auth.dogs.map((dog) => (
@@ -341,7 +340,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Messaggio del cane</Text>
+          <Text style={styles.label}>Messaggio</Text>
           <TextInput
             value={message}
             onChangeText={setMessage}
@@ -372,7 +371,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           <IconBubble source={baubookImages.icons.checkin} tone="teal" />
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Presenza temporanea</Text>
-            <Text style={styles.bodyText}>Dici “sono qui per un po'” senza tracking live continuo. Scade dopo 90 minuti.</Text>
+            <Text style={styles.bodyText}>.. “sono qui per un po'” senza tracking live continuo. Scade dopo 90 minuti.</Text>
           </View>
         </View>
 
@@ -393,7 +392,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         <View style={styles.sectionTitleRow}>
           <IconBubble source={activeAlerts.length ? baubookImages.icons.danger : baubookImages.icons.safety} tone={activeAlerts.length ? 'danger' : 'teal'} />
           <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>{activeAlerts.length ? 'Safety prima di uscire' : 'Safety ok'}</Text>
+            <Text style={styles.cardTitle}>{activeAlerts.length ? 'Occhi aperti prima di uscire' : 'Sicurezza ok'}</Text>
             <Text style={styles.bodyText}>{safetyBoard.message}</Text>
             {safetyBoard.errorMessage ? <Text style={styles.errorText}>{safetyBoard.errorMessage}</Text> : null}
           </View>
@@ -457,7 +456,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           ) : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>Nessuna passeggiata live per ora</Text>
-              <Text style={styles.helperText}>Crea la prima uscita BauBook e controlla Supabase: walk_plans e community_events si popoleranno.</Text>
+              <Text style={styles.helperText}>Crea la prima uscita BauBook e controlla Supabase.</Text>
             </View>
           )}
         </View>
@@ -465,7 +464,6 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
       <AppCard>
         <Text style={styles.cardTitle}>Presenze attive</Text>
-        <Text style={styles.bodyText}>Presenze leggere, temporanee e non geolocalizzazione continua.</Text>
         <View style={styles.presenceList}>
           {walksBoard.presences.length ? (
             walksBoard.presences.map((presence) => (

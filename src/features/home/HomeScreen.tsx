@@ -32,7 +32,7 @@ const quickActions: QuickAction[] = [
   },
   {
     title: 'Aiuto',
-    subtitle: 'Apri smarrimenti, pericoli e avvistamenti.',
+    subtitle: 'Smarrimenti, pericoli e avvistamenti.',
     tab: 'alerts',
     tone: 'red',
   },
@@ -43,8 +43,8 @@ const quickActions: QuickAction[] = [
     tone: 'orange',
   },
   {
-    title: 'Io sono',
-    subtitle: 'Tieni pronto il profilo del tuo cane.',
+    title: 'Io sono ..',
+    subtitle: 'Tieni aggiornato il profilo del tuo amico.',
     tab: 'dog',
     tone: 'green',
   },
@@ -76,7 +76,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         ok: auth.isSignedIn,
       },
       {
-        label: 'Cane',
+        label: 'Attore Protagonista 🐾',
         value: auth.dogs.length ? auth.dogs[0].name : 'da creare',
         ok: auth.dogs.length > 0,
       },
@@ -101,8 +101,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             style={{ width: 119, height: 119, resizeMode: 'contain' }}
           />
           <View style={styles.heroCopy}>
-            <Text style={styles.kicker}>Woof!</Text>
-            <Text style={styles.title}>Cosa potrei fare oggi?</Text>
+
+            <Text style={styles.title}>Sniff sniff… sento novità! Che succede oggi? 🐾</Text>
             
           </View>
         </View>
@@ -124,7 +124,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.kicker}>Azioni rapide</Text>
-            <Text style={styles.sectionTitle}>Parti da qui</Text>
+
           </View>
         </View>
 
@@ -139,7 +139,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.kicker}>Safety radar</Text>
-            <Text style={styles.sectionTitle}>Alert e zone da guardare</Text>
+            <Text style={styles.sectionTitle}>Alert e zone da tenere d'occhio</Text>
           </View>
           <Pressable
             onPress={safetyBoard.reload}
@@ -186,7 +186,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.kicker}>Profilo cane</Text>
+            <Text style={styles.kicker}>Profilo</Text>
             <Text style={styles.sectionTitle}>Stato profilo</Text>
           </View>
           <AppButton label="Setup" onPress={() => onNavigate('profile')} variant="ghost" />

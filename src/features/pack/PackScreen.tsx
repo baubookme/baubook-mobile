@@ -145,7 +145,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
     if (activeAlerts.length > 0) {
       result.push({
         title: `${activeAlerts.length} alert da leggere`,
-        description: `${lostDogCount} smarrimento/i e ${dangerCount} pericolo/i attivi nella board safety.`,
+        description: `${lostDogCount} smarrimento/i e ${dangerCount} pericolo/i attivi nella bacheca sicurezza.`,
         cta: 'Apri Aiuto',
         target: 'alerts',
         tone: dangerCount > 0 ? 'red' : 'orange',
@@ -169,27 +169,13 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
         <View style={styles.heroRow}>
           <Image source={baubookImages.icons.friends} style={styles.heroIcon} />
           <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>Atomic block 1.9.3</Text>
-            <Text style={styles.title}>Branco live</Text>
+            <Text style={styles.title}>Branco in azione 🐾</Text>
             <Text style={styles.bodyText}>
-              Una cabina di regia semplice: account, cane, luoghi, safety e prossima azione in un solo colpo d'occhio.
+              Una bacheca semplice: account, il mio amico, luoghi, sicurezza e prossima azione in un solo colpo d'occhio.
             </Text>
           </View>
         </View>
-        <View style={styles.scoreWrap}>
-          <Text style={styles.scoreNumber}>{packScore}</Text>
-          <View style={styles.scoreCopy}>
-            <Text style={styles.scoreLabel}>Pack readiness</Text>
-            <Text style={styles.scoreHint}>
-              {packScore >= 85
-                ? 'Branco pronto: puoi usare la beta sul serio.'
-                : packScore >= 65
-                  ? 'Buona base: mancano pochi tasselli.'
-                  : 'Da completare: segui le missioni qui sotto.'}
-            </Text>
-          </View>
-          <Tag label={packTone === 'red' ? 'da fare' : packTone === 'orange' ? 'in setup' : 'pronto'} tone={packTone} />
-        </View>
+
       </AppCard>
 
       <View style={styles.kpiGrid}>
@@ -203,8 +189,8 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
         <View style={styles.sectionTitleRow}>
           <IconBubble source={baubookImages.icons.notifications} tone="warm" />
           <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Missioni adesso</Text>
-            <Text style={styles.bodyText}>Ordine operativo per rendere BauBook utile in beta, non solo bello.</Text>
+            <Text style={styles.cardTitle}>Attività</Text>
+            <Text style={styles.bodyText}>Dai sempre un'occhiata qui. 👀</Text>
           </View>
         </View>
         <View style={styles.missionList}>
@@ -225,8 +211,8 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
         <View style={styles.sectionTitleRow}>
           <IconBubble source={baubookImages.icons.route} tone="teal" />
           <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Radar passeggiata</Text>
-            <Text style={styles.bodyText}>Prime rotte suggerite dai luoghi disponibili e dal livello safety attuale.</Text>
+            <Text style={styles.cardTitle}>Radar passeggiate</Text>
+            <Text style={styles.bodyText}>Primi suggererimenti sui luoghi disponibili e dal livello sicurezza.</Text>
           </View>
         </View>
         <View style={styles.routeList}>
@@ -247,20 +233,6 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
         </View>
       </AppCard>
 
-      <AppCard tone={activeAlerts.length ? 'danger' : 'teal'}>
-        <View style={styles.sectionTitleRow}>
-          <IconBubble source={activeAlerts.length ? baubookImages.icons.danger : baubookImages.icons.safety} tone={activeAlerts.length ? 'danger' : 'teal'} />
-          <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>{activeAlerts.length ? 'Occhio safety' : 'Safety pulita'}</Text>
-            <Text style={styles.bodyText}>{safetyBoard.message}</Text>
-            {safetyBoard.errorMessage ? <Text style={styles.errorText}>{safetyBoard.errorMessage}</Text> : null}
-          </View>
-        </View>
-        <View style={styles.actionRow}>
-          <AppButton label="Aiuto" variant={activeAlerts.length ? 'danger' : 'primary'} icon={baubookImages.icons.lostDog} onPress={() => onNavigate('alerts')} />
-          <AppButton label="Mappa" variant="ghost" icon={baubookImages.icons.map} onPress={() => onNavigate('map')} />
-        </View>
-      </AppCard>
 
       <View style={styles.quickActions}>
         <AppButton label="Passeggio" icon={baubookImages.icons.walks} onPress={() => onNavigate('walks')} />

@@ -154,7 +154,7 @@ export function HomeDogDiaryLite() {
           </View>
           <View>
             <Text style={styles.eyebrow}>Dog Diary</Text>
-            <Text style={styles.title}>Il diario leggero del tuo cane</Text>
+            <Text style={styles.title}>Piccole cose, grandi emozioni: il mio diario leggero!</Text>
           </View>
         </View>
 
@@ -164,7 +164,7 @@ export function HomeDogDiaryLite() {
       </View>
 
       <View style={styles.summaryBox}>
-        <Text style={styles.summaryTitle}>Smart Summary</Text>
+
         <Text style={styles.summaryLine}>{summary.last7DaysCount} eventi negli ultimi 7 giorni</Text>
         <Text style={styles.summaryLine}>
           Ultimo evento: {summary.lastEvent ? getCategory(summary.lastEvent.category).label + ' - ' + formatDay(summary.lastEvent.createdAt) : 'nessun evento registrato'}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#2b241d',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '900',
     marginTop: 2
   },

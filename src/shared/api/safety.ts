@@ -324,8 +324,8 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
       source: 'supabase',
       alerts,
       message: alerts.length
-        ? `${lost.length} smarrimento/i e ${dangers.length} pericolo/i caricati da Supabase.`
-        : 'Nessun alert safety attivo nella beta Venezia-Mestre.',
+        ? `${lost.length} smarrimento/i e ${dangers.length} pericolo/i caricati.`
+        : 'Nessun alert sicurezza attivo nella beta Venezia-Mestre.',
     };
   }
   catch (error) {

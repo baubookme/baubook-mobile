@@ -35,14 +35,13 @@ export function DogProfileScreen() {
     }
   }, [firstDog?.id]);
 
-  const saveLabel = firstDog ? 'Aggiorna cane su Supabase' : 'Crea il mio cane';
+  const saveLabel = firstDog ? 'Aggiorna su Supabase' : 'Crea il mio profilo 🐾';
 
   return (
     <Screen>
       <SectionHeader
         eyebrow="Io sono...!"
-        title="Profilo cane in prima persona"
-        description="Ora questa schermata salva davvero su Supabase quando l'account e' attivo. Il demo resta visibile come fallback."
+        title="Il mio profilo a 4 zampe"
       />
 
       <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
@@ -51,14 +50,14 @@ export function DogProfileScreen() {
             <Image source={baubookImages.avatar} style={styles.avatar} />
           </View>
           <View style={styles.profileCopy}>
-            <Text style={styles.eyebrow}>{firstDog ? 'Profilo Supabase' : auth.isSignedIn ? 'Nuovo cane' : 'Profilo demo'}</Text>
-            <Text style={styles.name}>{dogName || 'Il mio cane'}</Text>
+            <Text style={styles.eyebrow}>{firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo demo'}</Text>
+            <Text style={styles.name}>{dogName || 'Il mio amico'}</Text>
             <Text style={styles.visibility}>
               {auth.isSignedIn ? 'Visibilita: pubblico beta · moderazione: approved' : 'Accedi nel tab Setup per salvare davvero'}
             </Text>
           </View>
         </View>
-        <Text style={styles.quote}>“{headline || 'Scrivi una bio in prima persona.'}”</Text>
+        <Text style={styles.quote}>“{headline || 'Scrivi la mia carta d’identità.'}”</Text>
         <View style={styles.statusRow}>
           <Tag label={auth.isSignedIn ? 'Account attivo' : 'Servizio non disponibile'} tone={auth.isSignedIn ? 'green' : 'orange'} />
           <Tag label={firstDog ? 'DB salvato' : 'non salvato'} tone={firstDog ? 'green' : 'orange'} />
@@ -80,7 +79,7 @@ export function DogProfileScreen() {
           <TextInput value={dogName} onChangeText={setDogName} placeholder="Nome del cane" style={styles.input} />
         </View>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Bio in prima persona</Text>
+          <Text style={styles.label}>La mia carta d’identità</Text>
           <TextInput
             value={headline}
             onChangeText={setHeadline}
@@ -115,7 +114,7 @@ export function DogProfileScreen() {
               visibility: 'public',
             })}
           />
-          <AppButton label="Foto dopo" variant="ghost" icon={baubookImages.icons.camera} disabled />
+          <AppButton label="Foto (in progress)" variant="ghost" icon={baubookImages.icons.camera} disabled />
         </View>
         {!auth.isSignedIn ? <Text style={styles.helperText}>Per salvare il cane: vai in Setup, invia email OTP/magic link e crea il profilo umano.</Text> : null}
       </AppCard>
@@ -148,7 +147,7 @@ export function DogProfileScreen() {
       </AppCard>
 
       <AppCard tone="pink">
-        <Text style={styles.cardTitle}>Note utili, non giudicanti</Text>
+        <Text style={styles.cardTitle}>Consigli utili, zero giudizi 📒</Text>
         <View style={styles.notesList}>
           {(privateNotes ? privateNotes.split('\n').filter(Boolean) : demoDog.notes).map((note) => (
             <View key={note} style={styles.noteItem}>

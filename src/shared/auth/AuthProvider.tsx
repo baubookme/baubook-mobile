@@ -240,12 +240,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return exists ? current.map((item) => (item.id === savedDog.id ? savedDog : item)) : [...current, savedDog];
       });
       setStatus('signed_in');
-      setMessage('Profilo cane salvato su Supabase. Bau!');
+      setMessage('Profilo salvato su Supabase. Bau!');
       setErrorMessage(undefined);
     }
     catch (error) {
       setStatus('error');
-      setMessage('Salvataggio cane non riuscito.');
+      setMessage('Salvataggio non riuscito.');
       setErrorMessage(normalizeError(error));
     }
   }, [profile]);
