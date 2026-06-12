@@ -11,6 +11,12 @@ export const baubookImages = {
   socialIntro: require('../../../assets/baubook/social/post-cose-baubook.png') as ImageSourcePropType,
   socialBeta: require('../../../assets/baubook/social/post-beta-in-arrivo.png') as ImageSourcePropType,
   socialPromises: require('../../../assets/baubook/social/post-tre-promesse.png') as ImageSourcePropType,
+  quickActions: {
+    walk: require('../../../assets/baubook/quick-actions/walk.png') as ImageSourcePropType,
+    map: require('../../../assets/baubook/quick-actions/map.png') as ImageSourcePropType,
+    help: require('../../../assets/baubook/quick-actions/help.png') as ImageSourcePropType,
+    profile: require('../../../assets/baubook/quick-actions/profile.png') as ImageSourcePropType,
+  },
   badges: {
     beta: require('../../../assets/baubook/badges/beta.png') as ImageSourcePropType,
     inArrivo: require('../../../assets/baubook/badges/in-arrivo.png') as ImageSourcePropType,

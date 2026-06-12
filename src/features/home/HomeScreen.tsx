@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View , Image} from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { Screen } from '../../shared/components/Screen';
+import { baubookImages } from '../../shared/assets/images';
 import { colors, radius, shadows, spacing, typography } from '../../shared/theme/theme';
 import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
@@ -16,9 +17,11 @@ interface HomeScreenProps {
 
 type ActionTone = 'teal' | 'orange' | 'red' | 'green';
 
+type QuickActionImage = 'walk' | 'map' | 'help' | 'profile';
+
 interface QuickAction {
   title: string;
-  subtitle: string;
+  image: QuickActionImage;
   tab: TabKey;
   tone: ActionTone;
 }
@@ -26,25 +29,25 @@ interface QuickAction {
 const quickActions: QuickAction[] = [
   {
     title: 'Passeggio',
-    subtitle: 'Organizza o raggiungi una presenza temporanea.',
+    image: 'walk',
     tab: 'walks',
     tone: 'teal',
   },
   {
     title: 'Aiuto',
-    subtitle: 'Smarrimenti, pericoli e avvistamenti.',
+    image: 'help',
     tab: 'alerts',
     tone: 'red',
   },
   {
     title: 'Mappa',
-    subtitle: 'Controlla luoghi e zone utili Venezia-Mestre.',
+    image: 'map',
     tab: 'map',
     tone: 'orange',
   },
   {
-    title: 'Io sono ..',
-    subtitle: 'Tieni aggiornato il profilo del tuo amico.',
+    title: 'Io sono',
+    image: 'profile',
     tab: 'dog',
     tone: 'green',
   },
@@ -219,12 +222,16 @@ function MetricPill({ label, value, tone }: { label: string; value: string; tone
 function QuickActionCard({ action, onPress }: { action: QuickAction; onPress: () => void }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Apri ${action.title}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.quickCard, toneStyles[action.tone], pressed && styles.pressed]}
+      style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
     >
-      <Text style={styles.quickTitle}>{action.title}</Text>
-      <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
-      <Text style={styles.quickCta}>Apri</Text>
+      <Image
+        source={baubookImages.quickActions[action.image]}
+        style={styles.quickCardImage}
+        resizeMode="contain"
+      />
     </Pressable>
   );
 }
@@ -330,7 +337,8 @@ const styles = StyleSheet.create({
   },
   heroActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
   section: {
@@ -354,18 +362,20 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     width: '48%',
-    minHeight: 132,
+    aspectRatio: 1.45,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.xs,
-    justifyContent: 'space-between',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  quickCardImage: {
+    width: '100%',
+    height: '100%',
   },
   quickTitle: {
     color: colors.ink,
     fontSize: typography.h3,
     fontWeight: '900',
+    textAlign: 'center',
   },
   quickSubtitle: {
     color: colors.text,
@@ -377,6 +387,7 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontSize: typography.small,
     fontWeight: '900',
+    textAlign: 'center',
   },
   refreshButton: {
     borderRadius: radius.pill,
