@@ -11,6 +11,12 @@ export const baubookImages = {
   socialIntro: require('../../../assets/baubook/social/post-cose-baubook.png') as ImageSourcePropType,
   socialBeta: require('../../../assets/baubook/social/post-beta-in-arrivo.png') as ImageSourcePropType,
   socialPromises: require('../../../assets/baubook/social/post-tre-promesse.png') as ImageSourcePropType,
+  homeSafety: {
+    scout: require('../../../assets/baubook/home/safety_scout.png') as ImageSourcePropType,
+  },
+  safetyCircles: {
+    lostHelp: require('../../../assets/baubook/safety-circles/lost_help.png') as ImageSourcePropType,
+  },
   quickActions: {
     walk: require('../../../assets/baubook/quick-actions/walk.png') as ImageSourcePropType,
     map: require('../../../assets/baubook/quick-actions/map.png') as ImageSourcePropType,
@@ -73,4 +79,8 @@ export const baubookImages = {
     holidays: require('../../../assets/baubook/icons/38_vacanze_pet_friendly.png') as ImageSourcePropType,
     petShop: require('../../../assets/baubook/icons/39_negozi_pet.png') as ImageSourcePropType,
   },
+  brand: {
+    avatarInstagramRound: require('../../../assets/baubook/brand/avatar_instagram_round.png') as ImageSourcePropType,
+  },
+
 };

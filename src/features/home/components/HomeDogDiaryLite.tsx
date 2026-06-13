@@ -2,6 +2,7 @@ import { deleteDogDiaryEvent, loadDogDiaryEvents, saveDogDiaryEvents } from '../
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   Modal,
   PanResponder,
   Pressable,
@@ -11,7 +12,6 @@ import {
   TextInput,
   View
 } from 'react-native';
-
 import BauBookIcon from '../../../components/BauBookIcon';
 
 type DogDiaryCategory = 'walk' | 'food' | 'vet' | 'medicine' | 'grooming' | 'note';
@@ -264,7 +264,11 @@ export function HomeDogDiaryLite() {
         <View style={[styles.headerRow, styles.diaryHeaderAligned]}>
           <View style={styles.titleWrap}>
             <View style={styles.iconBubble}>
-              <BauBookIcon name="diary" size={22} />
+              <Image
+            source={require('../../../../assets/baubook/brand/avatar_instagram_round.png')}
+            style={styles.diaryAvatarLogo}
+            resizeMode="contain"
+          />
             </View>
             <View style={styles.titleTextWrap}>
               <Text style={styles.eyebrow}>Dog Diary</Text>
@@ -414,6 +418,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f3e6d4'
+  },
+  diaryAvatarLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
   },
   eyebrow: {
     color: '#7a5a36',

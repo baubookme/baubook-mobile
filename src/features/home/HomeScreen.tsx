@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
-import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
+import type { ImageSourcePropType } from 'react-native';
+
+import { baubookImages } from '../../shared/assets/images';
+import type { SafetyAlertModel } from '../../shared/api/safety';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { Screen } from '../../shared/components/Screen';
-import { baubookImages } from '../../shared/assets/images';
+import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
+import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, shadows, spacing, typography } from '../../shared/theme/theme';
-import type { SafetyAlertModel } from '../../shared/api/safety';
 import type { TabKey } from '../../shared/types/domain';
 
 import HomeDogDiaryLite from './components/HomeDogDiaryLite';
+
 interface HomeScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
@@ -53,6 +56,30 @@ const quickActions: QuickAction[] = [
   },
 ];
 
+function newestAlert(alerts: SafetyAlertModel[]): SafetyAlertModel | null {
+  if (!alerts.length) {
+    return null;
+  }
+
+  return [...alerts].sort((a, b) => new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime())[0];
+}
+
+function formatMetricAlertDate(alert: SafetyAlertModel | null): string {
+  if (!alert) {
+    return 'Nessun alert inserito';
+  }
+
+  const date = new Date(alert.createdAtIso);
+  if (Number.isNaN(date.getTime())) {
+    return 'Ultimo alert inserito: ora non disponibile';
+  }
+
+  const day = date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+  const time = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  return `Ultimo alert inserito: ${day}, ${time}`;
+}
+
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const auth = useAuthAccount();
   const placesState = useSupabasePlaces();
@@ -63,12 +90,21 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     [safetyBoard.alerts],
   );
 
-  const lostCount = useMemo(
-    () => activeAlerts.filter((alert) => alert.type === 'lost_dog').length,
+  const dangerAlerts = useMemo(
+    () => activeAlerts.filter((alert) => alert.type === 'danger'),
     [activeAlerts],
   );
 
-  const dangerCount = activeAlerts.length - lostCount;
+  const lostAlerts = useMemo(
+    () => activeAlerts.filter((alert) => alert.type === 'lost_dog'),
+    [activeAlerts],
+  );
+
+  const latestDangerAlert = useMemo(() => newestAlert(dangerAlerts), [dangerAlerts]);
+  const latestLostAlert = useMemo(() => newestAlert(lostAlerts), [lostAlerts]);
+
+  const lostCount = lostAlerts.length;
+  const dangerCount = dangerAlerts.length;
   const visiblePlacesCount = placesState.places.length;
 
   const setupItems = useMemo(
@@ -89,7 +125,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         ok: placesState.places.length > 0,
       },
     ],
-    [auth.dogs, auth.isSignedIn, placesState.source],
+    [auth.dogs, auth.isSignedIn, placesState.places],
   );
 
   const topAlerts = activeAlerts.slice(0, 3);
@@ -97,33 +133,24 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <Screen>
       <View style={styles.heroCard}>
-      <HomeDogDiaryLite />
-        <View style={styles.heroHeader}>
+<View style={styles.heroHeader}>
           <Image
             source={require('../../../assets/baubook/cartoon-icons/home_today_pilot.png')}
-            style={{ width: 119, height: 119, resizeMode: 'contain' }}
+            style={styles.heroDogImage}
           />
           <View style={styles.heroCopy}>
-
             <Text style={styles.title}>Sniff sniff… sento novità! Che succede oggi? 🐾</Text>
-            
           </View>
         </View>
 
-        <View style={styles.metricsGrid}>
-          <MetricPill label="Alert attivi" value={String(activeAlerts.length)} tone="red" />
-          <MetricPill label="Smarrimenti" value={String(lostCount)} tone="orange" />
-          <MetricPill label="Pericoli" value={String(dangerCount)} tone="red" />
-          <MetricPill label="Luoghi" value={String(visiblePlacesCount)} tone="teal" />
-        </View>
+        <HomeDogDiaryLite />
 
-      </View>
+                      </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.kicker}>Azioni rapide</Text>
-
           </View>
         </View>
 
@@ -201,17 +228,78 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           ))}
         </View>
       </View>
+
       <Text style={styles.versionFooter}>BauBook v0.6.0</Text>
     </Screen>
   );
 }
 
-function MetricPill({ label, value, tone }: { label: string; value: string; tone: ActionTone }) {
-  return (
-    <View style={[styles.metricPill, toneStyles[tone]]}>
+function MetricPill({
+  detail,
+  label,
+  onPress,
+  tone,
+  value,
+}: {
+  detail: string;
+  label: string;
+  onPress?: () => void;
+  tone: ActionTone;
+  value: string;
+}) {
+  const content = (
+    <>
+      <Text style={styles.metricDetail} numberOfLines={1}>{detail}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
-    </View>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Apri bacheca sicurezza ${label}`}
+        onPress={onPress}
+        style={({ pressed }) => [styles.metricPill, toneStyles[tone], pressed && styles.pressed]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={[styles.metricPill, toneStyles[tone]]}>{content}</View>;
+}
+
+function MetricScoutWidePill({
+  detail,
+  label,
+  onPress,
+  source,
+  value,
+}: {
+  detail: string;
+  label: string;
+  onPress: () => void;
+  source: ImageSourcePropType;
+  value: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Apri bacheca sicurezza Smarrimenti"
+      onPress={onPress}
+      style={({ pressed }) => [styles.metricScoutWidePill, pressed && styles.pressed]}
+    >
+      <Image source={source} style={styles.metricScoutImage} resizeMode="contain" />
+      <View style={styles.metricScoutContent}>
+        <Text style={styles.metricScoutDetail} numberOfLines={1}>{detail}</Text>
+        <View style={styles.metricScoutBody}>
+          <Text style={styles.metricValue}>{value}</Text>
+          <Text style={styles.metricLabel}>{label}</Text>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -223,11 +311,7 @@ function QuickActionCard({ action, onPress }: { action: QuickAction; onPress: ()
       onPress={onPress}
       style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
     >
-      <Image
-        source={baubookImages.quickActions[action.image]}
-        style={styles.quickCardImage}
-        resizeMode="contain"
-      />
+      <Image source={baubookImages.quickActions[action.image]} style={styles.quickCardImage} resizeMode="contain" />
     </Pressable>
   );
 }
@@ -238,16 +322,16 @@ function RadarAlertRow({ alert, onPress }: { alert: SafetyAlertModel; onPress: (
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.alertRow, pressed && styles.pressed]}>
       <View style={[styles.alertBadge, danger ? styles.alertBadgeDanger : styles.alertBadgeLost]}>
-        {danger ? (
-          <Image source={alert.icon} style={styles.alertBadgeImage} />
-        ) : (
-          <Text style={styles.alertBadgeText}>?</Text>
-        )}
+        <Image
+          source={danger ? alert.icon : baubookImages.safetyCircles.lostHelp}
+          style={styles.alertBadgeImage}
+          resizeMode="contain"
+        />
       </View>
       <View style={styles.alertRowCopy}>
         <Text style={styles.alertRowTitle}>{alert.title}</Text>
         <Text style={styles.alertRowMeta}>
-          {alert.placeName} Â· {alert.ttlLabel} Â· {alert.radiusLabel}
+          {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
         </Text>
         <Text style={styles.alertRowText} numberOfLines={2}>
           {alert.description}
@@ -276,18 +360,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'center',
   },
-  heroIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroIconText: {
-    color: '#FFFFFF',
-    fontSize: typography.h2,
-    fontWeight: '900',
+  heroDogImage: {
+    width: 119,
+    height: 119,
+    resizeMode: 'contain',
   },
   heroCopy: {
     flex: 1,
@@ -302,8 +378,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontSize: Math.round(typography.h1 * 0.80),
-    lineHeight: Math.round(31 * 0.80),
+    fontSize: Math.round(typography.h1 * 0.8),
+    lineHeight: Math.round(31 * 0.8),
     fontWeight: '900',
   },
   subtitle: {
@@ -316,14 +392,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    justifyContent: 'space-between',
   },
   metricPill: {
-    flexGrow: 1,
-    minWidth: '45%',
+    width: '48%',
+    minHeight: 104,
     borderRadius: radius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    justifyContent: 'center',
+  },
+  metricScoutWidePill: {
+    position: 'relative',
+    width: '100%',
+    minHeight: 132,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    backgroundColor: colors.orangeSoft,
+  },
+  metricScoutImage: {
+    position: 'absolute',
+    right: 10,
+    bottom: -4,
+    width: '36%',
+    height: 90,
+    opacity: 0.62,
+    zIndex: 0,
+  },
+  metricScoutContent: {
+    position: 'relative',
+    zIndex: 2,
+    flex: 1,
+    minHeight: 132,
+    padding: spacing.md,
+    justifyContent: 'space-between',
+  },
+  metricScoutDetail: {
+    color: colors.primaryDark,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    fontWeight: '900',
+    paddingRight: spacing.xs,
+  },
+  metricScoutBody: {
+    alignSelf: 'flex-start',
+  },
+  metricDetail: {
+    color: colors.primaryDark,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    fontWeight: '900',
+    marginBottom: spacing.sm,
   },
   metricValue: {
     color: colors.ink,
@@ -453,7 +575,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   alertBadgeLost: {
-    backgroundColor: colors.orangeSoft,
+    backgroundColor: 'transparent',
   },
   alertBadgeImage: {
     width: '100%',
@@ -461,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     resizeMode: 'contain',
   },
-    alertBadgeText: {
+  alertBadgeText: {
     color: colors.danger,
     fontSize: typography.h2,
     fontWeight: '900',
@@ -544,7 +666,15 @@ const styles = StyleSheet.create({
   statusDotWarn: {
     backgroundColor: colors.warning,
   },
-  versionFooter: { color: colors.muted, fontSize: typography.tiny, fontWeight: '800', textAlign: 'center', paddingVertical: spacing.md, }, pressed: { opacity: 0.86,
+  versionFooter: {
+    color: colors.muted,
+    fontSize: typography.tiny,
+    fontWeight: '800',
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  pressed: {
+    opacity: 0.86,
     transform: [{ scale: 0.98 }],
   },
 });
@@ -563,6 +693,3 @@ const toneStyles = StyleSheet.create({
     backgroundColor: colors.greenSoft,
   },
 });
-
-
-
