@@ -35,7 +35,7 @@ interface AuthContextValue {
   verifyOtpCode: (email: string, token: string) => Promise<void>;
   refreshAccount: () => Promise<void>;
   saveProfile: (displayName: string) => Promise<void>;
-  saveDogProfile: (dog: DogDraftInput) => Promise<void>;
+  saveDogProfile: (dog: DogDraftInput) => Promise<UserDogModel | null>;
   signOut: () => Promise<void>;
 }
 
@@ -224,12 +224,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const saveDogProfile = useCallback(async (dog: DogDraftInput) => {
+  const saveDogProfile = useCallback(async (dog: DogDraftInput): Promise<UserDogModel | null> => {
     if (!profile) {
       setStatus('error');
       setMessage('Prima crea o carica il profilo umano.');
       setErrorMessage('Profilo umano mancante.');
-      return;
+      return null;
     }
 
     try {
@@ -242,11 +242,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus('signed_in');
       setMessage('Profilo salvato su Supabase. Bau!');
       setErrorMessage(undefined);
+      return savedDog;
     }
     catch (error) {
       setStatus('error');
       setMessage('Salvataggio non riuscito.');
       setErrorMessage(normalizeError(error));
+      return null;
     }
   }, [profile]);
 

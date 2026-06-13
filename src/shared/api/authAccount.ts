@@ -30,6 +30,7 @@ export interface UserDogModel {
   notesPrivate: string | null;
   visibility: 'public' | 'friends' | 'private' | 'shadow_hidden' | 'removed';
   moderationStatus: 'pending' | 'approved' | 'rejected' | 'hidden' | 'escalated' | 'removed';
+  avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +61,7 @@ interface RemoteDogRow {
   notes_private: string | null;
   visibility: UserDogModel['visibility'];
   moderation_status: UserDogModel['moderationStatus'];
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +84,7 @@ export interface DogDraftInput {
   notesPublic?: string | null;
   notesPrivate?: string | null;
   visibility?: UserDogModel['visibility'];
+  avatarUrl?: string | null;
 }
 
 export function normalizeError(error: unknown): string {
@@ -106,6 +109,22 @@ function assertSupabaseClient() {
     throw new Error('Supabase non configurato: controlla .env e supabase-doctor.');
   }
   return client;
+}
+
+function normalizeTagArray(tags: string[]) {
+  const seen = new Set<string>();
+
+  return tags
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .filter((tag) => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
 }
 
 function remoteProfileToModel(row: RemoteProfileRow): UserProfileModel {
@@ -137,10 +156,13 @@ function remoteDogToModel(row: RemoteDogRow): UserDogModel {
     notesPrivate: row.notes_private,
     visibility: row.visibility,
     moderationStatus: row.moderation_status,
+    avatarUrl: row.avatar_url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
+
+const dogSelectFields = 'id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, avatar_url, created_at, updated_at';
 
 export async function getCurrentSession(): Promise<Session | null> {
   const client = assertSupabaseClient();
@@ -244,7 +266,7 @@ export async function fetchMyDogs(profileId: string): Promise<UserDogModel[]> {
   const client = assertSupabaseClient();
   const { data, error } = await client
     .from('dogs')
-    .select('id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, created_at, updated_at')
+    .select(dogSelectFields)
     .eq('owner_id', profileId)
     .order('created_at', { ascending: true });
 
@@ -273,26 +295,30 @@ export async function saveDog(profileId: string, dog: DogDraftInput): Promise<Us
   const client = assertSupabaseClient();
   const cleanName = dog.name.trim();
   if (!cleanName) {
-    throw new Error('Il nome del cane e\' obbligatorio.');
+    throw new Error('Il nome del cane e obbligatorio.');
   }
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     owner_id: profileId,
     name: cleanName,
     birth_year: dog.birthYear ?? null,
     size: dog.size ?? null,
-    personality_tags: dog.personalityTags,
-    sociality_tags: dog.socialityTags,
-    walk_tags: dog.walkTags,
+    personality_tags: normalizeTagArray(dog.personalityTags),
+    sociality_tags: normalizeTagArray(dog.socialityTags),
+    walk_tags: normalizeTagArray(dog.walkTags),
     notes_public: dog.notesPublic?.trim() || null,
     notes_private: dog.notesPrivate?.trim() || null,
     visibility: dog.visibility ?? 'public',
-    moderation_status: 'approved' as const,
+    moderation_status: 'approved',
   };
 
+  if ('avatarUrl' in dog) {
+    payload.avatar_url = dog.avatarUrl?.trim() || null;
+  }
+
   const query = dog.id
-    ? client.from('dogs').update(payload).eq('id', dog.id).select('id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, created_at, updated_at').single()
-    : client.from('dogs').insert(payload).select('id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, created_at, updated_at').single();
+    ? client.from('dogs').update(payload).eq('id', dog.id).select(dogSelectFields).single()
+    : client.from('dogs').insert(payload).select(dogSelectFields).single();
 
   const { data, error } = await query;
 
