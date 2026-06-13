@@ -70,6 +70,8 @@ const profileTagOptions = [
   'spirito libero',
 ];
 
+const profileActionIcon = require('../../../assets/baubook/profile/profile_gear.png');
+
 function uniqueTags(tags: string[]) {
   const seen = new Set<string>();
 
@@ -173,14 +175,14 @@ export function DogProfileScreen() {
 
   const handlePickPhoto = async () => {
     if (!auth.isSignedIn) {
-      Alert.alert('Accesso richiesto', 'Accedi nel tab Setup per salvare la foto del cane.');
+      Alert.alert('Accesso richiesto', 'Accedi nel tab Setup per salvare la foto del 🐶.');
       return;
     }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert('Permesso foto necessario', 'Autorizza l’accesso alla libreria foto per scegliere l’avatar del cane.');
+      Alert.alert('Permesso foto necessario', 'Autorizza l’accesso alla libreria foto per scegliere l’avatar del tuo 🐶.');
       return;
     }
 
@@ -304,7 +306,7 @@ export function DogProfileScreen() {
             <AppButton
                 label={isEditing ? 'Chiudi modifica' : 'Modifica'}
                 variant={isEditing ? 'ghost' : 'primary'}
-                icon={baubookImages.icons.dogProfile}
+                icon={profileActionIcon}
                 onPress={() => {
                   if (isEditing) {
                     handleCancelEdit();
@@ -326,7 +328,7 @@ export function DogProfileScreen() {
                 <View style={styles.formHeaderCopy}>
                   <Text style={styles.cardTitle}>Modifica profilo</Text>
                   <Text style={styles.bodyText}>
-                    Identità utile per incontri, passeggiate e alert. Foto, descrizione e tag aiutano gli altri utenti a capire meglio il tuo cane.
+                    Identità utile per incontri, passeggiate e alert. Foto, descrizione e tag aiutano gli altri utenti a capire meglio il tuo 🐶.
                   </Text>
                 </View>
               </View>
@@ -336,7 +338,7 @@ export function DogProfileScreen() {
                 <TextInput
                     value={dogName}
                     onChangeText={setDogName}
-                    placeholder="Nome del cane"
+                    placeholder="Nome del 🐶"
                     placeholderTextColor={colors.muted}
                     style={styles.input}
                 />
@@ -367,25 +369,30 @@ export function DogProfileScreen() {
               </View>
 
               <View style={styles.actionsRow}>
-                <AppButton
-                    label="Foto"
-                    variant="ghost"
-                    icon={baubookImages.icons.camera}
-                    disabled={!auth.isSignedIn || auth.isBusy}
-                    onPress={() => void handlePickPhoto()}
-                />
-                <AppButton
-                    label="Annulla"
-                    variant="ghost"
-                    disabled={auth.isBusy}
-                    onPress={handleCancelEdit}
-                />
-                <AppButton
-                    label={auth.isBusy ? 'Salvo...' : firstDog ? 'Aggiorna' : 'Crea'}
-                    icon={baubookImages.icons.dogProfile}
-                    disabled={!canSave}
-                    onPress={() => void handleSave()}
-                />
+                <View style={styles.photoActionSlot}>
+                  <AppButton
+                      label="Foto"
+                      variant="ghost"
+                      icon={baubookImages.icons.camera}
+                      disabled={!auth.isSignedIn || auth.isBusy}
+                      onPress={() => void handlePickPhoto()}
+                  />
+                </View>
+
+                <View style={styles.editActionsRightRow}>
+                  <AppButton
+                      label="Annulla"
+                      variant="ghost"
+                      disabled={auth.isBusy}
+                      onPress={handleCancelEdit}
+                  />
+                  <AppButton
+                      label={auth.isBusy ? 'Salvo...' : firstDog ? 'Aggiorna' : 'Crea'}
+                      icon={profileActionIcon}
+                      disabled={!canSave}
+                      onPress={() => void handleSave()}
+                  />
+                </View>
               </View>
 
               {!auth.isSignedIn ? (
@@ -401,7 +408,7 @@ export function DogProfileScreen() {
             <View style={styles.tagCardCopy}>
               <Text style={styles.cardTitle}>Carattere e socialità</Text>
               <Text style={styles.bodyText}>
-                Tag veloci in stile Instagram per raccontare com’è il tuo cane.
+                Tag veloci per raccontare com’è il tuo amico 🐶.
               </Text>
             </View>
 
@@ -441,7 +448,7 @@ export function DogProfileScreen() {
               <Text style={styles.helperText}>
                 {firstDog && auth.isSignedIn
                     ? 'Tocca il lucchetto per modificare i tag. Le modifiche saranno salvate subito.'
-                    : 'Salva prima il profilo del cane per modificare i tag.'}
+                    : 'Salva prima il profilo 🐶 per modificare i tag.'}
               </Text>
           ) : null}
 
@@ -575,10 +582,23 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.lg,
+  },
+  photoActionSlot: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  editActionsRightRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   formHeader: {
     flexDirection: 'row',
