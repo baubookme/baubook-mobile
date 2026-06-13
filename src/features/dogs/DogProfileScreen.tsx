@@ -2,13 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-import { uploadDogAvatar } from '../../shared/api/dogAvatarStorage';
-import {
-  fallbackDogProfileTags,
-  fetchDogProfileTagOptions,
-  type DogProfileTagOption,
-} from '../../shared/api/dogProfileTagOptions';
-import { normalizeError, type DogDraftInput } from '../../shared/api/authAccount';
 import { baubookImages } from '../../shared/assets/images';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
@@ -20,122 +13,162 @@ import { Tag } from '../../shared/components/Tag';
 import { demoDog } from '../../shared/data/mockData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 
-const defaultProfileTags = ['curioso', 'buffo', 'gentile', 'calmo', 'ama l ombra'];
+const defaultProfileTags = ['curioso', 'buffo', 'gentile', 'calmo', 'ama l’ombra'];
+
+const profileTagOptions = [
+  'calmo',
+  'curioso',
+  'socievole',
+  'timido',
+  'buffo',
+  'gentile',
+  'coccolone',
+  'indipendente',
+  'protettivo',
+  'giocherellone',
+  'tranquillo',
+  'vivace',
+  'educato',
+  'sensibile',
+  'testardo',
+  'furbetto',
+  'dolce',
+  'pauroso',
+  'coraggioso',
+  'attento',
+  'ama l’ombra',
+  'ama il sole',
+  'ama l’acqua',
+  'ama correre',
+  'ama annusare',
+  'ama i bambini',
+  'ama gli umani calmi',
+  'ama cani piccoli',
+  'ama cani grandi',
+  'preferisce pochi amici',
+  'preferisce passeggiate lente',
+  'preferisce zone tranquille',
+  'ok guinzaglio',
+  'ok area cani',
+  'ok bar',
+  'ok auto',
+  'ok veterinario',
+  'no caos',
+  'no folla',
+  'no rumori forti',
+  'no cani invadenti',
+  'no giochi bruschi',
+  'bisogno di spazio',
+  'bisogno di calma',
+  'senior',
+  'cucciolo',
+  'molto energico',
+  'molto affettuoso',
+  'super annusatore',
+  'piccolo esploratore',
+  're del divano',
+  'spirito libero',
+];
 
 function uniqueTags(tags: string[]) {
   const seen = new Set<string>();
 
   return tags
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .filter((tag) => {
-      const key = normalizeTag(tag);
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .filter((tag) => {
+        const key = normalizeTag(tag);
 
-      if (seen.has(key)) {
-        return false;
-      }
+        if (seen.has(key)) {
+          return false;
+        }
 
-      seen.add(key);
-      return true;
-    });
+        seen.add(key);
+        return true;
+      });
 }
 
 function normalizeTag(tag: string) {
   return tag
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[’']/g, '')
-    .replace(/[^a-z0-9]+/g, '');
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[’']/g, '')
+      .replace(/[^a-z0-9]+/g, '');
 }
 
 function hashtagLabel(tag: string) {
   return `#${normalizeTag(tag)}`;
 }
 
-function isRemoteAvatarUri(uri: string | null | undefined) {
-  return Boolean(uri && /^https?:\/\//i.test(uri));
-}
+function readDogAvatarUri(dog: unknown) {
+  const record = dog as
+      | {
+    avatarUrl?: string | null;
+    avatar_url?: string | null;
+    photoUrl?: string | null;
+    photo_url?: string | null;
+    imageUrl?: string | null;
+  }
+      | null;
 
-function getSavedProfileTags(dog: { personalityTags?: string[]; socialityTags?: string[] } | null) {
-  return uniqueTags([...(dog?.personalityTags ?? []), ...(dog?.socialityTags ?? [])]);
-}
-
-function getDogAvatarUri(dog: { avatarUrl?: string | null } | null) {
-  return dog?.avatarUrl ?? null;
+  return record?.avatarUrl ?? record?.avatar_url ?? record?.photoUrl ?? record?.photo_url ?? record?.imageUrl ?? null;
 }
 
 export function DogProfileScreen() {
   const auth = useAuthAccount();
   const firstDog = auth.dogs[0] ?? null;
 
-  const savedTags = useMemo(() => getSavedProfileTags(firstDog), [firstDog]);
+  const savedTags = useMemo(
+      () =>
+          uniqueTags([
+            ...(firstDog?.personalityTags ?? []),
+            ...(firstDog?.socialityTags ?? []),
+          ]),
+      [firstDog?.id, firstDog?.personalityTags, firstDog?.socialityTags],
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
-  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
-  const [tagOptions, setTagOptions] = useState<DogProfileTagOption[]>(fallbackDogProfileTags);
+  const [isSavingTags, setIsSavingTags] = useState(false);
   const [dogName, setDogName] = useState(firstDog?.name ?? demoDog.name);
   const [headline, setHeadline] = useState(firstDog?.notesPublic ?? demoDog.headline);
   const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
-  const [avatarUri, setAvatarUri] = useState<string | null>(getDogAvatarUri(firstDog));
+  const [avatarUri, setAvatarUri] = useState<string | null>(readDogAvatarUri(firstDog));
   const [selectedTags, setSelectedTags] = useState<string[]>(savedTags.length ? savedTags : defaultProfileTags);
 
   const displayedTags = selectedTags.length ? selectedTags : defaultProfileTags;
-  const tagLabels = useMemo(() => uniqueTags(tagOptions.map((option) => option.label)), [tagOptions]);
-  const isBusy = auth.isBusy || isSavingAvatar;
-  const canSave = auth.isSignedIn && !isBusy && dogName.trim().length > 0;
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchDogProfileTagOptions()
-      .then((options) => {
-        if (isMounted) {
-          setTagOptions(options);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setTagOptions(fallbackDogProfileTags);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const canSave = auth.isSignedIn && !auth.isBusy && dogName.trim().length > 0;
+  const canEditTags = auth.isSignedIn && Boolean(firstDog) && !auth.isBusy && !isSavingTags;
 
   useEffect(() => {
     if (firstDog) {
-      const nextTags = getSavedProfileTags(firstDog);
+      const nextTags = uniqueTags([
+        ...(firstDog.personalityTags ?? []),
+        ...(firstDog.socialityTags ?? []),
+      ]);
 
       setDogName(firstDog.name);
       setHeadline(firstDog.notesPublic ?? demoDog.headline);
       setPrivateNotes(firstDog.notesPrivate ?? '');
-      setAvatarUri(getDogAvatarUri(firstDog));
+      setAvatarUri(readDogAvatarUri(firstDog));
       setSelectedTags(nextTags.length ? nextTags : defaultProfileTags);
     }
-  }, [firstDog]);
+  }, [firstDog?.id]);
 
-  const resetFromSavedDog = () => {
+  const handleCancelEdit = () => {
     setDogName(firstDog?.name ?? demoDog.name);
     setHeadline(firstDog?.notesPublic ?? demoDog.headline);
     setPrivateNotes(firstDog?.notesPrivate ?? '');
-    setAvatarUri(getDogAvatarUri(firstDog));
+    setAvatarUri(readDogAvatarUri(firstDog));
 
-    const nextTags = getSavedProfileTags(firstDog);
+    const nextTags = uniqueTags([
+      ...(firstDog?.personalityTags ?? []),
+      ...(firstDog?.socialityTags ?? []),
+    ]);
+
     setSelectedTags(nextTags.length ? nextTags : defaultProfileTags);
-  };
-
-  const handleCancelEdit = () => {
-    resetFromSavedDog();
-    setIsTagEditorOpen(false);
     setIsEditing(false);
-  };
-
-  const handleOpenEdit = () => {
-    setIsEditing(true);
   };
 
   const handlePickPhoto = async () => {
@@ -164,285 +197,304 @@ export function DogProfileScreen() {
     setAvatarUri(result.assets[0].uri);
   };
 
+  const saveTagsOnTheFly = async (nextTags: string[], previousTags: string[]) => {
+    if (!firstDog || !canEditTags) {
+      return;
+    }
+
+    setIsSavingTags(true);
+
+    try {
+      const savedDog = await auth.saveDogProfile({
+        id: firstDog.id,
+        name: firstDog.name,
+        personalityTags: nextTags,
+        socialityTags: [],
+        walkTags: [],
+        notesPublic: firstDog.notesPublic ?? '',
+        notesPrivate: firstDog.notesPrivate ?? '',
+        visibility: 'public',
+        avatarUrl: readDogAvatarUri(firstDog) ?? undefined,
+      });
+
+      if (!savedDog) {
+        setSelectedTags(previousTags.length ? previousTags : defaultProfileTags);
+      }
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
+
   const handleToggleTag = (tag: string) => {
+    if (!canEditTags) {
+      return;
+    }
+
     setSelectedTags((current) => {
       const normalized = normalizeTag(tag);
       const exists = current.some((item) => normalizeTag(item) === normalized);
+      const nextTags = exists
+          ? current.filter((item) => normalizeTag(item) !== normalized)
+          : uniqueTags([...current, tag]);
 
-      if (exists) {
-        return current.filter((item) => normalizeTag(item) !== normalized);
-      }
-
-      return uniqueTags([...current, tag]);
+      void saveTagsOnTheFly(nextTags, current);
+      return nextTags;
     });
   };
-
-  const buildDogDraft = (dogId: string | undefined, finalAvatarUrl: string | null): DogDraftInput => ({
-    id: dogId,
-    name: dogName.trim(),
-    personalityTags: uniqueTags(selectedTags),
-    socialityTags: [],
-    walkTags: [],
-    notesPublic: headline,
-    notesPrivate: privateNotes,
-    visibility: 'public',
-    avatarUrl: finalAvatarUrl,
-  });
 
   const handleSave = async () => {
     if (!canSave) {
       return;
     }
 
-    try {
-      setIsSavingAvatar(true);
+    const payload = {
+      id: firstDog?.id,
+      name: dogName.trim(),
+      personalityTags: selectedTags,
+      socialityTags: [],
+      walkTags: [],
+      notesPublic: headline,
+      notesPrivate: privateNotes,
+      visibility: 'public',
+      avatarUrl: avatarUri ?? undefined,
+      avatar_url: avatarUri ?? undefined,
+    } as Parameters<typeof auth.saveDogProfile>[0] & {
+      avatarUrl?: string;
+      avatar_url?: string;
+    };
 
-      const hasLocalAvatar = Boolean(avatarUri && !isRemoteAvatarUri(avatarUri));
-      let finalAvatarUrl = isRemoteAvatarUri(avatarUri) ? avatarUri : firstDog?.avatarUrl ?? null;
+    await auth.saveDogProfile(payload);
 
-      if (hasLocalAvatar && firstDog?.id && avatarUri) {
-        finalAvatarUrl = await uploadDogAvatar(firstDog.id, avatarUri);
-      }
-
-      let savedDog = await auth.saveDogProfile(buildDogDraft(firstDog?.id, finalAvatarUrl));
-
-      if (!savedDog) {
-        return;
-      }
-
-      if (hasLocalAvatar && !firstDog?.id && avatarUri) {
-        finalAvatarUrl = await uploadDogAvatar(savedDog.id, avatarUri);
-        savedDog = await auth.saveDogProfile(buildDogDraft(savedDog.id, finalAvatarUrl));
-
-        if (!savedDog) {
-          return;
-        }
-      }
-
-      setAvatarUri(savedDog.avatarUrl ?? finalAvatarUrl ?? null);
-      setIsTagEditorOpen(false);
-      setIsEditing(false);
-    }
-    catch (error) {
-      Alert.alert('Salvataggio non riuscito', normalizeError(error));
-    }
-    finally {
-      setIsSavingAvatar(false);
-    }
+    setIsEditing(false);
   };
 
   return (
-    <Screen>
-      <SectionHeader
-        eyebrow="Io sono...!"
-        title="Il mio profilo a 4 zampe"
-      />
+      <Screen>
+        <SectionHeader
+            eyebrow="Io sono...!"
+            title="Il mio profilo a 4 zampe"
+        />
 
-      <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarFrame}>
-            <Image source={avatarUri ? { uri: avatarUri } : baubookImages.avatar} style={styles.avatar} />
-          </View>
+        <AppCard tone={auth.isSignedIn ? 'teal' : 'warm'}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarFrame}>
+              <Image source={avatarUri ? { uri: avatarUri } : baubookImages.avatar} style={styles.avatar} />
+            </View>
 
-          <View style={styles.profileCopy}>
-            <Text style={styles.eyebrow}>
-              {firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo demo'}
-            </Text>
-            <Text style={styles.name}>{dogName || 'Il mio amico'}</Text>
-            <Text style={styles.visibility}>
-              {auth.isSignedIn ? 'Visibilità: pubblico · moderazione: approved' : 'Accedi nel tab Setup per salvare davvero'}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.quote}>“{headline || 'Scrivi la mia carta d’identità.'}”</Text>
-
-        <View style={styles.statusRow}>
-          <Tag label={auth.isSignedIn ? 'Account attivo' : 'Servizio non disponibile'} tone={auth.isSignedIn ? 'green' : 'orange'} />
-          <Tag label={firstDog ? 'Profilo salvato' : 'Profilo non salvato'} tone={firstDog ? 'green' : 'orange'} />
-          <Tag label={`🐾 ${auth.dogs.length}`} tone="teal" />
-        </View>
-
-        <View style={styles.profileActionsRow}>
-          <AppButton
-            label={isEditing ? 'Chiudi modifica' : 'Modifica'}
-            variant={isEditing ? 'ghost' : 'primary'}
-            icon={baubookImages.icons.dogProfile}
-            onPress={isEditing ? handleCancelEdit : handleOpenEdit}
-          />
-        </View>
-
-        {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
-      </AppCard>
-
-      {isEditing ? (
-        <AppCard>
-          <View style={styles.formHeader}>
-            <IconBubble source={baubookImages.icons.dogProfile} size={58} tone="teal" />
-            <View style={styles.formHeaderCopy}>
-              <Text style={styles.cardTitle}>Modifica profilo</Text>
-              <Text style={styles.bodyText}>
-                Identità utile per incontri, passeggiate e alert. Foto, descrizione e tag aiutano gli altri utenti a capire meglio il tuo cane.
+            <View style={styles.profileCopy}>
+              <Text style={styles.eyebrow}>
+                {firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo demo'}
+              </Text>
+              <Text style={styles.name}>{dogName || 'Il mio amico'}</Text>
+              <Text style={styles.visibility}>
+                {auth.isSignedIn ? 'Visibilità: pubblico · moderazione: approved' : 'Accedi nel tab Setup per salvare davvero'}
               </Text>
             </View>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nome</Text>
-            <TextInput
-              value={dogName}
-              onChangeText={setDogName}
-              placeholder="Nome del cane"
-              placeholderTextColor={colors.muted}
-              style={styles.input}
-            />
+          <Text style={styles.quote}>“{headline || 'Scrivi la mia carta d’identità.'}”</Text>
+
+          <View style={styles.statusRow}>
+            <Tag label={auth.isSignedIn ? 'Account attivo' : 'Servizio non disponibile'} tone={auth.isSignedIn ? 'green' : 'orange'} />
+            <Tag label={firstDog ? 'Profilo salvato' : 'Profilo non salvato'} tone={firstDog ? 'green' : 'orange'} />
+            <Tag label={`🐾 ${auth.dogs.length}`} tone="teal" />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>La mia carta d’identità</Text>
-            <TextInput
-              value={headline}
-              onChangeText={setHeadline}
-              placeholder="Io sono..."
-              placeholderTextColor={colors.muted}
-              style={[styles.input, styles.textArea]}
-              multiline
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Note private</Text>
-            <TextInput
-              value={privateNotes}
-              onChangeText={setPrivateNotes}
-              placeholder="Es. non ama cani grandi, timoroso, anziano..."
-              placeholderTextColor={colors.muted}
-              style={[styles.input, styles.textArea]}
-              multiline
-            />
-          </View>
-
-          <View style={styles.actionsRow}>
+          <View style={styles.profileActionsRow}>
             <AppButton
-              label="Foto"
-              variant="ghost"
-              icon={baubookImages.icons.camera}
-              disabled={!auth.isSignedIn || isBusy}
-              onPress={() => void handlePickPhoto()}
-            />
-            <AppButton
-              label="Annulla"
-              variant="ghost"
-              disabled={isBusy}
-              onPress={handleCancelEdit}
-            />
-            <AppButton
-              label={isBusy ? 'Salvo...' : firstDog ? 'Aggiorna' : 'Crea'}
-              icon={baubookImages.icons.dogProfile}
-              disabled={!canSave}
-              onPress={() => void handleSave()}
+                label={isEditing ? 'Chiudi modifica' : 'Modifica'}
+                variant={isEditing ? 'ghost' : 'primary'}
+                icon={baubookImages.icons.dogProfile}
+                onPress={() => {
+                  if (isEditing) {
+                    handleCancelEdit();
+                    return;
+                  }
+
+                  setIsEditing(true);
+                }}
             />
           </View>
 
-          {!auth.isSignedIn ? (
-            <Text style={styles.helperText}>
-              Per salvare il 🐾: vai in Setup, invia email OTP/magic link e crea il profilo.
-            </Text>
+          {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
+        </AppCard>
+
+        {isEditing ? (
+            <AppCard>
+              <View style={styles.formHeader}>
+                <IconBubble source={baubookImages.icons.dogProfile} size={58} tone="teal" />
+                <View style={styles.formHeaderCopy}>
+                  <Text style={styles.cardTitle}>Modifica profilo</Text>
+                  <Text style={styles.bodyText}>
+                    Identità utile per incontri, passeggiate e alert. Foto, descrizione e tag aiutano gli altri utenti a capire meglio il tuo cane.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Nome</Text>
+                <TextInput
+                    value={dogName}
+                    onChangeText={setDogName}
+                    placeholder="Nome del cane"
+                    placeholderTextColor={colors.muted}
+                    style={styles.input}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>La mia carta d’identità</Text>
+                <TextInput
+                    value={headline}
+                    onChangeText={setHeadline}
+                    placeholder="Io sono..."
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Note private</Text>
+                <TextInput
+                    value={privateNotes}
+                    onChangeText={setPrivateNotes}
+                    placeholder="Es. non ama cani grandi, timoroso, anziano..."
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                />
+              </View>
+
+              <View style={styles.actionsRow}>
+                <AppButton
+                    label="Foto"
+                    variant="ghost"
+                    icon={baubookImages.icons.camera}
+                    disabled={!auth.isSignedIn || auth.isBusy}
+                    onPress={() => void handlePickPhoto()}
+                />
+                <AppButton
+                    label="Annulla"
+                    variant="ghost"
+                    disabled={auth.isBusy}
+                    onPress={handleCancelEdit}
+                />
+                <AppButton
+                    label={auth.isBusy ? 'Salvo...' : firstDog ? 'Aggiorna' : 'Crea'}
+                    icon={baubookImages.icons.dogProfile}
+                    disabled={!canSave}
+                    onPress={() => void handleSave()}
+                />
+              </View>
+
+              {!auth.isSignedIn ? (
+                  <Text style={styles.helperText}>
+                    Per salvare il 🐾: vai in Setup, invia email OTP/magic link e crea il profilo.
+                  </Text>
+              ) : null}
+            </AppCard>
+        ) : null}
+
+        <AppCard>
+          <View style={styles.tagCardHeader}>
+            <View style={styles.tagCardCopy}>
+              <Text style={styles.cardTitle}>Carattere e socialità</Text>
+              <Text style={styles.bodyText}>
+                Tag veloci in stile Instagram per raccontare com’è il tuo cane.
+              </Text>
+            </View>
+
+            <Pressable
+                onPress={() => setIsTagEditorOpen((current) => !current)}
+                disabled={!auth.isSignedIn || !firstDog || auth.isBusy || isSavingTags}
+                style={({ pressed }) => [
+                  styles.lockButton,
+                  isTagEditorOpen && styles.lockButtonOpen,
+                  (!auth.isSignedIn || !firstDog || auth.isBusy || isSavingTags) && styles.lockButtonDisabled,
+                  pressed && canEditTags && styles.lockButtonPressed,
+                ]}
+            >
+              <Text style={[styles.lockButtonText, isTagEditorOpen && styles.lockButtonTextOpen]}>
+                {isTagEditorOpen ? '🔓' : '🔒'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.hashtagRow}>
+            {(isTagEditorOpen ? profileTagOptions : displayedTags).map((tag) => {
+              const selected = selectedTags.some((item) => normalizeTag(item) === normalizeTag(tag));
+
+              return (
+                  <HashtagChip
+                      key={normalizeTag(tag)}
+                      tag={tag}
+                      selected={selected}
+                      editable={isTagEditorOpen && canEditTags}
+                      onPress={() => handleToggleTag(tag)}
+                  />
+              );
+            })}
+          </View>
+
+          {!isTagEditorOpen ? (
+              <Text style={styles.helperText}>
+                {firstDog && auth.isSignedIn
+                    ? 'Tocca il lucchetto per modificare i tag. Le modifiche saranno salvate subito.'
+                    : 'Salva prima il profilo del cane per modificare i tag.'}
+              </Text>
+          ) : null}
+
+          {isTagEditorOpen ? (
+              <Text style={styles.helperText}>
+                {isSavingTags
+                    ? 'Salvataggio tag...'
+                    : 'Tocca un tag per aggiungerlo o rimuoverlo. Le modifiche vengono salvate subito.'}
+              </Text>
           ) : null}
         </AppCard>
-      ) : null}
 
-      <AppCard>
-        <View style={styles.tagCardHeader}>
-          <View style={styles.tagCardCopy}>
-            <Text style={styles.cardTitle}>Carattere e socialità</Text>
-            <Text style={styles.bodyText}>
-              Tag veloci in stile Instagram per raccontare com’è il tuo cane.
-            </Text>
+        <AppCard tone="pink">
+          <Text style={styles.cardTitle}>Consigli utili, zero giudizi 📒</Text>
+          <View style={styles.notesList}>
+            {(privateNotes ? privateNotes.split('\n').filter(Boolean) : demoDog.notes).map((note) => (
+                <View key={note} style={styles.noteItem}>
+                  <Text style={styles.noteBullet}>•</Text>
+                  <Text style={styles.noteText}>{note}</Text>
+                </View>
+            ))}
           </View>
-
-          <Pressable
-            onPress={() => setIsTagEditorOpen((current) => !current)}
-            disabled={!isEditing}
-            style={({ pressed }) => [
-              styles.lockButton,
-              isTagEditorOpen && styles.lockButtonOpen,
-              !isEditing && styles.lockButtonDisabled,
-              pressed && isEditing && styles.lockButtonPressed,
-            ]}
-          >
-            <Text style={[styles.lockButtonText, isTagEditorOpen && styles.lockButtonTextOpen]}>
-              {isTagEditorOpen ? '🔓' : '🔒'}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.hashtagRow}>
-          {(isTagEditorOpen ? tagLabels : displayedTags).map((tag) => {
-            const selected = selectedTags.some((item) => normalizeTag(item) === normalizeTag(tag));
-
-            return (
-              <HashtagChip
-                key={normalizeTag(tag)}
-                tag={tag}
-                selected={selected}
-                editable={isTagEditorOpen}
-                onPress={() => handleToggleTag(tag)}
-              />
-            );
-          })}
-        </View>
-
-        {isEditing && !isTagEditorOpen ? (
-          <Text style={styles.helperText}>Tocca il lucchetto per modificare i tag.</Text>
-        ) : null}
-
-        {isTagEditorOpen ? (
-          <Text style={styles.helperText}>Seleziona i tag che descrivono meglio carattere, socialità e bisogni del tuo cane.</Text>
-        ) : null}
-      </AppCard>
-
-      <AppCard tone="pink">
-        <Text style={styles.cardTitle}>Consigli utili, zero giudizi 📒</Text>
-        <View style={styles.notesList}>
-          {(privateNotes ? privateNotes.split('\n').filter(Boolean) : demoDog.notes).map((note) => (
-            <View key={note} style={styles.noteItem}>
-              <Text style={styles.noteBullet}>•</Text>
-              <Text style={styles.noteText}>{note}</Text>
-            </View>
-          ))}
-        </View>
-      </AppCard>
-    </Screen>
+        </AppCard>
+      </Screen>
   );
 }
 
 function HashtagChip({
-  tag,
-  selected,
-  editable,
-  onPress,
-}: {
+                       tag,
+                       selected,
+                       editable,
+                       onPress,
+                     }: {
   tag: string;
   selected: boolean;
   editable: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={!editable}
-      style={({ pressed }) => [
-        styles.hashtagChip,
-        selected && styles.hashtagChipSelected,
-        editable && styles.hashtagChipEditable,
-        pressed && editable && styles.hashtagChipPressed,
-      ]}
-    >
-      <Text style={[styles.hashtagText, selected && styles.hashtagTextSelected]}>
-        {hashtagLabel(tag)}
-      </Text>
-    </Pressable>
+      <Pressable
+          onPress={onPress}
+          disabled={!editable}
+          style={({ pressed }) => [
+            styles.hashtagChip,
+            selected && styles.hashtagChipSelected,
+            editable && styles.hashtagChipEditable,
+            pressed && editable && styles.hashtagChipPressed,
+          ]}
+      >
+        <Text style={[styles.hashtagText, selected && styles.hashtagTextSelected]}>
+          {hashtagLabel(tag)}
+        </Text>
+      </Pressable>
   );
 }
 
