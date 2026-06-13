@@ -40,6 +40,8 @@ export const baubookImages = {
     other: require('../../../assets/baubook/danger-circles/other.png') as ImageSourcePropType,
   },
   icons: {
+    profileGearLight: require('../../../assets/baubook/profile/profile_gear_light.png') as ImageSourcePropType,
+    profileGear: require('../../../assets/baubook/profile/profile_gear.png') as ImageSourcePropType,
     map: require('../../../assets/baubook/icons/01_dove_andare_mappa.png') as ImageSourcePropType,
     dogArea: require('../../../assets/baubook/icons/02_aree_cani.png') as ImageSourcePropType,
     walks: require('../../../assets/baubook/icons/03_passeggiate_insieme.png') as ImageSourcePropType,

@@ -272,7 +272,7 @@ export function MapScreen() {
           </View>
         </View>
 
-        <View style={styles.actionRow}>
+        <View style={styles.actionRow_center}>
           <AppButton
             label={nearby.status === 'loading' ? 'Cerco...' : 'Usa posizione attuale'}
             onPress={handleCurrentPositionSearch}
@@ -570,6 +570,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  actionRow_center: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    alignSelf: "center",
     marginTop: spacing.md,
   },
   nearbyStatusBox: {

@@ -6,7 +6,6 @@ import { baubookImages } from '../../shared/assets/images';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
-import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
@@ -70,7 +69,6 @@ const profileTagOptions = [
   'spirito libero',
 ];
 
-const profileActionIcon = require('../../../assets/baubook/profile/profile_gear.png');
 
 function uniqueTags(tags: string[]) {
   const seen = new Set<string>();
@@ -306,7 +304,7 @@ export function DogProfileScreen() {
             <AppButton
                 label={isEditing ? 'Chiudi modifica' : 'Modifica'}
                 variant={isEditing ? 'ghost' : 'primary'}
-                icon={profileActionIcon}
+                icon={isEditing ? baubookImages.icons.profileGear : baubookImages.icons.profileGearLight}
                 onPress={() => {
                   if (isEditing) {
                     handleCancelEdit();
@@ -324,7 +322,9 @@ export function DogProfileScreen() {
         {isEditing ? (
             <AppCard>
               <View style={styles.formHeader}>
-                <IconBubble source={baubookImages.icons.dogProfile} size={58} tone="teal" />
+                <View style={styles.editAvatarFrame}>
+                  <Image source={avatarUri ? { uri: avatarUri } : baubookImages.avatar} style={styles.editAvatar} />
+                </View>
                 <View style={styles.formHeaderCopy}>
                   <Text style={styles.cardTitle}>Modifica profilo</Text>
                   <Text style={styles.bodyText}>
@@ -368,8 +368,8 @@ export function DogProfileScreen() {
                 />
               </View>
 
-              <View style={styles.actionsRow}>
-                <View style={styles.photoActionSlot}>
+              <View style={styles.editActionsContainer}>
+                <View style={styles.editPhotoRow}>
                   <AppButton
                       label="Foto"
                       variant="ghost"
@@ -379,16 +379,10 @@ export function DogProfileScreen() {
                   />
                 </View>
 
-                <View style={styles.editActionsRightRow}>
-                  <AppButton
-                      label="Annulla"
-                      variant="ghost"
-                      disabled={auth.isBusy}
-                      onPress={handleCancelEdit}
-                  />
+                <View style={styles.editSubmitRow}>
                   <AppButton
                       label={auth.isBusy ? 'Salvo...' : firstDog ? 'Aggiorna' : 'Crea'}
-                      icon={profileActionIcon}
+                      icon={baubookImages.icons.profileGearLight}
                       disabled={!canSave}
                       onPress={() => void handleSave()}
                   />
@@ -525,6 +519,20 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  editAvatarFrame: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 3,
+    borderColor: colors.secondary,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  editAvatar: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
   profileCopy: {
     flex: 1,
     gap: 3,
@@ -579,26 +587,24 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '800',
   },
-  actionsRow: {
+  editActionsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    gap: spacing.md,
     marginTop: spacing.lg,
   },
-  photoActionSlot: {
+  editPhotoRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  editActionsRightRow: {
-    flex: 1,
+  editSubmitRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: spacing.sm,
+    flexShrink: 0,
   },
   formHeader: {
     flexDirection: 'row',
