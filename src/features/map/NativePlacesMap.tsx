@@ -27,7 +27,8 @@ type NativePlacesMapProps = {
   mapPlaces?: unknown;
   officialAreas?: unknown;
   style?: StyleProp<ViewStyle>;
-  [key: string]: unknown;
+  source?: unknown;
+  realtimeStatus?: unknown;
 };
 
 const coordinatePaths = [
@@ -79,8 +80,10 @@ const titlePaths = [
 ];
 
 const subtitlePaths = [
+  ['addressLabel'],
   ['address'],
   ['street'],
+  ['area'],
   ['city'],
   ['municipality'],
   ['type'],
@@ -122,14 +125,17 @@ function toFiniteNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
+
   if (typeof value === 'string') {
     const normalized = value.trim().replace(',', '.');
     if (normalized.length === 0) {
       return null;
     }
+
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
   }
+
   return null;
 }
 
@@ -140,6 +146,7 @@ function readNumber(record: AnyPlace, paths: string[][]): number | null {
       return value;
     }
   }
+
   return null;
 }
 
@@ -149,10 +156,12 @@ function readText(record: AnyPlace, paths: string[][], fallback: string): string
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
+
     if (typeof value === 'number' && Number.isFinite(value)) {
       return String(value);
     }
   }
+
   return fallback;
 }
 
@@ -176,7 +185,7 @@ function toMarker(place: AnyPlace, index: number): WebMarker | null {
 }
 
 function openMarker(marker: WebMarker): void {
-  const url = `https://www.openstreetmap.org/?mlat=${marker.latitude}&mlon=${marker.longitude}#map=17/${marker.latitude}/${marker.longitude}`;
+  const url = `https://www.google.com/maps/search/?api=1&query=${marker.latitude},${marker.longitude}`;
   void Linking.openURL(url);
 }
 
@@ -189,26 +198,32 @@ export function NativePlacesMap(props: NativePlacesMapProps): React.ReactElement
   return (
     <View style={[styles.container, props.style]} testID="native-places-map-web-fallback">
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Vista browser</Text>
-        <Text style={styles.title}>Mappa nativa disponibile su app</Text>
+        <Text style={styles.eyebrow}>{markers.length ? 'Risultati filtrati' : 'Mappa pronta'}</Text>
+        <Text style={styles.title}>
+          {markers.length ? `${markers.length} area/e cani nel raggio` : 'Cerca nel raggio per vedere i marker'}
+        </Text>
         <Text style={styles.body}>
-          Nel browser BauBook usa una vista sicura dei luoghi per evitare il caricamento di react-native-maps,
-          che e' un modulo nativo iOS/Android.
+          {markers.length
+            ? 'Tocca un risultato per aprire la navigazione. Su app mobile gli stessi punti vengono mostrati sulla mappa nativa.'
+            : 'La mappa resta vuota finché non lanci una ricerca dalla tua posizione.'}
         </Text>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {markers.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nessun marker con coordinate valide</Text>
+            <Text style={styles.emptyTitle}>Nessun marker da mostrare</Text>
             <Text style={styles.emptyBody}>
-              La mappa nativa resta attiva su iOS/Android. Nel browser verranno mostrati qui i luoghi con
-              latitudine e longitudine valorizzate.
+              Usa la ricerca per raggio: qui compariranno solo le aree cani coinvolte dal filtro.
             </Text>
           </View>
         ) : (
           markers.map((marker) => (
-            <Pressable key={marker.id} onPress={() => openMarker(marker)} style={styles.card}>
+            <Pressable
+              key={marker.id}
+              onPress={() => openMarker(marker)}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            >
               <View style={styles.pin} />
               <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>{marker.title}</Text>
@@ -217,6 +232,7 @@ export function NativePlacesMap(props: NativePlacesMapProps): React.ReactElement
                   {marker.latitude.toFixed(5)}, {marker.longitude.toFixed(5)}
                 </Text>
               </View>
+              <Text style={styles.navigationText}>Apri</Text>
             </Pressable>
           ))
         )}
@@ -248,12 +264,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: '#9a6a35',
-    marginBottom: 6,
   },
   title: {
     fontSize: 20,
     fontWeight: '900',
     color: '#3a2a1a',
+    marginTop: 4,
     marginBottom: 8,
   },
   body: {
@@ -273,7 +289,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#eadfD2',
+    borderColor: '#eaddd2',
   },
   emptyTitle: {
     fontSize: 16,
@@ -294,7 +310,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#eadfD2',
+    borderColor: '#eaddd2',
+  },
+  cardPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
   },
   pin: {
     width: 16,
@@ -320,5 +340,11 @@ const styles = StyleSheet.create({
     color: '#9a6a35',
     marginTop: 4,
     fontWeight: '700',
+  },
+  navigationText: {
+    color: '#0e8178',
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
 });

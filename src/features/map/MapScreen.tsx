@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fetchNearbyDogAreas, type NearbyDogAreaModel } from '../../shared/api/supabaseContent';
 import { baubookImages } from '../../shared/assets/images';
 import { AppButton } from '../../shared/components/AppButton';
@@ -8,10 +8,11 @@ import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
-import { NativePlacesMap } from './NativePlacesMap';
-import { MapCareCommandCenter } from './components/MapCareCommandCenter';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
+import { NativePlacesMap } from './NativePlacesMap';
+
+const dogAreaCartoonIcon = require('../../../assets/baubook/map/dog_area_cartoon_integrated.png');
 
 const radiusOptions = [1, 3, 5, 10];
 
@@ -55,6 +56,13 @@ interface NearbyState {
   positionLabel?: string;
 }
 
+interface LastNearbySearch {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  accuracy?: number | null;
+}
+
 function readCurrentPosition(): Promise<GeoPosition> {
   const nav = (globalThis as unknown as { navigator?: NavigatorWithGeolocation }).navigator;
 
@@ -76,8 +84,14 @@ function formatCoordinate(value: number): string {
   return value.toFixed(5).replace('.', ',');
 }
 
+function openDogAreaNavigation(area: NearbyDogAreaModel): void {
+  const url = `https://www.google.com/maps/search/?api=1&query=${area.latitude},${area.longitude}`;
+  void Linking.openURL(url);
+}
+
 export function MapScreen() {
-  const { places, source, status, message, errorMessage, reload, realtimeStatus } = useSupabasePlaces();
+  const { source, reload, realtimeStatus } = useSupabasePlaces();
+
   const [radiusKm, setRadiusKm] = useState(3);
   const [manualRadius, setManualRadius] = useState('3');
   const [nearby, setNearby] = useState<NearbyState>({
@@ -86,27 +100,43 @@ export function MapScreen() {
     areas: [],
     message: 'Scegli il raggio e usa la posizione attuale per trovare le aree cani ufficiali vicine.',
   });
+  const [lastNearbySearch, setLastNearbySearch] = useState<LastNearbySearch | null>(null);
 
-  const isLive = source === 'supabase';
-  const dogAreas = useMemo(() => places.filter((place) => place.kind === 'dog_area'), [places]);
-  const approvedDogAreas = useMemo(
-    () => dogAreas.filter((place) => place.moderationStatus === 'approved'),
-    [dogAreas],
-  );
-  const visiblePlaces = useMemo(
-    () => places.filter((place) => place.moderationStatus !== 'removed'),
-    [places],
-  );
-  const nearbyPreview = nearby.areas.slice(0, 8);
+  const nearbyMapPlaces = nearby.status === 'success' ? nearby.areas : [];
+  const nearbyPreview = nearbyMapPlaces.slice(0, 8);
+  const hiddenNearbyCount = Math.max(nearbyMapPlaces.length - nearbyPreview.length, 0);
 
   const handleManualRadiusChange = (value: string) => {
     const cleaned = value.replace(',', '.').replace(/[^0-9.]/g, '');
     setManualRadius(cleaned);
-    const parsed = Number(cleaned);
 
+    const parsed = Number(cleaned);
     if (Number.isFinite(parsed) && parsed >= 0.2 && parsed <= 50) {
       setRadiusKm(parsed);
     }
+  };
+
+  const runNearbySearch = async (search: LastNearbySearch) => {
+    const result = await fetchNearbyDogAreas({
+      latitude: search.latitude,
+      longitude: search.longitude,
+      radiusKm: search.radiusKm,
+      limit: 24,
+    });
+
+    const accuracyLabel =
+      typeof search.accuracy === 'number'
+        ? ` · accuratezza circa ${Math.round(search.accuracy)} m`
+        : '';
+
+    setNearby({
+      status: 'success',
+      source: result.source,
+      areas: result.areas,
+      message: result.message,
+      errorMessage: result.errorMessage,
+      positionLabel: `${formatCoordinate(search.latitude)}, ${formatCoordinate(search.longitude)}${accuracyLabel}`,
+    });
   };
 
   const handleCurrentPositionSearch = async () => {
@@ -119,23 +149,18 @@ export function MapScreen() {
 
     try {
       const position = await readCurrentPosition();
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-      const result = await fetchNearbyDogAreas({ latitude, longitude, radiusKm });
-      const accuracyLabel = typeof position.coords.accuracy === 'number'
-        ? ` · accuratezza circa ${Math.round(position.coords.accuracy)} m`
-        : '';
+      const search: LastNearbySearch = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        radiusKm,
+        accuracy: position.coords.accuracy,
+      };
 
-      setNearby({
-        status: 'success',
-        source: result.source,
-        areas: result.areas,
-        message: result.message,
-        errorMessage: result.errorMessage,
-        positionLabel: `${formatCoordinate(latitude)}, ${formatCoordinate(longitude)}${accuracyLabel}`,
-      });
+      setLastNearbySearch(search);
+      await runNearbySearch(search);
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
       setNearby({
         status: 'error',
         source: null,
@@ -146,67 +171,72 @@ export function MapScreen() {
     }
   };
 
+  const handleMapRefresh = async () => {
+    setNearby((current) => ({
+      ...current,
+      status: lastNearbySearch ? 'loading' : current.status,
+      message: lastNearbySearch
+        ? 'Ricarico i luoghi dal database e aggiorno la ricerca nel raggio selezionato...'
+        : 'Ricarico i luoghi dal database...',
+      errorMessage: undefined,
+    }));
+
+    try {
+      await Promise.resolve(reload());
+
+      if (lastNearbySearch) {
+        await runNearbySearch(lastNearbySearch);
+        return;
+      }
+
+      setNearby((current) => ({
+        ...current,
+        message: 'Luoghi dal database ricaricati. Usa la posizione attuale per vedere solo quelli vicini e utili.',
+      }));
+    } catch (error) {
+      const fallbackMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
+      setNearby((current) => ({
+        ...current,
+        status: 'error',
+        message: 'Non riesco ad aggiornare i luoghi dal database.',
+        errorMessage: fallbackMessage,
+      }));
+    }
+  };
+
   return (
     <Screen>
-      <View style={styles.mapMock}>
-        <View style={styles.mapRoadOne} />
-        <View style={styles.mapRoadTwo} />
-        <View style={styles.mapPinOne} />
-        <View style={styles.mapPinTwo} />
-        <View style={styles.mapPinThree} />
-        <Image source={baubookImages.icons.map} style={styles.mapIcon} />
-        <View style={styles.mapLegend}>
-          <Tag label="aree cani" tone="teal" />
-          <Tag label="raggio km" tone="green" />
-          <Tag label="safety" tone="red" />
+      <View style={styles.mapHeader}>
+        <View style={styles.mapHeaderTop}>
+          <Text style={styles.mapEyebrow}>Mappa live BauBook</Text>
+          <Pressable
+            onPress={() => {
+              void handleMapRefresh();
+            }}
+            style={({ pressed }) => [styles.mapRefreshButton, pressed && styles.mapRefreshButtonPressed]}
+          >
+            <Text style={styles.mapRefreshText}>Aggiorna</Text>
+          </Pressable>
         </View>
+
+        <Text style={styles.mapTitle}>
+          {nearbyMapPlaces.length ? 'Risultati sulla mappa' : 'Cerca per visualizzare i marker'}
+        </Text>
+
+        <Text style={styles.mapDescription}>
+          {nearbyMapPlaces.length
+            ? 'I marker sono limitati alle aree cani trovate nel raggio selezionato.'
+            : 'La mappa resta pronta: dopo la ricerca mostrerà solo i luoghi coinvolti nel filtro.'}
+        </Text>
       </View>
 
-      <SectionHeader
-        eyebrow="Mappa BauBook"
-        title="Aree cani vicino a te"
-        description="Aree censite a Venezia-Mestre, geocoding beta e ricerca nel raggio dalla posizione attuale. La posizione serve solo per il calcolo immediato. 📌"
-      />
-
-      <AppCard tone={isLive ? 'teal' : 'warm'}>
-        <View style={styles.statusHeader}>
-          <IconBubble source={isLive ? baubookImages.icons.dogArea : baubookImages.icons.settings} tone={isLive ? 'teal' : 'warm'} />
-          <View style={styles.statusCopy}>
-
-            <Text style={styles.bodyText}>{status === 'loading' ? 'Carico i luoghi dal database...' : message}</Text>
-            <View style={styles.tagsRow}>
-              <Tag label={`${approvedDogAreas.length} aree cani`} tone="teal" />
-              <Tag label={`${places.length} luoghi`} tone="orange" />
-              <Tag
-                label={`Mappa ${
-                  realtimeStatus === 'subscribed'
-                    ? 'realtime'
-                    : realtimeStatus === 'polling'
-                      ? 'polling'
-                      : source === 'supabase'
-                        ? 'live'
-                        : 'demo'
-                }`}
-                tone="orange"
-              />
-
-            </View>
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-            <View style={styles.buttonWrap}>
-              <AppButton label="Aggiorna luoghi" onPress={reload} variant="ghost" />
-            </View>
-          </View>
-        </View>
-      </AppCard>
-
-      <AppCard elevated tone="teal">
+      <AppCard tone="teal">
         <View style={styles.searchHeader}>
-          <IconBubble source={baubookImages.icons.dogArea} tone="teal" />
+          <Image source={dogAreaCartoonIcon} style={styles.dogAreaHeroIcon} />
           <View style={styles.searchCopy}>
             <Text style={styles.cardTitle}>Trova area cani nel raggio di X km</Text>
-            <Text style={styles.bodyText}>
-              Usa la posizione attuale per la ricerca. 🗺️
-            </Text>
+            <Text style={styles.bodyText}>Usa la posizione attuale per vedere solo le aree cani davvero vicine.</Text>
           </View>
         </View>
 
@@ -232,9 +262,9 @@ export function MapScreen() {
               value={manualRadius}
               onChangeText={handleManualRadiusChange}
               keyboardType="decimal-pad"
+              style={styles.input}
               placeholder="3"
               placeholderTextColor={colors.muted}
-              style={styles.input}
             />
           </View>
           <View style={styles.manualHintWrap}>
@@ -244,16 +274,19 @@ export function MapScreen() {
 
         <View style={styles.actionRow}>
           <AppButton
-            label={nearby.status === 'loading' ? 'Cerco...' : `Cerca entro ${String(radiusKm).replace('.', ',')} km`}
+            label={nearby.status === 'loading' ? 'Cerco...' : 'Usa posizione attuale'}
             onPress={handleCurrentPositionSearch}
             disabled={nearby.status === 'loading'}
-            icon={baubookImages.icons.map}
           />
         </View>
 
         <View style={styles.nearbyStatusBox}>
           <Text style={styles.nearbyStatusTitle}>
-            {nearby.status === 'loading' ? 'Ricerca in corso' : nearby.source === 'supabase' ? 'Risultato live' : 'Stato ricerca'}
+            {nearby.status === 'loading'
+              ? 'Ricerca in corso'
+              : nearby.source === 'supabase'
+                ? 'Risultato live'
+                : 'Stato ricerca'}
           </Text>
           <Text style={styles.bodyText}>{nearby.message}</Text>
           {nearby.positionLabel ? <Text style={styles.helperText}>Posizione usata: {nearby.positionLabel}</Text> : null}
@@ -261,66 +294,42 @@ export function MapScreen() {
         </View>
       </AppCard>
 
+      <View style={styles.mapSection}>
+        <NativePlacesMap
+          places={nearbyMapPlaces}
+          source={source}
+          realtimeStatus={realtimeStatus}
+        />
+      </View>
+
       {nearbyPreview.length ? (
         <View style={styles.list}>
           <SectionHeader
-            eyebrow="Risultati nel raggio"
-            title="Aree cani più vicine"
-            description="Ordinate per distanza calcolata lato database. I pin sono beta geocoded e restano verificabili nel metadata Supabase."
+            eyebrow="Risultati"
+            title="Aree cani trovate"
+            description={
+              hiddenNearbyCount
+                ? `Mostro le prime ${nearbyPreview.length} aree più vicine. Altre ${hiddenNearbyCount} sono visibili sulla mappa.`
+                : 'Tocca una card per aprire subito la navigazione.'
+            }
           />
+
           {nearbyPreview.map((area) => (
-            <NearbyDogAreaCard key={area.id} area={area} />
+            <NearbyDogAreaCard
+              key={area.id}
+              area={area}
+              onOpenNavigation={() => openDogAreaNavigation(area)}
+            />
           ))}
         </View>
       ) : null}
-
-      <View style={styles.list}>
-        <SectionHeader
-          eyebrow="Catalogo"
-          title="Luoghi BauBook"
-          description="Elenco completo dei luoghi pubblici caricati. Le aree cani ufficiali sono marcate e pronte per filtri più evoluti."
-        />
-        <NativePlacesMap
-          places={visiblePlaces}
-          source={source}
-          realtimeStatus={realtimeStatus}
-          onRefresh={reload}
-        />
-      <MapCareCommandCenter places={visiblePlaces} />
-
-        {visiblePlaces.map((place) => (
-          <AppCard key={place.id}>
-            <View style={styles.placeHeader}>
-              <IconBubble source={place.icon} size={54} tone={place.kind === 'dog_area' ? 'teal' : 'warm'} />
-              <View style={styles.placeCopy}>
-                <Text style={styles.placeName}>{place.name}</Text>
-                <Text style={styles.placeMeta}>{place.area} · {place.distanceLabel}</Text>
-                <Text style={styles.placeDescription}>{place.description}</Text>
-                <View style={styles.tagsRow}>
-                  {place.tags.map((tag) => (
-                    <Tag key={tag} label={tag} tone={place.kind === 'dog_area' ? 'teal' : 'default'} />
-                  ))}
-                </View>
-              </View>
-            </View>
-            <View style={styles.placeFooter}>
-              <Text style={styles.score}>{place.scoreLabel}</Text>
-              <Text style={[styles.status, place.moderationStatus === 'pending' && styles.statusPending]}>
-                {place.moderationStatus === 'pending' ? 'da verificare' : 'pubblicabile'}
-              </Text>
-            </View>
-          </AppCard>
-        ))}
-      </View>
 
       <AppCard tone="warm">
         <View style={styles.inlineAction}>
           <IconBubble source={baubookImages.icons.vet} tone="warm" />
           <View style={styles.actionCopy}>
             <Text style={styles.cardTitle}>Mi serve un dottore...</Text>
-            <Text style={styles.bodyText}>
-              Veterinari e servizi verranno mostrati quando saranno disponibili nel database BauBook.
-            </Text>
+            <Text style={styles.bodyText}>Veterinari e servizi verranno mostrati quando saranno disponibili nel database BauBook.</Text>
           </View>
         </View>
       </AppCard>
@@ -328,130 +337,94 @@ export function MapScreen() {
   );
 }
 
-function RadiusChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+function RadiusChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.radiusChip, selected && styles.radiusChipSelected, pressed && styles.radiusChipPressed]}
+      style={({ pressed }) => [
+        styles.radiusChip,
+        selected && styles.radiusChipSelected,
+        pressed && styles.radiusChipPressed,
+      ]}
     >
       <Text style={[styles.radiusChipText, selected && styles.radiusChipTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
-function NearbyDogAreaCard({ area }: { area: NearbyDogAreaModel }) {
+function NearbyDogAreaCard({
+  area,
+  onOpenNavigation,
+}: {
+  area: NearbyDogAreaModel;
+  onOpenNavigation: () => void;
+}) {
   return (
-    <AppCard tone="teal">
+    <AppCard elevated={false}>
       <View style={styles.placeHeader}>
-        <IconBubble source={area.icon} size={54} tone="teal" />
+        <Image source={dogAreaCartoonIcon} style={styles.dogAreaResultIcon} />
         <View style={styles.placeCopy}>
           <Text style={styles.placeName}>{area.name}</Text>
-          <Text style={styles.placeMeta}>{area.distanceLabel} · {area.area}</Text>
+          <Text style={styles.placeMeta}>
+            {area.distanceLabel} · {area.area}
+          </Text>
           <Text style={styles.placeDescription}>{area.addressLabel}</Text>
-          <View style={styles.tagsRow}>
-            <Tag label="nel raggio" tone="green" />
-            <Tag label={area.geocodingStatus} tone={area.geocodingStatus === 'beta_geocoded' ? 'teal' : 'orange'} />
-            {area.tags.slice(0, 4).map((tag) => (
-              <Tag key={tag} label={tag} tone="teal" />
-            ))}
-          </View>
         </View>
+      </View>
+
+      <View style={styles.tagsRow}>
+        {area.tags.slice(0, 4).map((tag) => (
+          <Tag key={tag} label={tag} tone="green" />
+        ))}
+      </View>
+
+      <View style={styles.placeFooter}>
+        <View>
+          <Text style={styles.score}>{area.scoreLabel}</Text>
+          <Text style={styles.coordinates}>
+            {area.latitude.toFixed(5)}, {area.longitude.toFixed(5)}
+          </Text>
+        </View>
+
+        <AppButton label="Apri navigazione" onPress={onOpenNavigation} variant="ghost" />
       </View>
     </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  mapMock: {
-    height: 260,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: '#DDF7F3',
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapIcon: {
-    width: 104,
-    height: 104,
-    resizeMode: 'contain',
-    opacity: 0.95,
-    zIndex: 3,
-  },
-  mapRoadOne: {
-    position: 'absolute',
-    width: 360,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 178, 63, 0.38)',
-    transform: [{ rotate: '-23deg' }],
-  },
-  mapRoadTwo: {
-    position: 'absolute',
-    width: 310,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(14, 129, 120, 0.20)',
-    transform: [{ rotate: '21deg' }],
-  },
-  mapPinOne: {
-    position: 'absolute',
-    left: 42,
-    top: 46,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
-    zIndex: 2,
-  },
-  mapPinTwo: {
-    position: 'absolute',
-    right: 64,
-    top: 78,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.primary,
-    zIndex: 2,
-  },
-  mapPinThree: {
-    position: 'absolute',
-    right: 112,
-    bottom: 56,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.warning,
-    zIndex: 2,
-  },
-  mapLegend: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    bottom: spacing.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    zIndex: 4,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  statusCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
   searchHeader: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     alignItems: 'center',
   },
   searchCopy: {
     flex: 1,
     gap: 4,
+    paddingRight: spacing.xs,
+  },
+  dogAreaHeroIcon: {
+    width: 116,
+    height: 116,
+    resizeMode: 'contain',
+    marginLeft: -10,
+    marginVertical: -14,
+  },
+  dogAreaResultIcon: {
+    width: 76,
+    height: 76,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+    marginLeft: -8,
+    marginVertical: -8,
   },
   cardTitle: {
     color: colors.ink,
@@ -480,9 +453,51 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.md,
   },
-  buttonWrap: {
-    marginTop: spacing.md,
-    alignItems: 'flex-start',
+  mapSection: {
+    gap: spacing.md,
+  },
+  mapHeader: {
+    gap: spacing.xs,
+  },
+  mapHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  mapEyebrow: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  mapRefreshButton: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  mapRefreshButtonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
+  mapRefreshText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
+  },
+  mapTitle: {
+    color: colors.ink,
+    fontSize: typography.h2,
+    fontWeight: '900',
+  },
+  mapDescription: {
+    color: colors.muted,
+    fontSize: typography.body,
+    lineHeight: 22,
   },
   list: {
     gap: spacing.md,
@@ -575,8 +590,8 @@ const styles = StyleSheet.create({
   },
   placeHeader: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   placeCopy: {
     flex: 1,
@@ -602,21 +617,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.md,
   },
   score: {
     color: colors.primaryDark,
     fontSize: typography.small,
     fontWeight: '900',
   },
-  status: {
-    color: colors.success,
+  coordinates: {
+    color: colors.muted,
     fontSize: typography.tiny,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-  },
-  statusPending: {
-    color: colors.warning,
+    fontWeight: '700',
+    marginTop: 3,
   },
   inlineAction: {
     flexDirection: 'row',
