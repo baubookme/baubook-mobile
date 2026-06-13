@@ -42,7 +42,7 @@ type TabItem = {
 
 const tabs: TabItem[] = [
 
- { key: 'home', label: 'Home', icon: baubookImages.tabHome, tone: 'teal', isLogo: true },
+ { key: 'home', label: 'Home', icon: baubookImages.homeTabAvatar, tone: 'teal', isLogo: true },
 
  { key: 'map', label: 'Mappa', icon: baubookImages.icons.map, tone: 'orange' },
 

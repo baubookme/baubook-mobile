@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 export const baubookImages = {
   logo: require('../../../assets/baubook/logo-completo-transparent.png') as ImageSourcePropType,
+  homeTabAvatar: require('../../../assets/baubook/brand/avatar_instagram_round.png') as ImageSourcePropType,
   logoOriginal: require('../../../assets/baubook/logo-completo.png') as ImageSourcePropType,
   avatar: require('../../../assets/baubook/avatar-rotondo-transparent.png') as ImageSourcePropType,
   avatarOriginal: require('../../../assets/baubook/avatar-rotondo.png') as ImageSourcePropType,
