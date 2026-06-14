@@ -255,7 +255,20 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                           </View>
                         ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
                       </View>
-                      <AppButton label="Aggiungi" variant="secondary" onPress={() => void handleAdd(result)} disabled={friendLimitReached || searchStatus === 'loading'} />
+                      <Pressable
+                        onPress={() => void handleAdd(result)}
+                        disabled={friendLimitReached || searchStatus === 'loading'}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Aggiungi ${result.dogName}`}
+                        style={({ pressed }) => [
+                          styles.friendIconAction,
+                          styles.friendAddAction,
+                          (friendLimitReached || searchStatus === 'loading') ? styles.friendIconActionDisabled : null,
+                          pressed ? styles.pressed : null,
+                        ]}
+                      >
+                        <Text style={[styles.friendIconActionText, styles.friendAddActionText]}>+</Text>
+                      </Pressable>
                     </View>
                   </View>
                 );
@@ -293,7 +306,20 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                         </View>
                       ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
                     </View>
-                    <AppButton label="Rimuovi" variant="ghost" onPress={() => void handleRemove(friend)} disabled={status === 'loading'} />
+                    <Pressable
+                      onPress={() => void handleRemove(friend)}
+                      disabled={status === 'loading'}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rimuovi ${friend.friendDogName}`}
+                      style={({ pressed }) => [
+                        styles.friendIconAction,
+                        styles.friendRemoveAction,
+                        status === 'loading' ? styles.friendIconActionDisabled : null,
+                        pressed ? styles.pressed : null,
+                      ]}
+                    >
+                      <Text style={[styles.friendIconActionText, styles.friendRemoveActionText]}>−</Text>
+                    </Pressable>
                   </View>
                 </View>
               );
@@ -471,6 +497,45 @@ const styles = StyleSheet.create({
   friendCopy: {
     flex: 1,
     gap: 3,
+  },
+  friendIconAction: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
+  },
+  friendAddAction: {
+    backgroundColor: colors.primary,
+  },
+  friendRemoveAction: {
+    backgroundColor: colors.surface,
+  },
+  friendIconActionDisabled: {
+    opacity: 0.45,
+  },
+  friendIconActionText: {
+    width: '100%',
+    height: 58,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    fontWeight: '900',
+  },
+  friendAddActionText: {
+    color: colors.surface,
+    fontSize: 44,
+    lineHeight: 58,
+    transform: [{ translateY: -4 }],
+  },
+  friendRemoveActionText: {
+    color: colors.primaryDark,
+    fontSize: 54,
+    lineHeight: 56,
+    transform: [{ translateY: -5 }],
   },
   friendEmptyMeta: {
     color: colors.muted,
