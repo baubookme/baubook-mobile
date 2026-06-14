@@ -199,7 +199,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           <IconBubble source={baubookImages.icons.checkin} tone="warm" />
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Pre-partenza</Text>
-            <Text style={styles.bodyText}>La checklist minima per uscire senza fare confusione.</Text>
+            <Text style={styles.bodyText}>La checklist minima per iniziare a divertirsi con BauBook!</Text>
           </View>
         </View>
 

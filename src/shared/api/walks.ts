@@ -211,6 +211,12 @@ export async function fetchWalksBoard(currentProfileId?: string | null): Promise
   }
 
   try {
+    const cleanupResult = await client.rpc('deactivate_stale_live_walks_presence');
+
+    if (cleanupResult.error) {
+      console.warn('BauBook walks stale cleanup failed', cleanupResult.error);
+    }
+
     const [walksResult, presencesResult] = await Promise.all([
       client
         .from('walk_plans')
