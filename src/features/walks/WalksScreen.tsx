@@ -175,7 +175,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
     locationMode === 'current'
       ? currentLocationPayload?.locationLabel ?? 'Posizione attuale da rilevare'
       : manualAddressValue || 'Indirizzo manuale da inserire';
-  const cleanMessage = useMemo(() => message.trim() || 'Passeggiata BauBook senza messaggio.', [message]);
+  const cleanWalkMessage = useMemo(() => message.trim() || 'Passeggiata BauBook senza messaggio.', [message]);
+  const presenceMessage = useMemo(() => selectedPresenceOption.helper, [selectedPresenceOption.helper]);
 
   const resolveCurrentLocationPayload = async (): Promise<LocationPayload | null> => {
     setLocationResolving(true);
@@ -270,7 +271,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       startsAtIso,
-      message: cleanMessage,
+      message: cleanWalkMessage,
       acceptsCompany,
       ...locationPayload,
     });
@@ -290,7 +291,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       status: presenceStatus,
-      message: cleanMessage,
+      message: presenceMessage,
       expiresMinutes: 90,
       ...locationPayload,
     });
@@ -310,7 +311,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       startsAtIso,
-      message: cleanMessage,
+      message: cleanWalkMessage,
       acceptsCompany,
       ...locationPayload,
     });
@@ -330,7 +331,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       status: presenceStatus,
-      message: cleanMessage,
+      message: presenceMessage,
       expiresMinutes: 90,
       ...locationPayload,
     });
@@ -582,7 +583,6 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                   <View style={styles.flexOne}>
                     <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
                     <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
-                    <Text style={styles.walkMessage}>“{presence.message}”</Text>
                     <LiveMapLink target={presence} />
                     <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
                   </View>
