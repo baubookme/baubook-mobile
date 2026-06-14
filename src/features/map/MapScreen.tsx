@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Location from 'expo-location';
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fetchNearbyDogAreas, type NearbyDogAreaModel } from '../../shared/api/supabaseContent';
 import { baubookImages } from '../../shared/assets/images';
 import { AppButton } from '../../shared/components/AppButton';
@@ -9,6 +10,7 @@ import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
+import { getSupabaseClient } from '../../shared/lib/supabase';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 import { NativePlacesMap } from './NativePlacesMap';
 
@@ -17,35 +19,6 @@ const dogAreaCartoonIcon = require('../../../assets/baubook/map/dog_area_cartoon
 const radiusOptions = [1, 3, 5, 10];
 
 type NearbyStatus = 'idle' | 'loading' | 'success' | 'error';
-
-type GeoPosition = {
-  coords: {
-    latitude: number;
-    longitude: number;
-    accuracy?: number | null;
-  };
-};
-
-type GeoError = {
-  code?: number;
-  message?: string;
-};
-
-type GeoOptions = {
-  enableHighAccuracy?: boolean;
-  timeout?: number;
-  maximumAge?: number;
-};
-
-type NavigatorWithGeolocation = {
-  geolocation?: {
-    getCurrentPosition: (
-      success: (position: GeoPosition) => void,
-      error?: (error: GeoError) => void,
-      options?: GeoOptions,
-    ) => void;
-  };
-};
 
 interface NearbyState {
   status: NearbyStatus;
@@ -61,32 +34,123 @@ interface LastNearbySearch {
   longitude: number;
   radiusKm: number;
   accuracy?: number | null;
+  locationLabel?: string | null;
 }
 
-function readCurrentPosition(): Promise<GeoPosition> {
-  const nav = (globalThis as unknown as { navigator?: NavigatorWithGeolocation }).navigator;
+interface ResolvedCurrentPosition {
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  locationLabel: string | null;
+}
 
-  return new Promise((resolve, reject) => {
-    if (!nav?.geolocation?.getCurrentPosition) {
-      reject(new Error('Geolocalizzazione non disponibile in questo ambiente. Su web autorizza la posizione dal browser.'));
-      return;
+async function resolveReadableLocationLabel(latitude: number, longitude: number): Promise<string | null> {
+  const client = getSupabaseClient();
+
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await client.functions.invoke('resolve-location-label', {
+      body: { latitude, longitude },
+    });
+
+    if (error || !data || typeof data.label !== 'string') {
+      return null;
     }
 
-    nav.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 300000,
-    });
-  });
+    const label = data.label.trim();
+    return label.length ? label : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readCurrentPosition(): Promise<ResolvedCurrentPosition> {
+  const permission = await Location.requestForegroundPermissionsAsync();
+
+  if (permission.status !== 'granted') {
+    throw new Error('Permesso posizione non concesso. Autorizza la posizione dal dispositivo oppure riprova dal browser.');
+  }
+
+  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  const { latitude, longitude, accuracy } = position.coords;
+  const locationLabel = (await resolveReadableLocationLabel(latitude, longitude)) ?? 'Posizione condivisa';
+
+  return {
+    latitude,
+    longitude,
+    accuracy,
+    locationLabel,
+  };
 }
 
 function formatCoordinate(value: number): string {
   return value.toFixed(5).replace('.', ',');
 }
 
+function cleanText(value?: string | null): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const cleaned = value.trim();
+  return cleaned.length ? cleaned : null;
+}
+
+function uniqueParts(parts: Array<string | null>): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  for (const part of parts) {
+    if (!part) {
+      continue;
+    }
+
+    const key = part.toLocaleLowerCase('it-IT');
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    output.push(part);
+  }
+
+  return output;
+}
+
+function buildDogAreaNavigationQuery(area: NearbyDogAreaModel): string {
+  const textQuery = uniqueParts([
+    cleanText(area.name),
+    cleanText(area.addressLabel),
+    cleanText(area.area),
+  ]).join(', ');
+
+  if (textQuery.length) {
+    return textQuery;
+  }
+
+  return `${area.latitude},${area.longitude}`;
+}
+
 function openDogAreaNavigation(area: NearbyDogAreaModel): void {
-  const url = `https://www.google.com/maps/search/?api=1&query=${area.latitude},${area.longitude}`;
-  void Linking.openURL(url);
+  const query = encodeURIComponent(buildDogAreaNavigationQuery(area));
+  const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${query}`;
+
+  if (Platform.OS === 'ios') {
+    void Linking.openURL(`maps://?daddr=${query}`).catch(() => Linking.openURL(fallbackUrl));
+    return;
+  }
+
+  if (Platform.OS === 'android') {
+    void Linking.openURL(`google.navigation:q=${query}`).catch(() =>
+      Linking.openURL(`geo:0,0?q=${query}`).catch(() => Linking.openURL(fallbackUrl)),
+    );
+    return;
+  }
+
+  void Linking.openURL(fallbackUrl);
 }
 
 export function MapScreen() {
@@ -129,13 +193,15 @@ export function MapScreen() {
         ? ` · accuratezza circa ${Math.round(search.accuracy)} m`
         : '';
 
+    const coordinatesLabel = `${formatCoordinate(search.latitude)}, ${formatCoordinate(search.longitude)}`;
+
     setNearby({
       status: 'success',
       source: result.source,
       areas: result.areas,
       message: result.message,
       errorMessage: result.errorMessage,
-      positionLabel: `${formatCoordinate(search.latitude)}, ${formatCoordinate(search.longitude)}${accuracyLabel}`,
+      positionLabel: `${search.locationLabel ?? coordinatesLabel}${accuracyLabel}`,
     });
   };
 
@@ -150,10 +216,11 @@ export function MapScreen() {
     try {
       const position = await readCurrentPosition();
       const search: LastNearbySearch = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: position.latitude,
+        longitude: position.longitude,
         radiusKm,
-        accuracy: position.coords.accuracy,
+        accuracy: position.accuracy,
+        locationLabel: position.locationLabel,
       };
 
       setLastNearbySearch(search);
@@ -257,7 +324,7 @@ export function MapScreen() {
 
         <View style={styles.manualRow}>
           <View style={styles.manualInputWrap}>
-            <Text style={styles.label}>Raggio custom</Text>
+            <Text style={styles.label}>Manuale</Text>
             <TextInput
               value={manualRadius}
               onChangeText={handleManualRadiusChange}

@@ -18,6 +18,7 @@ type WebMarker = {
   subtitle: string;
   latitude: number;
   longitude: number;
+  navigationQuery: string;
 };
 
 type NativePlacesMapProps = {
@@ -79,8 +80,11 @@ const titlePaths = [
 ];
 
 const subtitlePaths = [
+  ['addressLabel'],
+  ['address_label'],
   ['address'],
   ['street'],
+  ['area'],
   ['city'],
   ['municipality'],
   ['type'],
@@ -156,6 +160,52 @@ function readText(record: AnyPlace, paths: string[][], fallback: string): string
   return fallback;
 }
 
+function readOptionalText(record: AnyPlace, paths: string[][]): string | null {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function uniqueTextParts(parts: Array<string | null>): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  for (const part of parts) {
+    if (!part) {
+      continue;
+    }
+
+    const key = part.toLocaleLowerCase('it-IT');
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    output.push(part);
+  }
+
+  return output;
+}
+
+function buildNavigationQuery(place: AnyPlace, title: string, latitude: number, longitude: number): string {
+  const textQuery = uniqueTextParts([
+    title,
+    readOptionalText(place, [['addressLabel'], ['address_label'], ['address'], ['street']]),
+    readOptionalText(place, [['area'], ['city'], ['municipality']]),
+  ]).join(', ');
+
+  if (textQuery.length) {
+    return textQuery;
+  }
+
+  return `${latitude},${longitude}`;
+}
+
 function toMarker(place: AnyPlace, index: number): WebMarker | null {
   const latitude = readNumber(place, coordinatePaths);
   const longitude = readNumber(place, longitudePaths);
@@ -166,17 +216,20 @@ function toMarker(place: AnyPlace, index: number): WebMarker | null {
   const rawId = readPath(place, ['id']) ?? readPath(place, ['placeId']) ?? readPath(place, ['uuid']);
   const id = typeof rawId === 'string' || typeof rawId === 'number' ? String(rawId) : `${latitude}:${longitude}:${index}`;
 
+  const title = readText(place, titlePaths, `Luogo ${index + 1}`);
+
   return {
     id,
-    title: readText(place, titlePaths, `Luogo ${index + 1}`),
+    title,
     subtitle: readText(place, subtitlePaths, `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`),
     latitude,
     longitude,
+    navigationQuery: buildNavigationQuery(place, title, latitude, longitude),
   };
 }
 
 function openMarker(marker: WebMarker): void {
-  const url = `https://www.openstreetmap.org/?mlat=${marker.latitude}&mlon=${marker.longitude}#map=17/${marker.latitude}/${marker.longitude}`;
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.navigationQuery)}`;
   void Linking.openURL(url);
 }
 

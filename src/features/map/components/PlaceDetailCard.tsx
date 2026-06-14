@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import BauBookIcon from '../../../components/BauBookIcon';
 import { colors, radius, spacing, typography } from '../../../shared/theme/theme';
 
@@ -59,7 +59,29 @@ function readTags(place: MapCarePlace): string[] {
   return [];
 }
 
-function getNavigationUrl(place: MapCarePlace): string {
+function uniqueTextParts(parts: string[]): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  for (const part of parts) {
+    const cleaned = part.trim();
+    if (!cleaned.length) {
+      continue;
+    }
+
+    const key = cleaned.toLocaleLowerCase('it-IT');
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    output.push(cleaned);
+  }
+
+  return output;
+}
+
+function buildNavigationQuery(place: MapCarePlace): string {
   const latitude = readNumber(place, [
     ['latitude'],
     ['lat'],
@@ -83,14 +105,42 @@ function getNavigationUrl(place: MapCarePlace): string {
     ['location', 'lng'],
     ['location', 'lon'],
   ]);
+  const textQuery = uniqueTextParts([
+    readText(place, [['name'], ['title'], ['label']], ''),
+    readText(place, [['addressLabel'], ['address_label'], ['address'], ['street']], ''),
+    readText(place, [['area'], ['city'], ['municipality']], ''),
+  ]).join(', ');
 
-  if (latitude !== null && longitude !== null) {
-    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+  if (textQuery.length) {
+    return textQuery;
   }
 
-  const name = encodeURIComponent(readText(place, [['name'], ['title'], ['label']], 'luogo dog friendly'));
-  return `https://www.google.com/maps/search/?api=1&query=${name}`;
+  if (latitude !== null && longitude !== null) {
+    return `${latitude},${longitude}`;
+  }
+
+  return readText(place, [['name'], ['title'], ['label']], 'luogo dog friendly');
 }
+
+function openNativeNavigation(place: MapCarePlace): void {
+  const query = encodeURIComponent(buildNavigationQuery(place));
+  const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${query}`;
+
+  if (Platform.OS === 'ios') {
+    void Linking.openURL(`maps://?daddr=${query}`).catch(() => Linking.openURL(fallbackUrl));
+    return;
+  }
+
+  if (Platform.OS === 'android') {
+    void Linking.openURL(`google.navigation:q=${query}`).catch(() =>
+      Linking.openURL(`geo:0,0?q=${query}`).catch(() => Linking.openURL(fallbackUrl)),
+    );
+    return;
+  }
+
+  void Linking.openURL(fallbackUrl);
+}
+
 
 function showReportInfo(place: MapCarePlace): void {
   const name = readText(place, [['name'], ['title'], ['label']], 'questo luogo');
@@ -146,7 +196,7 @@ export function PlaceDetailCard({ place, favorite, onToggleFavorite }: PlaceDeta
 
       <View style={styles.actionsRow}>
         <Pressable
-          onPress={() => void Linking.openURL(getNavigationUrl(place))}
+          onPress={() => openNativeNavigation(place)}
           style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
         >
           <Text style={styles.actionText}>Apri navigazione</Text>
