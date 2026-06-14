@@ -319,7 +319,7 @@ export function DogProfileScreen() {
                         </Text>
                         <Text style={styles.name}>{dogName || 'Il mio amico'}</Text>
                         <Text style={styles.visibility}>
-                            {auth.isSignedIn ? 'Visibilità: pubblico · moderazione: approved' : 'Accedi nel tab Setup per salvare davvero'}
+                            {auth.isSignedIn ? 'Visibilità: pubblico · moderazione: approved ✔️' : 'Accedi nel tab Setup per salvare davvero'}
                         </Text>
                     </View>
                 </View>

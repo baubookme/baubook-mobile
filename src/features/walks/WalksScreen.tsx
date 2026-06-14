@@ -346,7 +346,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.bodyText}>
-              Il punto operativo per uscire: amici, posizione, presenza e passeggiata in corso in una sola schermata.
+              Il punto operativo per uscire: amici, posizione, presenza e passeggiate in corso in una sola schermata.
             </Text>
           </View>
         </View>
@@ -461,7 +461,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         {hasMyActiveWalk ? (
           <View style={styles.businessNotice}>
             <Text style={styles.businessNoticeTitle}>Ora hai una passeggiata attiva</Text>
-            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sotto oppure chiuderla da 'Passeggiate live'.</Text>
+            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sopra oppure chiuderla da 'Passeggiate live'.</Text>
           </View>
         ) : null}
 
