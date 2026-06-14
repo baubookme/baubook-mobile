@@ -11,6 +11,7 @@ import { Screen } from '../../shared/components/Screen';
 import { Tag } from '../../shared/components/Tag';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { useWalksBoard } from '../../shared/hooks/useWalksBoard';
+import { getSupabaseClient } from '../../shared/lib/supabase';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
 import type { TabKey } from '../../shared/types/domain';
 
@@ -68,22 +69,6 @@ function formatStartPreview(minutes: number): string {
   return value.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function buildAddressLabel(address?: Location.LocationGeocodedAddress | null): string | null {
-  if (!address) {
-    return null;
-  }
-
-  const streetLine = [address.street, address.streetNumber].filter(Boolean).join(' ').trim();
-  const cityLine = [address.city, address.subregion, address.region].filter(Boolean).join(', ').trim();
-  const parts = [streetLine, cityLine].filter(Boolean);
-
-  if (parts.length) {
-    return parts.join(' · ');
-  }
-
-  return address.name || address.district || address.country || null;
-}
-
 function openLocationInNativeMaps(target: LiveLocationTarget) {
   const latitude = typeof target.locationLatitude === 'number' ? target.locationLatitude : null;
   const longitude = typeof target.locationLongitude === 'number' ? target.locationLongitude : null;
@@ -115,6 +100,29 @@ function openLocationInNativeMaps(target: LiveLocationTarget) {
 
   void Linking.openURL(nativeUrl).catch(() => Linking.openURL(fallbackUrl));
 }
+async function resolveReadableLocationLabel(latitude: number, longitude: number): Promise<string | null> {
+  const client = getSupabaseClient();
+
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await client.functions.invoke('resolve-location-label', {
+      body: { latitude, longitude },
+    });
+
+    if (error || !data || typeof data.label !== 'string') {
+      return null;
+    }
+
+    const label = data.label.trim();
+    return label.length ? label : null;
+  } catch {
+    return null;
+  }
+}
+
 
 export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const auth = useAuthAccount();
@@ -184,14 +192,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
-      let label = `Posizione condivisa (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
-
-      try {
-        const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
-        label = buildAddressLabel(addresses[0]) ?? label;
-      } catch {
-        // Se il reverse geocode non risponde, salviamo comunque coordinate precise.
-      }
+      const label = (await resolveReadableLocationLabel(latitude, longitude)) ?? 'Posizione condivisa';
 
       const payload: LocationPayload = {
         locationMode: 'current',
@@ -218,24 +219,11 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       return null;
     }
 
-    let latitude: number | null = null;
-    let longitude: number | null = null;
-
-    try {
-      const geocoded = await Location.geocodeAsync(manualAddressValue);
-      if (geocoded[0]) {
-        latitude = geocoded[0].latitude;
-        longitude = geocoded[0].longitude;
-      }
-    } catch {
-      // L’indirizzo resta comunque apribile da Maps come query testuale.
-    }
-
     return {
       locationMode: 'manual',
       locationLabel: manualAddressValue,
-      locationLatitude: latitude,
-      locationLongitude: longitude,
+      locationLatitude: null,
+      locationLongitude: null,
       manualAddress: manualAddressValue,
     };
   };
@@ -552,7 +540,6 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                     <Text style={styles.walkTitle}>{plan.dogName} parte da {plan.placeName}</Text>
                     <Text style={styles.walkMessage}>“{plan.message}”</Text>
                     <LiveMapLink target={plan} />
-                    <Text style={styles.ownerText}>Account: {plan.ownerName}</Text>
                     <View style={styles.tagsRow}>
                       {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
                     </View>
@@ -900,7 +887,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   currentLocationAction: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.primary,
