@@ -17,7 +17,7 @@ interface WalksScreenProps {
   onNavigate?: (tab: TabKey) => void;
 }
 
-type PresenceStatus = 'available' | 'walking' | 'playing';
+type PresenceStatus = 'available' | 'walking' | 'playing' | 'dog_area';
 type LocationMode = 'current' | 'manual';
 
 interface StartOption {
@@ -42,8 +42,9 @@ const startOptions: StartOption[] = [
 
 const presenceOptions: PresenceOption[] = [
   { label: 'Accetto compagnia', status: 'available', helper: 'Sono disponibile a incontrare altri cani.' },
-  { label: 'Sto passeggiando', status: 'walking', helper: 'Presenza morbida: sto facendo un giro.' },
+  { label: 'Sto passeggiando', status: 'walking', helper: 'Gironzolo qui intorno senza meta.' },
   { label: 'Sto giocando', status: 'playing', helper: 'Sono in zona e ho voglia di socializzare.' },
+  { label: 'Sono in area cani', status: 'dog_area', helper: 'Chi si fa una corsetta?' },
 ];
 
 function formatStartPreview(minutes: number): string {
@@ -296,8 +297,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         {hasMyActiveWalk ? (
           <View style={styles.businessNotice}>
-            <Text style={styles.businessNoticeTitle}>Hai già una passeggiata attiva</Text>
-            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sotto oppure chiuderla da Passeggiate live.</Text>
+            <Text style={styles.businessNoticeTitle}>Ora hai una passeggiata attiva</Text>
+            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sotto oppure chiuderla da 'Passeggiate live'.</Text>
           </View>
         ) : null}
 
@@ -338,8 +339,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         {hasMyActivePresence ? (
           <View style={styles.businessNotice}>
-            <Text style={styles.businessNoticeTitle}>Hai già una presenza attiva</Text>
-            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sopra.</Text>
+            <Text style={styles.businessNoticeTitle}>Ora hai una presenza live attiva</Text>
+            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sopra oppure chiuderla da 'Presenze live'.</Text>
           </View>
         ) : null}
 
@@ -358,10 +359,10 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
       <AppCard elevated={false}>
         <View style={styles.sectionTitleRow}>
-          <IconBubble source={baubookImages.icons.friends} tone="warm" />
+
           <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Passeggiate live</Text>
-            <Text style={styles.bodyText}>Chi ha proposto una passeggiata e chi ha detto “sono in zona”.</Text>
+            <Text style={styles.cardTitle}>Passeggiate live 🚶🏻‍♀️</Text>
+
           </View>
         </View>
 
@@ -376,7 +377,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                     <Text style={styles.walkTime}>{plan.startsAtLabel}</Text>
                     <Text style={styles.walkTitle}>{plan.dogName} va a {plan.placeName}</Text>
                     <Text style={styles.walkMessage}>“{plan.message}”</Text>
-                    <Text style={styles.ownerText}>Umano: {plan.ownerName}</Text>
+                    <Text style={styles.ownerText}>Account: {plan.ownerName}</Text>
                     <View style={styles.tagsRow}>
                       {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
                     </View>
@@ -403,7 +404,13 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       </AppCard>
 
       <AppCard>
-        <Text style={styles.cardTitle}>Presenze attive</Text>
+        <View style={styles.sectionTitleRow}>
+
+          <View style={styles.flexOne}>
+            <Text style={styles.cardTitle}>Presenze live 🐕</Text>
+          </View>
+        </View>
+
         <View style={styles.presenceList}>
           {walksBoard.presences.length ? (
             walksBoard.presences.map((presence) => (

@@ -50,7 +50,7 @@ export interface UpdateWalkPlanInput extends CreateWalkPlanInput {}
 export interface CreatePresenceInput {
   placeId: string;
   dogId: string;
-  status: 'available' | 'walking' | 'playing';
+  status: 'available' | 'walking' | 'playing' | 'dog_area';
   message: string;
   expiresMinutes: number;
 }
@@ -178,8 +178,8 @@ function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string
   const dog = firstRelation(row.dogs);
   const place = firstRelation(row.places);
   const profile = firstRelation(row.profiles);
-  const statusLabel = row.status === 'playing' ? 'sta giocando' : row.status === 'available' ? 'accetta compagnia' : 'sta passeggiando';
-  const statusTag = row.status === 'playing' ? 'Sto giocando' : row.status === 'available' ? 'Accetto compagnia' : 'Sto passeggiando';
+  const statusLabel = row.status === 'dog_area' ? 'è in area cani' : row.status === 'playing' ? 'sta giocando' : row.status === 'available' ? 'accetta compagnia' : 'sta passeggiando';
+  const statusTag = row.status === 'dog_area' ? 'Sono in area cani' : row.status === 'playing' ? 'Sto giocando' : row.status === 'available' ? 'Accetto compagnia' : 'Sto passeggiando';
 
   return {
     id: row.id,
