@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Location from 'expo-location';
 import type { ImageSourcePropType } from 'react-native';
 import { baubookImages } from '../../shared/assets/images';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
@@ -19,6 +20,21 @@ interface WalksScreenProps {
 
 type PresenceStatus = 'available' | 'walking' | 'playing' | 'dog_area';
 type LocationMode = 'current' | 'manual';
+
+interface LocationPayload {
+  locationMode: LocationMode;
+  locationLabel: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  manualAddress: string | null;
+}
+
+interface LiveLocationTarget {
+  locationLabel?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  manualAddress?: string | null;
+}
 
 interface StartOption {
   label: string;
@@ -52,6 +68,54 @@ function formatStartPreview(minutes: number): string {
   return value.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+function buildAddressLabel(address?: Location.LocationGeocodedAddress | null): string | null {
+  if (!address) {
+    return null;
+  }
+
+  const streetLine = [address.street, address.streetNumber].filter(Boolean).join(' ').trim();
+  const cityLine = [address.city, address.subregion, address.region].filter(Boolean).join(', ').trim();
+  const parts = [streetLine, cityLine].filter(Boolean);
+
+  if (parts.length) {
+    return parts.join(' · ');
+  }
+
+  return address.name || address.district || address.country || null;
+}
+
+function openLocationInNativeMaps(target: LiveLocationTarget) {
+  const latitude = typeof target.locationLatitude === 'number' ? target.locationLatitude : null;
+  const longitude = typeof target.locationLongitude === 'number' ? target.locationLongitude : null;
+  const label = target.locationLabel || target.manualAddress || 'Posizione BauBook';
+  const encodedLabel = encodeURIComponent(label);
+
+  let fallbackUrl: string;
+  let nativeUrl: string;
+
+  if (latitude !== null && longitude !== null) {
+    const coord = `${latitude},${longitude}`;
+    fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${coord}`;
+    nativeUrl =
+      Platform.OS === 'ios'
+        ? `maps://?q=${encodedLabel}&ll=${coord}`
+        : Platform.OS === 'android'
+          ? `geo:${coord}?q=${coord}(${encodedLabel})`
+          : fallbackUrl;
+  } else {
+    const query = encodeURIComponent(target.manualAddress || label);
+    fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+    nativeUrl =
+      Platform.OS === 'ios'
+        ? `maps://?q=${query}`
+        : Platform.OS === 'android'
+          ? `geo:0,0?q=${query}`
+          : fallbackUrl;
+  }
+
+  void Linking.openURL(nativeUrl).catch(() => Linking.openURL(fallbackUrl));
+}
+
 export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const auth = useAuthAccount();
   const placesState = useSupabasePlaces();
@@ -65,6 +129,9 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const [presenceStatus, setPresenceStatus] = useState<PresenceStatus>('walking');
   const [locationMode, setLocationMode] = useState<LocationMode>('current');
   const [manualAddress, setManualAddress] = useState('');
+  const [currentLocationPayload, setCurrentLocationPayload] = useState<LocationPayload | null>(null);
+  const [locationStatusMessage, setLocationStatusMessage] = useState<string | null>(null);
+  const [locationResolving, setLocationResolving] = useState(false);
 
   const livePlaces = useMemo(
     () => placesState.places.filter((place) => place.moderationStatus !== 'removed'),
@@ -96,11 +163,90 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const canUpdateWalk = canUseLiveWrites && hasMyActiveWalk;
   const canCreatePresence = canUseLiveWrites && !hasMyActivePresence;
   const canUpdatePresence = canUseLiveWrites && hasMyActivePresence;
-  const locationLabel = locationMode === 'current' ? 'Posizione attuale' : manualAddressValue || 'Indirizzo manuale da inserire';
-  const messageWithLocation = useMemo(() => {
-    const cleanMessage = message.trim() || 'Passeggiata BauBook senza messaggio.';
-    return `${cleanMessage}\n\n📍 ${locationLabel}`;
-  }, [locationLabel, message]);
+  const resolvedLocationLabel =
+    locationMode === 'current'
+      ? currentLocationPayload?.locationLabel ?? 'Posizione attuale da rilevare'
+      : manualAddressValue || 'Indirizzo manuale da inserire';
+  const cleanMessage = useMemo(() => message.trim() || 'Passeggiata BauBook senza messaggio.', [message]);
+
+  const resolveCurrentLocationPayload = async (): Promise<LocationPayload | null> => {
+    setLocationResolving(true);
+    setLocationStatusMessage('Rilevo la posizione...');
+
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        setLocationStatusMessage('Permesso posizione non concesso. Usa un indirizzo manuale.');
+        return null;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      let label = `Posizione condivisa (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+
+      try {
+        const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
+        label = buildAddressLabel(addresses[0]) ?? label;
+      } catch {
+        // Se il reverse geocode non risponde, salviamo comunque coordinate precise.
+      }
+
+      const payload: LocationPayload = {
+        locationMode: 'current',
+        locationLabel: label,
+        locationLatitude: latitude,
+        locationLongitude: longitude,
+        manualAddress: null,
+      };
+
+      setCurrentLocationPayload(payload);
+      setLocationStatusMessage(`Posizione rilevata: ${label}`);
+      return payload;
+    } catch {
+      setLocationStatusMessage('Non riesco a leggere la posizione. Usa un indirizzo manuale.');
+      return null;
+    } finally {
+      setLocationResolving(false);
+    }
+  };
+
+  const resolveManualLocationPayload = async (): Promise<LocationPayload | null> => {
+    if (!manualAddressReady) {
+      setLocationStatusMessage('Inserisci almeno 10 caratteri per usare l’indirizzo manuale.');
+      return null;
+    }
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    try {
+      const geocoded = await Location.geocodeAsync(manualAddressValue);
+      if (geocoded[0]) {
+        latitude = geocoded[0].latitude;
+        longitude = geocoded[0].longitude;
+      }
+    } catch {
+      // L’indirizzo resta comunque apribile da Maps come query testuale.
+    }
+
+    return {
+      locationMode: 'manual',
+      locationLabel: manualAddressValue,
+      locationLatitude: latitude,
+      locationLongitude: longitude,
+      manualAddress: manualAddressValue,
+    };
+  };
+
+  const prepareLocationPayload = async (): Promise<LocationPayload | null> => {
+    if (locationMode === 'manual') {
+      return resolveManualLocationPayload();
+    }
+
+    return currentLocationPayload ?? resolveCurrentLocationPayload();
+  };
 
   useEffect(() => {
     if (!selectedDogId && auth.dogs[0]?.id) {
@@ -115,16 +261,20 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   }, [livePlaces, selectedPlaceId]);
 
   const handleOpenManualAddressInMaps = () => {
-    const address = manualAddressValue;
     if (!manualAddressReady) {
       return;
     }
 
-    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`);
+    openLocationInNativeMaps({ locationLabel: manualAddressValue, manualAddress: manualAddressValue });
   };
 
-  const handleCreateWalk = () => {
+  const handleCreateWalk = async () => {
     if (!canCreateWalk || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    const locationPayload = await prepareLocationPayload();
+    if (!locationPayload) {
       return;
     }
 
@@ -132,13 +282,19 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       startsAtIso,
-      message: messageWithLocation,
+      message: cleanMessage,
       acceptsCompany,
+      ...locationPayload,
     });
   };
 
-  const handleStartPresence = () => {
+  const handleStartPresence = async () => {
     if (!canCreatePresence || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    const locationPayload = await prepareLocationPayload();
+    if (!locationPayload) {
       return;
     }
 
@@ -146,13 +302,19 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       status: presenceStatus,
-      message: messageWithLocation,
+      message: cleanMessage,
       expiresMinutes: 90,
+      ...locationPayload,
     });
   };
 
-  const handleUpdateWalk = () => {
+  const handleUpdateWalk = async () => {
     if (!canUpdateWalk || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    const locationPayload = await prepareLocationPayload();
+    if (!locationPayload) {
       return;
     }
 
@@ -160,13 +322,19 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       startsAtIso,
-      message: messageWithLocation,
+      message: cleanMessage,
       acceptsCompany,
+      ...locationPayload,
     });
   };
 
-  const handleUpdatePresence = () => {
+  const handleUpdatePresence = async () => {
     if (!canUpdatePresence || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    const locationPayload = await prepareLocationPayload();
+    if (!locationPayload) {
       return;
     }
 
@@ -174,8 +342,9 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       status: presenceStatus,
-      message: messageWithLocation,
+      message: cleanMessage,
       expiresMinutes: 90,
+      ...locationPayload,
     });
   };
 
@@ -206,13 +375,13 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         <View style={styles.checkList}>
           <ChecklistRow title="Account 👤" description={profileReady ? 'Profilo attivo.' : 'Accedi in Setup per scrivere dati reali.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
           <ChecklistRow title="Attore 🐾" description={dogReady ? `${selectedDog?.name ?? 'Attore'} pronto.` : 'Crea il primo amico in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
-          <ChecklistRow title="Posizione 📍" description={locationReady ? locationLabel : 'Usa la posizione attuale o inserisci un indirizzo.'} ok={locationReady} />
+          <ChecklistRow title="Posizione 📍" description={locationReady ? resolvedLocationLabel : 'Usa la posizione attuale o inserisci un indirizzo.'} ok={locationReady} />
         </View>
 
         <View style={styles.locationPanel}>
           <Text style={styles.label}>Da dove parto</Text>
           <View style={styles.locationModeRow}>
-            <LocationModeButton label="Posizione attuale" selected={locationMode === 'current'} onPress={() => setLocationMode('current')} />
+            <LocationModeButton label="Posizione attuale" selected={locationMode === 'current'} onPress={() => { setLocationMode('current'); void resolveCurrentLocationPayload(); }} />
             <LocationModeButton label="Indirizzo manuale" selected={locationMode === 'manual'} onPress={() => setLocationMode('manual')} />
           </View>
           {locationMode === 'manual' ? (
@@ -236,7 +405,12 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
               <Text style={manualAddressReady || manualAddressValue.length === 0 ? styles.helperText : styles.warningText}>Inserisci almeno 10 caratteri per usare l’indirizzo manuale.</Text>
             </View>
           ) : (
-            <Text style={styles.helperText}>Useremo la posizione attuale come punto di partenza visibile nel messaggio.</Text>
+            <View style={styles.currentLocationBox}>
+              <Text style={styles.helperText}>{locationStatusMessage ?? 'Rileva la posizione attuale per condividerla in modo utile agli altri utenti.'}</Text>
+              <Pressable onPress={() => void resolveCurrentLocationPayload()} style={({ pressed }) => [styles.currentLocationAction, pressed && styles.pressed]}>
+                <Text style={styles.currentLocationActionText}>{locationResolving ? 'Rilevo...' : 'Rileva posizione'}</Text>
+              </Pressable>
+            </View>
           )}
         </View>
       </AppCard>
@@ -275,7 +449,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Posizione</Text>
-          <Text style={styles.locationSummary}>{locationLabel}</Text>
+          <Text style={styles.locationSummary}>{resolvedLocationLabel}</Text>
         </View>
 
         <View style={styles.formGroup}>
@@ -327,7 +501,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Posizione</Text>
-          <Text style={styles.locationSummary}>{locationLabel}</Text>
+          <Text style={styles.locationSummary}>{resolvedLocationLabel}</Text>
         </View>
 
         <View style={styles.chipRow}>
@@ -375,8 +549,9 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                   <WalkDogAvatar avatarUrl={plan.dogAvatarUrl} />
                   <View style={styles.flexOne}>
                     <Text style={styles.walkTime}>{plan.startsAtLabel}</Text>
-                    <Text style={styles.walkTitle}>{plan.dogName} va a {plan.placeName}</Text>
+                    <Text style={styles.walkTitle}>{plan.dogName} parte da {plan.placeName}</Text>
                     <Text style={styles.walkMessage}>“{plan.message}”</Text>
+                    <LiveMapLink target={plan} />
                     <Text style={styles.ownerText}>Account: {plan.ownerName}</Text>
                     <View style={styles.tagsRow}>
                       {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
@@ -421,6 +596,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                     <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
                     <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
                     <Text style={styles.walkMessage}>“{presence.message}”</Text>
+                    <LiveMapLink target={presence} />
                     <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
                   </View>
                 </View>
@@ -497,6 +673,24 @@ function LocationModeButton({ label, selected, onPress }: { label: string; selec
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.locationModeButton, selected && styles.locationModeButtonSelected, pressed && styles.choiceChipPressed]}>
       <Text style={[styles.locationModeButtonText, selected && styles.locationModeButtonTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function LiveMapLink({ target }: { target: LiveLocationTarget }) {
+  const hasLocation =
+    typeof target.locationLatitude === 'number' ||
+    typeof target.locationLongitude === 'number' ||
+    Boolean(target.manualAddress || target.locationLabel);
+
+  if (!hasLocation) {
+    return null;
+  }
+
+  return (
+    <Pressable onPress={() => openLocationInNativeMaps(target)} style={({ pressed }) => [styles.liveMapLink, pressed && styles.pressed]}>
+      <Image source={baubookImages.icons.map} style={styles.liveMapIcon} />
+      <Text style={styles.liveMapText}>Apri mappa</Text>
     </Pressable>
   );
 }
@@ -702,6 +896,23 @@ const styles = StyleSheet.create({
     height: 32,
     resizeMode: 'contain',
   },
+  currentLocationBox: {
+    gap: spacing.sm,
+  },
+  currentLocationAction: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.tealSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  currentLocationActionText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
+  },
   locationSummary: {
     borderRadius: radius.md,
     borderWidth: 1,
@@ -888,6 +1099,29 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  liveMapLink: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    marginTop: spacing.xs,
+  },
+  liveMapIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+  },
+  liveMapText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
   },
   ownerText: {
     color: colors.muted,

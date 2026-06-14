@@ -2,6 +2,8 @@ import { getSupabaseClient } from '../lib/supabase';
 import type { WalkPlanModel } from '../types/domain';
 import { normalizeError } from './authAccount';
 
+type LocationMode = 'current' | 'manual';
+
 export interface LiveWalkPlanModel extends WalkPlanModel {
   startsAtIso: string;
   ownerName: string;
@@ -9,6 +11,11 @@ export interface LiveWalkPlanModel extends WalkPlanModel {
   dogId: string | null;
   ownerId: string | null;
   dogAvatarUrl: string | null;
+  locationMode: LocationMode | null;
+  locationLabel: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  manualAddress: string | null;
   isMine: boolean;
   source: 'supabase' | 'fallback';
 }
@@ -26,6 +33,11 @@ export interface LivePresenceModel {
   profileId: string | null;
   dogId: string | null;
   placeId: string | null;
+  locationMode: LocationMode | null;
+  locationLabel: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  manualAddress: string | null;
   isMine: boolean;
 }
 
@@ -37,7 +49,15 @@ export interface WalksBoardResult {
   errorMessage?: string;
 }
 
-export interface CreateWalkPlanInput {
+export interface LocationPayloadInput {
+  locationMode?: LocationMode | null;
+  locationLabel?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  manualAddress?: string | null;
+}
+
+export interface CreateWalkPlanInput extends LocationPayloadInput {
   placeId: string;
   dogId: string;
   startsAtIso: string;
@@ -47,7 +67,7 @@ export interface CreateWalkPlanInput {
 
 export interface UpdateWalkPlanInput extends CreateWalkPlanInput {}
 
-export interface CreatePresenceInput {
+export interface CreatePresenceInput extends LocationPayloadInput {
   placeId: string;
   dogId: string;
   status: 'available' | 'walking' | 'playing' | 'dog_area';
@@ -79,6 +99,11 @@ interface RemoteWalkPlanRow {
   ends_at: string | null;
   message: string | null;
   accepts_company: boolean;
+  location_mode?: LocationMode | null;
+  location_label?: string | null;
+  location_latitude?: number | null;
+  location_longitude?: number | null;
+  manual_address?: string | null;
   dogs?: RelatedDogRow | RelatedDogRow[] | null;
   places?: (RelatedNameRow & { tags?: string[] | null; type?: string | null }) | Array<RelatedNameRow & { tags?: string[] | null; type?: string | null }> | null;
   profiles?: RelatedProfileRow | RelatedProfileRow[] | null;
@@ -92,6 +117,11 @@ interface RemotePresenceRow {
   status: string;
   message: string | null;
   expires_at: string;
+  location_mode?: LocationMode | null;
+  location_label?: string | null;
+  location_latitude?: number | null;
+  location_longitude?: number | null;
+  manual_address?: string | null;
   dogs?: RelatedDogRow | RelatedDogRow[] | null;
   places?: RelatedNameRow | RelatedNameRow[] | null;
   profiles?: RelatedProfileRow | RelatedProfileRow[] | null;
@@ -149,19 +179,24 @@ function formatPresenceExpiry(iso: string): string {
   return `scade tra ${Math.round(minutes / 60)} h`;
 }
 
+function cleanLiveMessage(message: string | null, fallback: string): string {
+  return (message ?? fallback).replace(/\n\n📍[\s\S]*$/u, '').trim();
+}
+
 function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | null): LiveWalkPlanModel {
   const dog = firstRelation(row.dogs);
   const place = firstRelation(row.places);
   const profile = firstRelation(row.profiles);
   const tags = [row.accepts_company ? 'Accetto compagnia' : 'Meglio se ci conosciamo già!'];
+  const locationLabel = row.location_label?.trim() || null;
 
   return {
     id: row.id,
     dogName: dog?.name ?? 'Un bau amico',
-    placeName: place?.name ?? 'luogo BauBook',
+    placeName: locationLabel ?? place?.name ?? 'luogo BauBook',
     startsAtLabel: formatWalkStartLabel(row.starts_at),
     startsAtIso: row.starts_at,
-    message: row.message ?? 'Passeggiata BauBook senza messaggio. Misterioso ma scodinzolante.',
+    message: cleanLiveMessage(row.message, 'Passeggiata BauBook senza messaggio. Misterioso ma scodinzolante.'),
     acceptsCompany: row.accepts_company,
     tags,
     ownerName: profile?.display_name ?? 'Umano BauBook',
@@ -169,6 +204,11 @@ function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | n
     dogId: row.dog_id,
     ownerId: row.owner_id,
     dogAvatarUrl: dog?.avatar_url ?? null,
+    locationMode: row.location_mode ?? null,
+    locationLabel,
+    locationLatitude: row.location_latitude ?? null,
+    locationLongitude: row.location_longitude ?? null,
+    manualAddress: row.manual_address ?? null,
     isMine: Boolean(currentProfileId && row.owner_id === currentProfileId),
     source: 'supabase',
   };
@@ -180,20 +220,26 @@ function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string
   const profile = firstRelation(row.profiles);
   const statusLabel = row.status === 'dog_area' ? 'è in area cani' : row.status === 'playing' ? 'sta giocando' : row.status === 'available' ? 'accetta compagnia' : 'sta passeggiando';
   const statusTag = row.status === 'dog_area' ? 'Sono in area cani' : row.status === 'playing' ? 'Sto giocando' : row.status === 'available' ? 'Accetto compagnia' : 'Sto passeggiando';
+  const locationLabel = row.location_label?.trim() || null;
 
   return {
     id: row.id,
     dogName: dog?.name ?? 'Un bau vicino',
-    placeName: place?.name ?? 'luogo BauBook',
+    placeName: locationLabel ?? place?.name ?? 'luogo BauBook',
     ownerName: profile?.display_name ?? 'Umano BauBook',
     dogAvatarUrl: dog?.avatar_url ?? null,
     statusLabel,
-    message: row.message ?? 'Presenza temporanea attiva.',
+    message: cleanLiveMessage(row.message, 'Presenza temporanea attiva.'),
     expiresAtLabel: formatPresenceExpiry(row.expires_at),
     tags: [statusTag],
     profileId: row.profile_id,
     dogId: row.dog_id,
     placeId: row.place_id,
+    locationMode: row.location_mode ?? null,
+    locationLabel,
+    locationLatitude: row.location_latitude ?? null,
+    locationLongitude: row.location_longitude ?? null,
+    manualAddress: row.manual_address ?? null,
     isMine: Boolean(currentProfileId && row.profile_id === currentProfileId),
   };
 }
@@ -220,13 +266,13 @@ export async function fetchWalksBoard(currentProfileId?: string | null): Promise
     const [walksResult, presencesResult] = await Promise.all([
       client
         .from('walk_plans')
-        .select('id, place_id, dog_id, owner_id, starts_at, ends_at, message, accepts_company, dogs(name, avatar_url), places(name, tags, type), profiles(display_name)')
+        .select('id, place_id, dog_id, owner_id, starts_at, ends_at, message, accepts_company, location_mode, location_label, location_latitude, location_longitude, manual_address, dogs(name, avatar_url), places(name, tags, type), profiles(display_name)')
         .eq('active', true)
         .order('starts_at', { ascending: true })
         .limit(20),
       client
         .from('presence_sessions')
-        .select('id, profile_id, dog_id, place_id, status, message, expires_at, dogs(name, avatar_url), places(name), profiles(display_name)')
+        .select('id, profile_id, dog_id, place_id, status, message, expires_at, location_mode, location_label, location_latitude, location_longitude, manual_address, dogs(name, avatar_url), places(name), profiles(display_name)')
         .eq('active', true)
         .gt('expires_at', new Date().toISOString())
         .order('expires_at', { ascending: true })
@@ -286,6 +332,11 @@ export async function createWalkPlan(input: CreateWalkPlanInput): Promise<void> 
     starts_at_input: input.startsAtIso,
     message_input: input.message,
     accepts_company_input: input.acceptsCompany,
+    location_mode_input: input.locationMode ?? null,
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
@@ -306,6 +357,11 @@ export async function updateMyActiveWalkPlan(input: UpdateWalkPlanInput): Promis
     starts_at_input: input.startsAtIso,
     message_input: input.message,
     accepts_company_input: input.acceptsCompany,
+    location_mode_input: input.locationMode ?? null,
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
@@ -361,6 +417,11 @@ export async function createPresence(input: CreatePresenceInput): Promise<void> 
     status_input: input.status,
     message_input: input.message,
     expires_minutes_input: input.expiresMinutes,
+    location_mode_input: input.locationMode ?? null,
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
@@ -381,6 +442,11 @@ export async function updateMyActivePresence(input: UpdatePresenceInput): Promis
     status_input: input.status,
     message_input: input.message,
     expires_minutes_input: input.expiresMinutes,
+    location_mode_input: input.locationMode ?? null,
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
