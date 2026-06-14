@@ -32,6 +32,7 @@ interface PresenceOption {
 }
 
 const walkHubIntroImage = require('../../../assets/baubook/walks/walk_hub_intro.png') as ImageSourcePropType;
+const homeReturnIcon = require('../../../assets/baubook/walks/home_return_icon.png') as ImageSourcePropType;
 
 const startOptions: StartOption[] = [
   { label: 'Tra 30 min', minutes: 30 },
@@ -83,6 +84,17 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const startsAtIso = useMemo(() => new Date(Date.now() + selectedMinutes * 60000).toISOString(), [selectedMinutes]);
   const startsAtPreview = useMemo(() => formatStartPreview(selectedMinutes), [selectedMinutes]);
   const selectedPresenceOption = presenceOptions.find((option) => option.status === presenceStatus) ?? presenceOptions[1];
+  const hasMyActiveWalk = walksBoard.hasMyActiveWalk;
+  const hasMyActivePresence = walksBoard.hasMyActivePresence;
+  const actionDisabled = walksBoard.status === 'loading';
+  const walkActionMessage = walksBoard.actionScope === 'walk' ? walksBoard.actionMessage : undefined;
+  const walkErrorMessage = walksBoard.actionScope === 'walk' ? walksBoard.errorMessage : undefined;
+  const presenceActionMessage = walksBoard.actionScope === 'presence' ? walksBoard.actionMessage : undefined;
+  const presenceErrorMessage = walksBoard.actionScope === 'presence' ? walksBoard.errorMessage : undefined;
+  const canCreateWalk = canUseLiveWrites && !hasMyActiveWalk;
+  const canUpdateWalk = canUseLiveWrites && hasMyActiveWalk;
+  const canCreatePresence = canUseLiveWrites && !hasMyActivePresence;
+  const canUpdatePresence = canUseLiveWrites && hasMyActivePresence;
   const locationLabel = locationMode === 'current' ? 'Posizione attuale' : manualAddressValue || 'Indirizzo manuale da inserire';
   const messageWithLocation = useMemo(() => {
     const cleanMessage = message.trim() || 'Passeggiata BauBook senza messaggio.';
@@ -111,7 +123,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   };
 
   const handleCreateWalk = () => {
-    if (!canUseLiveWrites || !selectedDog || !selectedPlace) {
+    if (!canCreateWalk || !selectedDog || !selectedPlace) {
       return;
     }
 
@@ -125,11 +137,39 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   };
 
   const handleStartPresence = () => {
-    if (!canUseLiveWrites || !selectedDog || !selectedPlace) {
+    if (!canCreatePresence || !selectedDog || !selectedPlace) {
       return;
     }
 
     void walksBoard.startPresence({
+      dogId: selectedDog.id,
+      placeId: selectedPlace.id,
+      status: presenceStatus,
+      message: messageWithLocation,
+      expiresMinutes: 90,
+    });
+  };
+
+  const handleUpdateWalk = () => {
+    if (!canUpdateWalk || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    void walksBoard.updatePlan({
+      dogId: selectedDog.id,
+      placeId: selectedPlace.id,
+      startsAtIso,
+      message: messageWithLocation,
+      acceptsCompany,
+    });
+  };
+
+  const handleUpdatePresence = () => {
+    if (!canUpdatePresence || !selectedDog || !selectedPlace) {
+      return;
+    }
+
+    void walksBoard.updatePresence({
       dogId: selectedDog.id,
       placeId: selectedPlace.id,
       status: presenceStatus,
@@ -251,21 +291,28 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.chipRow}>
           <ChoiceChip label="Accetto compagnia" selected={acceptsCompany} onPress={() => setAcceptsCompany(true)} />
-          <ChoiceChip label="Meglio soli" selected={!acceptsCompany} onPress={() => setAcceptsCompany(false)} />
+          <ChoiceChip label="Meglio se ci conosciamo già!" selected={!acceptsCompany} onPress={() => setAcceptsCompany(false)} />
         </View>
+
+        {hasMyActiveWalk ? (
+          <View style={styles.businessNotice}>
+            <Text style={styles.businessNoticeTitle}>Hai già una passeggiata attiva</Text>
+            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sotto oppure chiuderla da Passeggiate live.</Text>
+          </View>
+        ) : null}
 
         <View style={styles.splitActionRow}>
           <View style={styles.actionLeft}>
-            <AppButton label="Crea" icon={baubookImages.icons.walks} onPress={handleCreateWalk} disabled={!canUseLiveWrites || walksBoard.status === 'loading'} />
+            <AppButton label="Crea" icon={baubookImages.icons.walks} onPress={handleCreateWalk} disabled={!canCreateWalk || actionDisabled} />
           </View>
           <View style={styles.actionRight}>
-            <AppButton label="Aggiorna" variant="ghost" icon={baubookImages.icons.notifications} onPress={walksBoard.reload} />
+            <AppButton label="Aggiorna" variant="ghost" icon={baubookImages.icons.notifications} onPress={handleUpdateWalk} disabled={!canUpdateWalk || actionDisabled} />
           </View>
         </View>
 
         <GateMessages authSignedIn={auth.isSignedIn} hasDog={auth.dogs.length > 0} locationReady={locationReady} placesLive={placesLive} hasWritePlace={writePlaceReady} />
-        {walksBoard.errorMessage ? <Text style={styles.errorBox}>{walksBoard.errorMessage}</Text> : null}
-        {walksBoard.actionMessage ? <Text style={styles.successBox}>{walksBoard.actionMessage}</Text> : null}
+        {walkErrorMessage ? <Text style={styles.errorBox}>{walkErrorMessage}</Text> : null}
+        {walkActionMessage ? <Text style={styles.successBox}>{walkActionMessage}</Text> : null}
       </AppCard>
 
       <AppCard tone="teal">
@@ -289,14 +336,24 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         </View>
         <Text style={styles.helperText}>{selectedPresenceOption.helper}</Text>
 
+        {hasMyActivePresence ? (
+          <View style={styles.businessNotice}>
+            <Text style={styles.businessNoticeTitle}>Hai già una presenza attiva</Text>
+            <Text style={styles.helperText}>Puoi aggiornarla con le informazioni inserite qui sopra.</Text>
+          </View>
+        ) : null}
+
         <View style={styles.splitActionRow}>
           <View style={styles.actionLeft}>
-            <AppButton label="Attiva" icon={baubookImages.icons.checkin} onPress={handleStartPresence} disabled={!canUseLiveWrites || walksBoard.status === 'loading'} />
+            <AppButton label="Attiva" icon={baubookImages.icons.checkin} onPress={handleStartPresence} disabled={!canCreatePresence || actionDisabled} />
           </View>
           <View style={styles.actionRight}>
-            <AppButton label="Aggiorna" variant="ghost" icon={baubookImages.icons.notifications} onPress={() => void walksBoard.endPresence()} disabled={!auth.isSignedIn || walksBoard.status === 'loading'} />
+            <AppButton label="Aggiorna" variant="ghost" icon={baubookImages.icons.notifications} onPress={handleUpdatePresence} disabled={!canUpdatePresence || actionDisabled} />
           </View>
         </View>
+
+        {presenceErrorMessage ? <Text style={styles.errorBox}>{presenceErrorMessage}</Text> : null}
+        {presenceActionMessage ? <Text style={styles.successBox}>{presenceActionMessage}</Text> : null}
       </AppCard>
 
       <AppCard elevated={false}>
@@ -314,7 +371,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
             walksBoard.walks.map((plan) => (
               <View key={plan.id} style={styles.walkItem}>
                 <View style={styles.walkHeader}>
-                  <IconBubble source={baubookImages.icons.walks} size={46} tone="teal" />
+                  <WalkDogAvatar avatarUrl={plan.dogAvatarUrl} />
                   <View style={styles.flexOne}>
                     <Text style={styles.walkTime}>{plan.startsAtLabel}</Text>
                     <Text style={styles.walkTitle}>{plan.dogName} va a {plan.placeName}</Text>
@@ -322,21 +379,24 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                     <Text style={styles.ownerText}>Umano: {plan.ownerName}</Text>
                     <View style={styles.tagsRow}>
                       {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
-                      {plan.isMine ? <Tag label="mia" tone="green" /> : null}
                     </View>
                   </View>
                 </View>
-                {!plan.isMine ? (
-                  <View style={styles.buttonWrap}>
-                    <AppButton label="Mi interessa" variant="ghost" onPress={() => void walksBoard.joinPlan(plan.id, selectedDog?.id)} disabled={!auth.isSignedIn || walksBoard.status === 'loading'} />
+                {plan.isMine ? (
+                  <View style={styles.centerButtonWrap}>
+                    <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endWalkPlan(plan.id)} disabled={actionDisabled} />
                   </View>
-                ) : null}
+                ) : (
+                  <View style={styles.buttonWrap}>
+                    <AppButton label="Mi interessa" variant="ghost" onPress={() => void walksBoard.joinPlan(plan.id, selectedDog?.id)} disabled={!auth.isSignedIn || actionDisabled} />
+                  </View>
+                )}
               </View>
             ))
           ) : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>Nessuna passeggiata live per ora</Text>
-              <Text style={styles.helperText}>Crea la prima uscita BauBook e controlla Supabase.</Text>
+              <Text style={styles.helperText}>Crea la prima uscita BauBook!</Text>
             </View>
           )}
         </View>
@@ -348,10 +408,20 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           {walksBoard.presences.length ? (
             walksBoard.presences.map((presence) => (
               <View key={presence.id} style={styles.presenceItem}>
-                <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
-                <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
-                <Text style={styles.walkMessage}>“{presence.message}”</Text>
-                <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
+                <View style={styles.walkHeader}>
+                  <WalkDogAvatar avatarUrl={presence.dogAvatarUrl} />
+                  <View style={styles.flexOne}>
+                    <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
+                    <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
+                    <Text style={styles.walkMessage}>“{presence.message}”</Text>
+                    <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
+                  </View>
+                </View>
+                {presence.isMine ? (
+                  <View style={styles.centerButtonWrap}>
+                    <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endPresence()} disabled={actionDisabled} />
+                  </View>
+                ) : null}
               </View>
             ))
           ) : (
@@ -422,6 +492,18 @@ function LocationModeButton({ label, selected, onPress }: { label: string; selec
       <Text style={[styles.locationModeButtonText, selected && styles.locationModeButtonTextSelected]}>{label}</Text>
     </Pressable>
   );
+}
+
+function WalkDogAvatar({ avatarUrl }: { avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    return (
+      <View style={styles.walkDogAvatarFrame}>
+        <Image source={{ uri: avatarUrl }} style={styles.walkDogAvatarImage} />
+      </View>
+    );
+  }
+
+  return <IconBubble source={baubookImages.icons.walks} size={54} tone="teal" />;
 }
 
 const styles = StyleSheet.create({
@@ -703,6 +785,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
   },
+  businessNotice: {
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.tealSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  businessNoticeTitle: {
+    color: colors.primaryDark,
+    fontSize: typography.body,
+    fontWeight: '900',
+  },
   gateBox: {
     marginTop: spacing.md,
     gap: spacing.xs,
@@ -753,6 +849,23 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'flex-start',
   },
+  walkDogAvatarFrame: {
+    width: 54,
+    height: 54,
+    borderRadius: 24,
+    backgroundColor: colors.tealSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walkDogAvatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+
   walkTime: {
     color: colors.primaryDark,
     fontSize: typography.small,
@@ -783,6 +896,10 @@ const styles = StyleSheet.create({
   buttonWrap: {
     marginTop: spacing.md,
     alignItems: 'flex-start',
+  },
+  centerButtonWrap: {
+    marginTop: spacing.md,
+    alignItems: 'center',
   },
   emptyBox: {
     borderRadius: radius.lg,
