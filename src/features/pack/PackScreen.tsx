@@ -21,6 +21,11 @@ function avatarSource(uri: string | null | undefined) {
   return uri ? { uri } : baubookImages.avatar;
 }
 
+function compactLocation(label: string | null | undefined): string | null {
+  const clean = label?.trim();
+  return clean?.length ? clean : null;
+}
+
 export function PackScreen({ onNavigate }: PackScreenProps) {
   const auth = useAuthAccount();
   const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
@@ -49,6 +54,19 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
       setSelectedDogId(auth.dogs[0].id);
     }
   }, [auth.dogs, selectedDogId]);
+
+  useEffect(() => {
+    if (!message && !errorMessage) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setMessage('');
+      setErrorMessage(undefined);
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [message, errorMessage]);
 
   const loadFriends = useCallback(async () => {
     if (!selectedDog) {
@@ -220,21 +238,28 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
 
           {results.length ? (
             <View style={styles.resultList}>
-              {results.map((result) => (
-                <View key={result.dogId} style={styles.friendRow}>
-                  <Image source={avatarSource(result.avatarUrl)} style={styles.friendAvatar} />
-                  <View style={styles.friendCopy}>
-                    <Text style={styles.friendName}>🐾 {result.dogName}</Text>
-                    {result.cityLabel ? <Text style={styles.friendMeta}>📍 {result.cityLabel}</Text> : null}
-                    {result.tags.length ? (
-                      <View style={styles.tagsRow}>
-                        {result.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+              {results.map((result) => {
+                const cityLabel = compactLocation(result.cityLabel);
+                return (
+                  <View key={result.dogId} style={styles.friendCard}>
+                    <View style={styles.friendHeaderLine}>
+                      <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {result.dogName}</Text>
+                      {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                    </View>
+                    <View style={styles.friendBodyRow}>
+                      <Image source={avatarSource(result.avatarUrl)} style={styles.friendAvatar} />
+                      <View style={styles.friendCopy}>
+                        {result.tags.length ? (
+                          <View style={styles.tagsRow}>
+                            {result.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                          </View>
+                        ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
                       </View>
-                    ) : null}
+                      <AppButton label="Aggiungi" variant="secondary" onPress={() => void handleAdd(result)} disabled={friendLimitReached || searchStatus === 'loading'} />
+                    </View>
                   </View>
-                  <AppButton label="Aggiungi" variant="secondary" onPress={() => void handleAdd(result)} disabled={friendLimitReached || searchStatus === 'loading'} />
-                </View>
-              ))}
+                );
+              })}
             </View>
           ) : null}
         </AppCard>
@@ -245,27 +270,34 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
           <View style={styles.sectionTitleRow}>
             <IconBubble source={baubookImages.icons.favorites} tone="warm" />
             <View style={styles.flexOne}>
-              <Text style={styles.cardTitle}>Amici del tuo 🐶</Text>
-              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il piccolo branco salvato su BauBook.' : 'Nessun BauBook friend ancora aggiunto.'}</Text>
+
+              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il mio piccolo branco salvato su BauBook!' : 'Nessun BauBook friend ancora aggiunto. 🥺'}</Text>
             </View>
           </View>
 
           <View style={styles.friendList}>
-            {friends.map((friend) => (
-              <View key={friend.id} style={styles.friendRow}>
-                <Image source={avatarSource(friend.friendDogAvatarUrl)} style={styles.friendAvatar} />
-                <View style={styles.friendCopy}>
-                  <Text style={styles.friendName}>🐾 {friend.friendDogName}</Text>
-                  {friend.friendCityLabel ? <Text style={styles.friendMeta}>📍 {friend.friendCityLabel}</Text> : null}
-                  {friend.friendTags.length ? (
-                    <View style={styles.tagsRow}>
-                      {friend.friendTags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+            {friends.map((friend) => {
+              const cityLabel = compactLocation(friend.friendCityLabel);
+              return (
+                <View key={friend.id} style={styles.friendCard}>
+                  <View style={styles.friendHeaderLine}>
+                    <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {friend.friendDogName}</Text>
+                    {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                  </View>
+                  <View style={styles.friendBodyRow}>
+                    <Image source={avatarSource(friend.friendDogAvatarUrl)} style={styles.friendAvatar} />
+                    <View style={styles.friendCopy}>
+                      {friend.friendTags.length ? (
+                        <View style={styles.tagsRow}>
+                          {friend.friendTags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                        </View>
+                      ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
                     </View>
-                  ) : null}
+                    <AppButton label="Rimuovi" variant="ghost" onPress={() => void handleRemove(friend)} disabled={status === 'loading'} />
+                  </View>
                 </View>
-                <AppButton label="Rimuovi" variant="ghost" onPress={() => void handleRemove(friend)} disabled={status === 'loading'} />
-              </View>
-            ))}
+              );
+            })}
           </View>
         </AppCard>
       ) : null}
@@ -396,15 +428,39 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     gap: spacing.sm,
   },
-  friendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  friendCard: {
     gap: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'rgba(255,255,255,0.76)',
     padding: spacing.md,
+  },
+  friendHeaderLine: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  friendHeaderName: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: typography.h3,
+    fontWeight: '900',
+  },
+  friendHeaderLocation: {
+    flex: 1,
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  friendBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   friendAvatar: {
     width: 54,
@@ -416,12 +472,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
-  friendName: {
-    color: colors.ink,
-    fontSize: typography.h3,
-    fontWeight: '900',
-  },
-  friendMeta: {
+  friendEmptyMeta: {
     color: colors.muted,
     fontSize: typography.small,
     lineHeight: 18,
@@ -431,7 +482,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
-    marginTop: spacing.xs,
   },
   limitText: {
     marginTop: spacing.sm,
