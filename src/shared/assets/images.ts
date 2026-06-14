@@ -24,6 +24,9 @@ export const baubookImages = {
     help: require('../../../assets/baubook/quick-actions/help.png') as ImageSourcePropType,
     profile: require('../../../assets/baubook/quick-actions/profile.png') as ImageSourcePropType,
   },
+  pack: {
+    dogFriends: require('../../../assets/baubook/pack/dog_friends_pack.png') as ImageSourcePropType,
+  },
   badges: {
     beta: require('../../../assets/baubook/badges/beta.png') as ImageSourcePropType,
     inArrivo: require('../../../assets/baubook/badges/in-arrivo.png') as ImageSourcePropType,

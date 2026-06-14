@@ -1,254 +1,278 @@
-import { useMemo } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { baubookImages } from '../../shared/assets/images';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
+import { addDogFriend, fetchDogFriends, MAX_DOG_FRIENDS, removeDogFriend, searchDogFriendCandidates, type DogFriendModel, type DogFriendSearchResult } from '../../shared/api/dogFriends';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
 import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { Tag } from '../../shared/components/Tag';
-import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
-import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
-import type { PlaceModel, TabKey } from '../../shared/types/domain';
+import type { TabKey } from '../../shared/types/domain';
 
 interface PackScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
 
-type PulseTone = 'green' | 'orange' | 'red' | 'teal';
+type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-interface MissionCardModel {
-  title: string;
-  description: string;
-  cta: string;
-  target: TabKey;
-  tone: PulseTone;
-}
-
-interface RouteBriefModel {
-  place: PlaceModel;
-  score: number;
-  label: string;
-  tone: PulseTone;
-  reason: string;
-}
-
-function toneForScore(score: number): PulseTone {
-  if (score >= 85) {
-    return 'green';
-  }
-  if (score >= 65) {
-    return 'teal';
-  }
-  if (score >= 45) {
-    return 'orange';
-  }
-  return 'red';
-}
-
-function shortKind(kind: PlaceModel['kind']): string {
-  switch (kind) {
-    case 'dog_area':
-      return 'area cani';
-    case 'walk':
-    case 'trail':
-      return 'passeggiata';
-    case 'vet':
-      return 'vet';
-    case 'pet_shop':
-      return 'pet shop';
-    case 'warning_zone':
-      return 'attenzione';
-    case 'beach':
-      return 'pet holiday';
-    case 'service':
-      return 'servizio';
-    default:
-      return 'luogo';
-  }
-}
-
-function buildRouteBriefs(places: PlaceModel[], activeDangerCount: number): RouteBriefModel[] {
-  return places.slice(0, 6).map((place, index) => {
-    const safetyPenalty = activeDangerCount > 0 ? 12 : 0;
-    const kindBonus = place.kind === 'dog_area' || place.kind === 'walk' || place.kind === 'trail' ? 14 : 6;
-    const moderationPenalty = place.moderationStatus === 'approved' ? 0 : 8;
-    const score = Math.max(30, Math.min(98, 74 + kindBonus - safetyPenalty - moderationPenalty - index * 3));
-    const tone = toneForScore(score);
-
-    return {
-      place,
-      score,
-      tone,
-      label: score >= 85 ? 'super ok' : score >= 65 ? 'buona idea' : score >= 45 ? 'controlla prima' : 'evita ora',
-      reason:
-        activeDangerCount > 0
-          ? 'Radar safety attivo: apri Aiuto prima di partire.'
-          : place.moderationStatus === 'approved'
-            ? 'Luogo pubblico leggibile e pronto per la beta.'
-            : 'Scheda presente, ma da verificare nella community.',
-    };
-  });
+function avatarSource(uri: string | null | undefined) {
+  return uri ? { uri } : baubookImages.avatar;
 }
 
 export function PackScreen({ onNavigate }: PackScreenProps) {
   const auth = useAuthAccount();
-  const placesState = useSupabasePlaces();
-  const safetyBoard = useSafetyBoard(auth.profile?.id);
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
+  const [friends, setFriends] = useState<DogFriendModel[]>([]);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<DogFriendSearchResult[]>([]);
+  const [status, setStatus] = useState<LoadStatus>('idle');
+  const [searchStatus, setSearchStatus] = useState<LoadStatus>('idle');
+  const [message, setMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
-  const activeAlerts = safetyBoard.alerts.filter((alert) => alert.status === 'active');
-  const dangerCount = activeAlerts.filter((alert) => alert.type === 'danger').length;
-  const lostDogCount = activeAlerts.filter((alert) => alert.type === 'lost_dog').length;
-  const livePlaces = placesState.places.filter((place) => !place.id.endsWith('-demo'));
-  const placesForBrief = livePlaces.length ? livePlaces : placesState.places;
-
+  const selectedDog = useMemo(() => auth.dogs.find((dog) => dog.id === selectedDogId) ?? auth.dogs[0] ?? null, [auth.dogs, selectedDogId]);
   const profileReady = auth.isSignedIn && Boolean(auth.profile);
   const dogReady = auth.dogs.length > 0;
-  const liveBackendReady = placesState.source === 'supabase' && safetyBoard.source === 'supabase';
+  const friendLimitReached = friends.length >= MAX_DOG_FRIENDS;
+  const cleanQuery = query.trim();
+  const canSearch = Boolean(profileReady && selectedDog && cleanQuery.length >= 2 && searchStatus !== 'loading');
 
-  const packScore = useMemo(() => {
-    const account = profileReady ? 24 : 0;
-    const dog = dogReady ? 24 : 0;
-    const data = liveBackendReady ? 24 : 10;
-    const calm = activeAlerts.length === 0 ? 22 : Math.max(5, 22 - activeAlerts.length * 5);
-    const places = Math.min(6, placesForBrief.length);
-    return Math.min(100, account + dog + data + calm + places);
-  }, [activeAlerts.length, dogReady, liveBackendReady, placesForBrief.length, profileReady]);
-
-  const packTone = toneForScore(packScore);
-  const routeBriefs = useMemo(() => buildRouteBriefs(placesForBrief, dangerCount), [dangerCount, placesForBrief]);
-
-  const missions = useMemo<MissionCardModel[]>(() => {
-    const result: MissionCardModel[] = [];
-
-    if (!profileReady) {
-      result.push({
-        title: 'Completa identità beta',
-        description: 'Accedi o crea il profilo umano per sbloccare azioni reali e safety live.',
-        cta: 'Vai in Setup',
-        target: 'profile',
-        tone: 'orange',
-      });
+  useEffect(() => {
+    if (!auth.dogs.length) {
+      setSelectedDogId(null);
+      return;
     }
 
-    if (profileReady && !dogReady) {
-      result.push({
-        title: 'Registra il primo cane',
-        description: 'Serve per smarrimento, passeggiate e profilo BauBook del branco.',
-        cta: 'Io sono',
-        target: 'dog',
-        tone: 'teal',
-      });
+    if (!selectedDogId || !auth.dogs.some((dog) => dog.id === selectedDogId)) {
+      setSelectedDogId(auth.dogs[0].id);
+    }
+  }, [auth.dogs, selectedDogId]);
+
+  const loadFriends = useCallback(async () => {
+    if (!selectedDog) {
+      setFriends([]);
+      setStatus('idle');
+      return;
     }
 
-    if (activeAlerts.length > 0) {
-      result.push({
-        title: `${activeAlerts.length} alert da leggere`,
-        description: `${lostDogCount} smarrimento/i e ${dangerCount} pericolo/i attivi nella bacheca sicurezza.`,
-        cta: 'Apri Aiuto',
-        target: 'alerts',
-        tone: dangerCount > 0 ? 'red' : 'orange',
-      });
+    try {
+      setStatus('loading');
+      const nextFriends = await fetchDogFriends(selectedDog.id);
+      setFriends(nextFriends);
+      setStatus('ready');
+      setErrorMessage(undefined);
+    }
+    catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'BauBook friends non caricati.');
+    }
+  }, [selectedDog]);
+
+  useEffect(() => {
+    void loadFriends();
+  }, [loadFriends]);
+
+  const handleSearch = useCallback(async () => {
+    if (!selectedDog || !canSearch) {
+      if (cleanQuery.length > 0 && cleanQuery.length < 2) {
+        setMessage('Scrivi almeno 2 caratteri per cercare.');
+      }
+      return;
     }
 
-    result.push({
-      title: 'Prepara una passeggiata smart',
-      description: 'Scegli un luogo con buon segnale, poi passa a Passeggio per creare presenza o interesse.',
-      cta: 'Passeggio',
-      target: 'walks',
-      tone: 'green',
-    });
+    try {
+      setSearchStatus('loading');
+      setMessage('');
+      const nextResults = await searchDogFriendCandidates({ dogId: selectedDog.id, query: cleanQuery, limit: 8 });
+      setResults(nextResults);
+      setSearchStatus('ready');
+      setErrorMessage(undefined);
+      setMessage(nextResults.length ? `${nextResults.length} risultato/i trovati.` : 'Nessun BauBook friend trovato con questa ricerca.');
+    }
+    catch (error) {
+      setSearchStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Ricerca BauBook friends non riuscita.');
+    }
+  }, [canSearch, cleanQuery, selectedDog]);
 
-    return result.slice(0, 4);
-  }, [activeAlerts.length, dangerCount, dogReady, lostDogCount, profileReady]);
+  const handleAdd = useCallback(async (candidate: DogFriendSearchResult) => {
+    if (!auth.profile || !selectedDog) {
+      setErrorMessage('Prima completa profilo umano e profilo cane.');
+      return;
+    }
+
+    if (friendLimitReached) {
+      setMessage(`Hai gia ${MAX_DOG_FRIENDS} BauBook friends: rimuovine uno per aggiungerne un altro.`);
+      return;
+    }
+
+    try {
+      setSearchStatus('loading');
+      await addDogFriend({
+        ownerId: auth.profile.id,
+        dogId: selectedDog.id,
+        friendOwnerId: candidate.ownerId,
+        friendDogId: candidate.dogId,
+      });
+      setResults((current) => current.filter((item) => item.dogId !== candidate.dogId));
+      setMessage(`${candidate.dogName} aggiunto ai BauBook friends.`);
+      setErrorMessage(undefined);
+      await loadFriends();
+      setSearchStatus('ready');
+    }
+    catch (error) {
+      setSearchStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Aggiunta BauBook friend non riuscita.');
+    }
+  }, [auth.profile, friendLimitReached, loadFriends, selectedDog]);
+
+  const handleRemove = useCallback(async (friend: DogFriendModel) => {
+    try {
+      setStatus('loading');
+      await removeDogFriend(friend.id);
+      setFriends((current) => current.filter((item) => item.id !== friend.id));
+      setMessage(`${friend.friendDogName} rimosso dai BauBook friends.`);
+      setErrorMessage(undefined);
+      setStatus('ready');
+    }
+    catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Rimozione BauBook friend non riuscita.');
+    }
+  }, []);
 
   return (
     <Screen>
       <AppCard tone="teal">
         <View style={styles.heroRow}>
-          <Image source={baubookImages.icons.friends} style={styles.heroIcon} />
+          <View style={styles.heroImageFrame}>
+            <Image source={baubookImages.pack.dogFriends} style={styles.heroPackImage} />
+          </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.title}>Branco in azione 🐾</Text>
-            <Text style={styles.bodyText}>
-              Una bacheca semplice: account, il mio amico, luoghi, sicurezza e prossima azione in un solo colpo d'occhio.
-            </Text>
+            <Text style={styles.eyebrow}>Branco</Text>
+            <Text style={styles.title}>{selectedDog ? `Amici del ❤️` : 'Il branco BauBook'}</Text>
+            <Text style={styles.bodyText}>Aggiungi fino a {MAX_DOG_FRIENDS} amici BauBook cercando per nome utente o 🐕.</Text>
           </View>
-        </View>
-
-      </AppCard>
-
-      <View style={styles.kpiGrid}>
-        <PulseKpi title="Luoghi" value={`${placesForBrief.length}`} label={placesState.source === 'supabase' ? 'online' : 'offline'} tone="teal" />
-        <PulseKpi title="Alert" value={`${activeAlerts.length}`} label={safetyBoard.source === 'supabase' ? 'safety' : 'fallback'} tone={activeAlerts.length ? 'red' : 'green'} />
-        <PulseKpi title="Cani" value={`${auth.dogs.length}`} label={dogReady ? 'profilo ok' : 'manca'} tone={dogReady ? 'green' : 'orange'} />
-        <PulseKpi title="Account" value={auth.isSignedIn ? 'ON' : 'OFF'} label={auth.status} tone={auth.isSignedIn ? 'green' : 'orange'} />
-      </View>
-
-      <AppCard elevated={false}>
-        <View style={styles.sectionTitleRow}>
-          <IconBubble source={baubookImages.icons.notifications} tone="warm" />
-          <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Attività</Text>
-            <Text style={styles.bodyText}>Dai sempre un'occhiata qui. 👀</Text>
-          </View>
-        </View>
-        <View style={styles.missionList}>
-          {missions.map((mission) => (
-            <Pressable key={mission.title} onPress={() => onNavigate(mission.target)} style={({ pressed }) => [styles.missionCard, pressed && styles.pressed]}>
-              <View style={styles.missionTop}>
-                <Tag label={mission.tone === 'red' ? 'urgente' : mission.tone === 'orange' ? 'setup' : 'go'} tone={mission.tone} />
-                <Text style={styles.missionCta}>{mission.cta}</Text>
-              </View>
-              <Text style={styles.missionTitle}>{mission.title}</Text>
-              <Text style={styles.missionDescription}>{mission.description}</Text>
-            </Pressable>
-          ))}
         </View>
       </AppCard>
 
-      <AppCard tone="warm">
-        <View style={styles.sectionTitleRow}>
-          <IconBubble source={baubookImages.icons.route} tone="teal" />
-          <View style={styles.flexOne}>
-            <Text style={styles.cardTitle}>Radar passeggiate</Text>
-            <Text style={styles.bodyText}>Primi suggererimenti sui luoghi disponibili e dal livello sicurezza.</Text>
-          </View>
-        </View>
-        <View style={styles.routeList}>
-          {routeBriefs.map((brief) => (
-            <View key={brief.place.id} style={styles.routeRow}>
-              <Image source={brief.place.icon} style={styles.routeIcon} />
-              <View style={styles.routeCopy}>
-                <Text style={styles.routeTitle}>{brief.place.name}</Text>
-                <Text style={styles.routeMeta}>{brief.place.area} · {shortKind(brief.place.kind)} · {brief.place.distanceLabel}</Text>
-                <Text style={styles.routeReason}>{brief.reason}</Text>
-                <View style={styles.tagsRow}>
-                  <Tag label={`${brief.score}/100`} tone={brief.tone} />
-                  <Tag label={brief.label} tone={brief.tone} />
-                </View>
-              </View>
+      {!profileReady || !dogReady ? (
+        <AppCard elevated={false}>
+          <View style={styles.sectionTitleRow}>
+            <IconBubble source={baubookImages.icons.dogProfile} tone="warm" />
+            <View style={styles.flexOne}>
+              <Text style={styles.cardTitle}>Prima crea il profilo</Text>
+              <Text style={styles.bodyText}>Per usare BauBook friends serve un account BauBook attivo e almeno un profilo 🐶.</Text>
             </View>
-          ))}
-        </View>
-      </AppCard>
+          </View>
+          <View style={styles.quickActions}>
+            <AppButton label="Setup" variant="secondary" icon={baubookImages.icons.profileGear} onPress={() => onNavigate('profile')} />
+            <AppButton label="Io sono" icon={baubookImages.icons.dogProfile} onPress={() => onNavigate('dog')} />
+          </View>
+        </AppCard>
+      ) : null}
 
+      {dogReady ? (
+        <AppCard elevated={false}>
+          <View style={styles.sectionTitleRow}>
+            <IconBubble source={baubookImages.icons.friends} tone="teal" />
+            <View style={styles.flexOne}>
+              <Text style={styles.cardTitle}>BauBook friends</Text>
+              <Text style={styles.bodyText}>Cerca e gestisci la tua lista amici. Max {MAX_DOG_FRIENDS}.</Text>
+            </View>
+            <Tag label={`${friends.length}/${MAX_DOG_FRIENDS}`} tone={friendLimitReached ? 'orange' : 'green'} />
+          </View>
 
-      <View style={styles.quickActions}>
-        <AppButton label="Passeggio" icon={baubookImages.icons.walks} onPress={() => onNavigate('walks')} />
-        <AppButton label="Io sono" variant="secondary" icon={baubookImages.icons.dogProfile} onPress={() => onNavigate('dog')} />
-      </View>
+          {auth.dogs.length > 1 ? (
+            <View style={styles.dogSelector}>
+              {auth.dogs.map((dog) => {
+                const selected = dog.id === selectedDog?.id;
+                return (
+                  <Pressable key={dog.id} onPress={() => setSelectedDogId(dog.id)} style={({ pressed }) => [styles.dogChip, selected && styles.dogChipSelected, pressed && styles.pressed]}>
+                    <Image source={avatarSource(dog.avatarUrl)} style={styles.chipAvatar} />
+                    <Text style={[styles.dogChipText, selected && styles.dogChipTextSelected]}>{dog.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View style={styles.searchBox}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Cerca per nome utente o 🐕"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={() => void handleSearch()}
+              style={styles.input}
+            />
+            <AppButton label={searchStatus === 'loading' ? 'Cerco...' : 'Cerca'} icon={baubookImages.icons.search} onPress={handleSearch} disabled={!canSearch} />
+          </View>
+
+          {friendLimitReached ? (
+            <Text style={styles.limitText}>Lista piena: rimuovi un amico per aggiungerne uno nuovo.</Text>
+          ) : null}
+
+          {results.length ? (
+            <View style={styles.resultList}>
+              {results.map((result) => (
+                <View key={result.dogId} style={styles.friendRow}>
+                  <Image source={avatarSource(result.avatarUrl)} style={styles.friendAvatar} />
+                  <View style={styles.friendCopy}>
+                    <Text style={styles.friendName}>🐾 {result.dogName}</Text>
+                    {result.cityLabel ? <Text style={styles.friendMeta}>📍 {result.cityLabel}</Text> : null}
+                    {result.tags.length ? (
+                      <View style={styles.tagsRow}>
+                        {result.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                      </View>
+                    ) : null}
+                  </View>
+                  <AppButton label="Aggiungi" variant="secondary" onPress={() => void handleAdd(result)} disabled={friendLimitReached || searchStatus === 'loading'} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </AppCard>
+      ) : null}
+
+      {dogReady ? (
+        <AppCard tone="warm">
+          <View style={styles.sectionTitleRow}>
+            <IconBubble source={baubookImages.icons.favorites} tone="warm" />
+            <View style={styles.flexOne}>
+              <Text style={styles.cardTitle}>Amici del tuo 🐶</Text>
+              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il piccolo branco salvato su BauBook.' : 'Nessun BauBook friend ancora aggiunto.'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.friendList}>
+            {friends.map((friend) => (
+              <View key={friend.id} style={styles.friendRow}>
+                <Image source={avatarSource(friend.friendDogAvatarUrl)} style={styles.friendAvatar} />
+                <View style={styles.friendCopy}>
+                  <Text style={styles.friendName}>🐾 {friend.friendDogName}</Text>
+                  {friend.friendCityLabel ? <Text style={styles.friendMeta}>📍 {friend.friendCityLabel}</Text> : null}
+                  {friend.friendTags.length ? (
+                    <View style={styles.tagsRow}>
+                      {friend.friendTags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                    </View>
+                  ) : null}
+                </View>
+                <AppButton label="Rimuovi" variant="ghost" onPress={() => void handleRemove(friend)} disabled={status === 'loading'} />
+              </View>
+            ))}
+          </View>
+        </AppCard>
+      ) : null}
+
+      {message ? <Text style={styles.infoText}>{message}</Text> : null}
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </Screen>
-  );
-}
-
-function PulseKpi({ title, value, label, tone }: { title: string; value: string; label: string; tone: PulseTone }) {
-  return (
-    <View style={[styles.kpiCard, kpiTones[tone]]}>
-      <Text style={styles.kpiTitle}>{title}</Text>
-      <Text style={styles.kpiValue}>{value}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -258,10 +282,21 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'center',
   },
-  heroIcon: {
-    width: 86,
-    height: 86,
-    resizeMode: 'contain',
+  heroImageFrame: {
+    width: 112,
+    height: 112,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroPackImage: {
+    width: 112,
+    height: 112,
+    resizeMode: 'cover',
   },
   heroCopy: {
     flex: 1,
@@ -284,67 +319,6 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 22,
   },
-  scoreWrap: {
-    marginTop: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    padding: spacing.md,
-  },
-  scoreNumber: {
-    color: colors.primaryDark,
-    fontSize: 42,
-    lineHeight: 46,
-    fontWeight: '900',
-  },
-  scoreCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  scoreLabel: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: '900',
-  },
-  scoreHint: {
-    color: colors.muted,
-    fontSize: typography.small,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  kpiCard: {
-    width: '48%',
-    minHeight: 102,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: 2,
-  },
-  kpiTitle: {
-    color: colors.muted,
-    fontSize: typography.tiny,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  kpiValue: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: '900',
-  },
-  kpiLabel: {
-    color: colors.text,
-    fontSize: typography.small,
-    fontWeight: '800',
-  },
   sectionTitleRow: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -359,79 +333,99 @@ const styles = StyleSheet.create({
     fontSize: typography.h2,
     fontWeight: '900',
   },
-  missionList: {
+  quickActions: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  dogSelector: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  dogChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  dogChipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.tealSoft,
+  },
+  chipAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    resizeMode: 'cover',
+  },
+  dogChipText: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: '900',
+  },
+  dogChipTextSelected: {
+    color: colors.primaryDark,
+  },
+  searchBox: {
     marginTop: spacing.lg,
     gap: spacing.sm,
   },
-  missionCard: {
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: '700',
+  },
+  resultList: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  friendList: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceWarm,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  pressed: {
-    opacity: 0.84,
-    transform: [{ scale: 0.99 }],
-  },
-  missionTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  missionCta: {
-    color: colors.primaryDark,
-    fontSize: typography.small,
-    fontWeight: '900',
-  },
-  missionTitle: {
-    color: colors.ink,
-    fontSize: typography.h3,
-    fontWeight: '900',
-  },
-  missionDescription: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  routeList: {
-    marginTop: spacing.lg,
-    gap: spacing.md,
-  },
-  routeRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.74)',
+    backgroundColor: 'rgba(255,255,255,0.76)',
     padding: spacing.md,
   },
-  routeIcon: {
+  friendAvatar: {
     width: 54,
     height: 54,
-    resizeMode: 'contain',
+    borderRadius: 27,
+    resizeMode: 'cover',
   },
-  routeCopy: {
+  friendCopy: {
     flex: 1,
     gap: 3,
   },
-  routeTitle: {
+  friendName: {
     color: colors.ink,
     fontSize: typography.h3,
     fontWeight: '900',
   },
-  routeMeta: {
-    color: colors.primaryDark,
-    fontSize: typography.small,
-    fontWeight: '800',
-  },
-  routeReason: {
+  friendMeta: {
     color: colors.muted,
     fontSize: typography.small,
     lineHeight: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   tagsRow: {
     flexDirection: 'row',
@@ -439,35 +433,29 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
+  limitText: {
+    marginTop: spacing.sm,
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  infoText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
   errorText: {
     color: colors.danger,
     fontSize: typography.small,
     lineHeight: 18,
-    fontWeight: '800',
+    fontWeight: '900',
+    textAlign: 'center',
   },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-});
-
-const kpiTones = StyleSheet.create({
-  green: {
-    backgroundColor: colors.greenSoft,
-  },
-  orange: {
-    backgroundColor: colors.orangeSoft,
-  },
-  red: {
-    backgroundColor: colors.redSoft,
-  },
-  teal: {
-    backgroundColor: colors.tealSoft,
+  pressed: {
+    opacity: 0.84,
+    transform: [{ scale: 0.99 }],
   },
 });
