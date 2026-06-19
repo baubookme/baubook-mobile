@@ -363,7 +363,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.checkList}>
           <ChecklistRow title="Account 👤" description={profileReady ? 'Profilo attivo.' : 'Accedi in Setup per scrivere dati reali.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
-          <ChecklistRow title="Attore 🐾" description={dogReady ? `${selectedDog?.name ?? 'Attore'} pronto.` : 'Crea il primo amico in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
+          <ChecklistRow title="Attore protagonista 🐾" description={dogReady ? `${selectedDog?.name ?? '🐾'} pronto.` : 'Crea il tuo 🐾 in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
           <ChecklistRow title="Posizione 📍" description={locationReady ? resolvedLocationLabel : 'Usa la posizione attuale o inserisci un indirizzo.'} ok={locationReady} />
         </View>
 

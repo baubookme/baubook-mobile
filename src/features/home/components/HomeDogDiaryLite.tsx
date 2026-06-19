@@ -5,8 +5,11 @@ import { fetchDogFriends, type DogFriendModel } from '../../../shared/api/dogFri
 import { useAuthAccount } from '../../../shared/auth/AuthProvider';
 import { getSupabaseClient } from '../../../shared/lib/supabase';
 import { colors, radius, shadows, spacing, typography } from '../../../shared/theme/theme';
+import type { TabKey } from '../../../shared/types/domain';
 
 const packDiaryIcon = require('../../../../assets/baubook/cartoon-icons/home_today_pilot.png');
+const friendFallbackAvatar = require('../../../../assets/baubook/brand/avatar_instagram_round.png');
+const recordOpenIcon = require('../../../../assets/baubook/home/pack_diary_record_open.png');
 
 type Relation<T> = T | T[] | null | undefined;
 
@@ -59,6 +62,7 @@ type PackFriendLiveItem = {
   dogId: string;
   dogName: string;
   avatarUrl: string | null;
+  kind: 'walk' | 'presence';
 };
 
 type PackDiaryState = {
@@ -165,6 +169,7 @@ function friendFromWalk(row: RemoteWalkRow, friendsByDogId: Map<string, DogFrien
     dogId: row.dog_id,
     dogName,
     avatarUrl,
+    kind: 'walk',
   };
 }
 
@@ -183,6 +188,7 @@ function friendFromPresence(row: RemotePresenceRow, friendsByDogId: Map<string, 
     dogId: row.dog_id,
     dogName,
     avatarUrl,
+    kind: 'presence',
   };
 }
 
@@ -297,23 +303,20 @@ function ActivityLine({ label, activity }: { label: string; activity: LastPackAc
   return (
     <View style={styles.activityBox}>
       <Text style={styles.activityLabel}>{label}</Text>
-      <Text style={styles.activityValue}>{activity?.title ?? '---'}</Text>
+      <Text style={[styles.activityValue, !activity && styles.activityValueEmpty]}>
+        {activity?.title ?? 'Nessun evento da visualizzare'}
+      </Text>
       {activity ? <Text style={styles.activityMeta}>{activity.meta}</Text> : null}
     </View>
   );
 }
 
 function FriendAvatar({ item }: { item: PackFriendLiveItem }) {
-  const initial = item.dogName.trim().slice(0, 1).toUpperCase() || 'B';
-
-  if (item.avatarUrl) {
-    return <Image source={{ uri: item.avatarUrl }} style={styles.friendAvatar} />;
-  }
-
   return (
-    <View style={[styles.friendAvatar, styles.friendAvatarFallback]}>
-      <Text style={styles.friendAvatarText}>{initial}</Text>
-    </View>
+    <Image
+      source={item.avatarUrl ? { uri: item.avatarUrl } : friendFallbackAvatar}
+      style={styles.friendAvatar}
+    />
   );
 }
 
@@ -322,11 +325,13 @@ function CollapsibleFriends({
   items,
   expanded,
   onToggle,
+  onOpenItem,
 }: {
   title: string;
   items: PackFriendLiveItem[];
   expanded: boolean;
   onToggle: () => void;
+  onOpenItem: (item: PackFriendLiveItem) => void;
 }) {
   const count = items.length;
 
@@ -341,9 +346,18 @@ function CollapsibleFriends({
         count > 0 ? (
           <View style={styles.friendList}>
             {items.map((item) => (
-              <View key={item.id} style={styles.friendRow}>
+              <View key={`${item.kind}-${item.id}`} style={styles.friendRow}>
                 <FriendAvatar item={item} />
                 <Text style={styles.friendName}>{item.dogName}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apri Passeggiate e Presenze per ${item.dogName}`}
+                  hitSlop={8}
+                  onPress={() => onOpenItem(item)}
+                  style={({ pressed }) => [styles.friendAction, pressed && styles.pressed]}
+                >
+                  <Image source={recordOpenIcon} style={styles.friendActionIcon} />
+                </Pressable>
               </View>
             ))}
           </View>
@@ -355,7 +369,11 @@ function CollapsibleFriends({
   );
 }
 
-export function HomeDogDiaryLite() {
+type HomeDogDiaryLiteProps = {
+  onNavigate?: (tab: TabKey) => void;
+};
+
+export function HomeDogDiaryLite({ onNavigate }: HomeDogDiaryLiteProps) {
   const auth = useAuthAccount();
   const profileId = auth.profile?.id ?? '';
   const dogId = auth.dogs[0]?.id ?? '';
@@ -407,23 +425,33 @@ export function HomeDogDiaryLite() {
     return state.message || 'Il riepilogo live del branco appare qui.';
   }, [loading, state.message]);
 
+  const handleOpenActivity = useCallback(
+    (_item: PackFriendLiveItem) => {
+      onNavigate?.('walks');
+    },
+    [onNavigate],
+  );
+
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <View style={styles.titleWrap}>
-          <Image source={packDiaryIcon} style={styles.titleIcon} />
-          <Text style={styles.title}>Diario smart del branco</Text>
-        </View>
+        <Image source={packDiaryIcon} style={styles.titleIcon} />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Aggiorna Diario smart del branco"
-          disabled={loading}
-          onPress={refresh}
-          style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed, loading && styles.refreshButtonDisabled]}
-        >
-          <Text style={styles.refreshText}>{loading ? '...' : 'Aggiorna'}</Text>
-        </Pressable>
+        <View style={styles.headerMain}>
+          <View style={styles.titleButtonRow}>
+            <Text style={styles.titleText}>{'Diario smart\ndel branco'}</Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Aggiorna Diario smart del branco"
+              disabled={loading}
+              onPress={refresh}
+              style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed, loading && styles.refreshButtonDisabled]}
+            >
+              <Text style={styles.refreshText}>{loading ? '...' : 'Aggiorna'}</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       <Text style={styles.statusText}>{statusLabel}</Text>
@@ -438,6 +466,7 @@ export function HomeDogDiaryLite() {
         items={state.walkingFriends}
         expanded={walkFriendsOpen}
         onToggle={() => setWalkFriendsOpen((current) => !current)}
+        onOpenItem={handleOpenActivity}
       />
 
       <CollapsibleFriends
@@ -445,6 +474,7 @@ export function HomeDogDiaryLite() {
         items={state.presentFriends}
         expanded={presenceFriendsOpen}
         onToggle={() => setPresenceFriendsOpen((current) => !current)}
+        onOpenItem={handleOpenActivity}
       />
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -468,36 +498,44 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  titleWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
   },
   titleIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#f4e6cf',
+    width: 104,
+    height: 104,
+    marginLeft: -16,
+    marginRight: -8,
+    marginVertical: -16,
     resizeMode: 'contain',
   },
-  title: {
+  headerMain: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  titleButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  titleText: {
+    flex: 1,
+    minWidth: 0,
     color: colors.ink,
-    fontSize: typography.h3,
-    lineHeight: 22,
+    fontSize: 20,
+    lineHeight: 23,
     fontWeight: '900',
   },
   refreshButton: {
+    minWidth: 108,
+    alignItems: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   refreshButtonDisabled: {
     opacity: 0.62,
@@ -537,6 +575,12 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 21,
     fontWeight: '900',
+  },
+  activityValueEmpty: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
   },
   activityMeta: {
     color: colors.muted,
@@ -584,28 +628,35 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    padding: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 12,
+    minHeight: 76,
   },
   friendAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f4e6cf',
-  },
-  friendAvatarFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  friendAvatarText: {
-    color: colors.primaryDark,
-    fontSize: typography.body,
-    fontWeight: '900',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+    resizeMode: 'cover',
   },
   friendName: {
     flex: 1,
     color: colors.ink,
     fontSize: typography.body,
     fontWeight: '900',
+  },
+  friendAction: {
+    width: 84,
+    height: 58,
+    marginRight: -8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  friendActionIcon: {
+    width: 82,
+    height: 52,
+    resizeMode: 'contain',
   },
   emptyInline: {
     borderTopWidth: 1,

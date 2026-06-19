@@ -115,7 +115,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         ok: auth.isSignedIn,
       },
       {
-        label: 'Attore Protagonista 🐾',
+        label: 'Attore protagonista 🐾',
         value: auth.dogs.length ? auth.dogs[0].name : 'da creare',
         ok: auth.dogs.length > 0,
       },
@@ -134,7 +134,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     <Screen>
       <View style={styles.heroCard}>
 
-        <HomeDogDiaryLite />
+        <HomeDogDiaryLite onNavigate={onNavigate} />
 
                       </View>
 
