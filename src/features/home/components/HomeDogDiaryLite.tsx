@@ -654,8 +654,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   friendActionIcon: {
-    width: 82,
-    height: 52,
+    width: 55,
+    height: 40,
     resizeMode: 'contain',
   },
   emptyInline: {
