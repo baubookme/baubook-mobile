@@ -133,15 +133,6 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <Screen>
       <View style={styles.heroCard}>
-<View style={styles.heroHeader}>
-          <Image
-            source={require('../../../assets/baubook/cartoon-icons/home_today_pilot.png')}
-            style={styles.heroDogImage}
-          />
-          <View style={styles.heroCopy}>
-            <Text style={styles.title}>Sniff sniff… sento novità! Che succede oggi? 🐾</Text>
-          </View>
-        </View>
 
         <HomeDogDiaryLite />
 

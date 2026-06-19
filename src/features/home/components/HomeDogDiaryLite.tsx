@@ -1,385 +1,454 @@
-import { deleteDogDiaryEvent, loadDogDiaryEvents, saveDogDiaryEvents } from '../dogDiaryBackend';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Image,
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
-} from 'react-native';
-import BauBookIcon from '../../../components/BauBookIcon';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-type DogDiaryCategory = 'walk' | 'food' | 'vet' | 'medicine' | 'grooming' | 'note';
-type DogDiaryFilter = 'all' | 'walks' | 'health' | 'notes';
+import { fetchDogFriends, type DogFriendModel } from '../../../shared/api/dogFriends';
+import { useAuthAccount } from '../../../shared/auth/AuthProvider';
+import { getSupabaseClient } from '../../../shared/lib/supabase';
+import { colors, radius, shadows, spacing, typography } from '../../../shared/theme/theme';
 
-type DogDiaryEvent = {
+const packDiaryIcon = require('../../../../assets/baubook/cartoon-icons/home_today_pilot.png');
+
+type Relation<T> = T | T[] | null | undefined;
+
+type RelatedDogRow = {
+  name?: string | null;
+  avatar_url?: string | null;
+};
+
+type RelatedPlaceRow = {
+  name?: string | null;
+};
+
+type RemoteWalkRow = {
   id: string;
-  category: DogDiaryCategory;
-  note: string;
-  createdAt: string;
+  dog_id: string | null;
+  owner_id: string | null;
+  place_id: string | null;
+  starts_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  location_label: string | null;
+  message: string | null;
+  dogs?: Relation<RelatedDogRow>;
+  places?: Relation<RelatedPlaceRow>;
 };
 
-type CategoryConfig = {
-  key: DogDiaryCategory;
-  label: string;
-  icon: string;
+type RemotePresenceRow = {
+  id: string;
+  dog_id: string | null;
+  profile_id: string | null;
+  place_id: string | null;
+  status: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  location_label: string | null;
+  message: string | null;
+  dogs?: Relation<RelatedDogRow>;
+  places?: Relation<RelatedPlaceRow>;
 };
 
-type DogDiaryEventRowProps = {
-  event: DogDiaryEvent;
-  category: CategoryConfig;
-  deleting: boolean;
-  onDelete: () => void;
+type LastPackActivity = {
+  id: string;
+  title: string;
+  meta: string;
 };
 
-const DELETE_ACTION_WIDTH = 104;
+type PackFriendLiveItem = {
+  id: string;
+  dogId: string;
+  dogName: string;
+  avatarUrl: string | null;
+};
 
-const CATEGORIES: CategoryConfig[] = [
-  { key: 'walk', label: 'Passeggiata', icon: 'walk' },
-  { key: 'food', label: 'Pappa', icon: 'food' },
-  { key: 'vet', label: 'Veterinario', icon: 'vet' },
-  { key: 'medicine', label: 'Farmaco', icon: 'medicine' },
-  { key: 'grooming', label: 'Toelettatura', icon: 'grooming' },
-  { key: 'note', label: 'Nota', icon: 'note' }
-];
+type PackDiaryState = {
+  lastWalk: LastPackActivity | null;
+  lastPresence: LastPackActivity | null;
+  walkingFriends: PackFriendLiveItem[];
+  presentFriends: PackFriendLiveItem[];
+  source: 'idle' | 'supabase' | 'empty' | 'fallback';
+  message: string;
+};
 
-const FILTERS: Array<{ key: DogDiaryFilter; label: string }> = [
-  { key: 'all', label: 'Tutti' },
-  { key: 'walks', label: 'Passeggiate' },
-  { key: 'health', label: 'Salute' },
-  { key: 'notes', label: 'Note' }
-];
+const emptyPackDiaryState: PackDiaryState = {
+  lastWalk: null,
+  lastPresence: null,
+  walkingFriends: [],
+  presentFriends: [],
+  source: 'idle',
+  message: '',
+};
 
-function getCategory(category: DogDiaryCategory): CategoryConfig {
-  return CATEGORIES.find((item) => item.key === category) || CATEGORIES[CATEGORIES.length - 1];
+function firstRelation<T>(value: Relation<T>): T | null {
+  if (!value) {
+    return null;
+  }
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function formatDay(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Oggi';
+function formatDateTime(value?: string | null): string {
+  if (!value) {
+    return '';
+  }
 
-  return date.toLocaleDateString('it-IT', {
-    day: '2-digit',
-    month: 'short'
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  const time = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  if (sameDay(date, today)) {
+    return `oggi alle ${time}`;
+  }
+
+  if (sameDay(date, yesterday)) {
+    return `ieri alle ${time}`;
+  }
+
+  return `${date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })} alle ${time}`;
+}
+
+function formatPlace(locationLabel?: string | null, placeName?: string | null): string {
+  return locationLabel?.trim() || placeName?.trim() || 'luogo BauBook';
+}
+
+function makeWalkActivity(row: RemoteWalkRow): LastPackActivity {
+  const dog = firstRelation(row.dogs);
+  const place = firstRelation(row.places);
+  const dogName = dog?.name?.trim() || 'Il tuo cane';
+  const placeLabel = formatPlace(row.location_label, place?.name);
+  const dateLabel = formatDateTime(row.created_at || row.starts_at || row.updated_at);
+
+  return {
+    id: row.id,
+    title: `${dogName} - ${placeLabel}`,
+    meta: dateLabel || 'orario non disponibile',
+  };
+}
+
+function makePresenceActivity(row: RemotePresenceRow): LastPackActivity {
+  const dog = firstRelation(row.dogs);
+  const place = firstRelation(row.places);
+  const dogName = dog?.name?.trim() || 'Il tuo cane';
+  const placeLabel = formatPlace(row.location_label, place?.name);
+  const dateLabel = formatDateTime(row.created_at || row.updated_at);
+
+  return {
+    id: row.id,
+    title: `${dogName} - ${placeLabel}`,
+    meta: dateLabel || 'orario non disponibile',
+  };
+}
+
+function friendFromWalk(row: RemoteWalkRow, friendsByDogId: Map<string, DogFriendModel>): PackFriendLiveItem | null {
+  if (!row.dog_id) {
+    return null;
+  }
+
+  const friend = friendsByDogId.get(row.dog_id);
+  const dog = firstRelation(row.dogs);
+  const dogName = friend?.friendDogName || dog?.name || 'Bau amico';
+  const avatarUrl = friend?.friendDogAvatarUrl || dog?.avatar_url || null;
+
+  return {
+    id: row.id,
+    dogId: row.dog_id,
+    dogName,
+    avatarUrl,
+  };
+}
+
+function friendFromPresence(row: RemotePresenceRow, friendsByDogId: Map<string, DogFriendModel>): PackFriendLiveItem | null {
+  if (!row.dog_id) {
+    return null;
+  }
+
+  const friend = friendsByDogId.get(row.dog_id);
+  const dog = firstRelation(row.dogs);
+  const dogName = friend?.friendDogName || dog?.name || 'Bau amico';
+  const avatarUrl = friend?.friendDogAvatarUrl || dog?.avatar_url || null;
+
+  return {
+    id: row.id,
+    dogId: row.dog_id,
+    dogName,
+    avatarUrl,
+  };
+}
+
+function uniqueByDog(items: PackFriendLiveItem[]): PackFriendLiveItem[] {
+  const seen = new Set<string>();
+  const result: PackFriendLiveItem[] = [];
+
+  items.forEach((item) => {
+    if (seen.has(item.dogId)) {
+      return;
+    }
+    seen.add(item.dogId);
+    result.push(item);
   });
+
+  return result;
 }
 
-function isWithinLastDays(value: string, days: number): boolean {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
+async function loadPackDiaryState(profileId: string, dogId: string): Promise<PackDiaryState> {
+  const client = getSupabaseClient();
 
-  const diff = Date.now() - date.getTime();
-  return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
+  if (!client) {
+    return {
+      ...emptyPackDiaryState,
+      source: 'fallback',
+      message: 'Supabase non configurato.',
+    };
+  }
+
+  const friends = await fetchDogFriends(dogId);
+  const friendDogIds = friends.map((friend) => friend.friendDogId).filter(Boolean);
+  const friendsByDogId = new Map(friends.map((friend) => [friend.friendDogId, friend]));
+
+  const { data: ownWalkRows, error: ownWalkError } = await client
+    .from('walk_plans')
+    .select('id,dog_id,owner_id,place_id,starts_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+    .eq('owner_id', profileId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (ownWalkError) {
+    throw ownWalkError;
+  }
+
+  const { data: ownPresenceRows, error: ownPresenceError } = await client
+    .from('presence_sessions')
+    .select('id,dog_id,profile_id,place_id,status,expires_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+    .eq('profile_id', profileId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (ownPresenceError) {
+    throw ownPresenceError;
+  }
+
+  let walkingFriends: PackFriendLiveItem[] = [];
+  let presentFriends: PackFriendLiveItem[] = [];
+
+  if (friendDogIds.length > 0) {
+    const { data: friendWalkRows, error: friendWalkError } = await client
+      .from('walk_plans')
+      .select('id,dog_id,owner_id,place_id,starts_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+      .in('dog_id', friendDogIds)
+      .eq('active', true)
+      .order('starts_at', { ascending: false })
+      .limit(20);
+
+    if (friendWalkError) {
+      throw friendWalkError;
+    }
+
+    const { data: friendPresenceRows, error: friendPresenceError } = await client
+      .from('presence_sessions')
+      .select('id,dog_id,profile_id,place_id,status,expires_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+      .in('dog_id', friendDogIds)
+      .eq('active', true)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (friendPresenceError) {
+      throw friendPresenceError;
+    }
+
+    walkingFriends = uniqueByDog(
+      ((friendWalkRows ?? []) as RemoteWalkRow[])
+        .map((row) => friendFromWalk(row, friendsByDogId))
+        .filter((item): item is PackFriendLiveItem => Boolean(item)),
+    );
+
+    presentFriends = uniqueByDog(
+      ((friendPresenceRows ?? []) as RemotePresenceRow[])
+        .map((row) => friendFromPresence(row, friendsByDogId))
+        .filter((item): item is PackFriendLiveItem => Boolean(item)),
+    );
+  }
+
+  const lastWalkRow = ((ownWalkRows ?? []) as RemoteWalkRow[])[0] ?? null;
+  const lastPresenceRow = ((ownPresenceRows ?? []) as RemotePresenceRow[])[0] ?? null;
+
+  return {
+    lastWalk: lastWalkRow ? makeWalkActivity(lastWalkRow) : null,
+    lastPresence: lastPresenceRow ? makePresenceActivity(lastPresenceRow) : null,
+    walkingFriends,
+    presentFriends,
+    source: 'supabase',
+    message: friends.length ? `${friends.length} amici del branco collegati.` : 'Aggiungi amici dal Branco per vedere chi è in giro.',
+  };
 }
 
-function matchesFilter(event: DogDiaryEvent, filter: DogDiaryFilter): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'walks') return event.category === 'walk';
-  if (filter === 'health') return event.category === 'vet' || event.category === 'medicine';
-  if (filter === 'notes') return event.category === 'note';
-  return true;
-}
-
-function makeId(): string {
-  return 'dog-diary-' + Date.now() + '-' + Math.round(Math.random() * 100000);
-}
-
-function DogDiaryEventRow({ event, category, deleting, onDelete }: DogDiaryEventRowProps) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const openRef = useRef(false);
-
-  const panResponder = useMemo(
-      () =>
-          PanResponder.create({
-            onMoveShouldSetPanResponder: (_evt, gesture) => {
-              return Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
-            },
-            onPanResponderMove: (_evt, gesture) => {
-              const start = openRef.current ? -DELETE_ACTION_WIDTH : 0;
-              const next = Math.max(-DELETE_ACTION_WIDTH, Math.min(0, start + gesture.dx));
-              translateX.setValue(next);
-            },
-            onPanResponderRelease: (_evt, gesture) => {
-              const shouldOpen = gesture.dx < -32 || gesture.vx < -0.45;
-              const shouldClose = gesture.dx > 24 || gesture.vx > 0.45;
-              const nextOpen = shouldClose ? false : shouldOpen ? true : openRef.current;
-
-              openRef.current = nextOpen;
-
-              Animated.spring(translateX, {
-                toValue: nextOpen ? -DELETE_ACTION_WIDTH : 0,
-                useNativeDriver: true,
-                friction: 9,
-                tension: 80
-              }).start();
-            },
-            onPanResponderTerminate: () => {
-              Animated.spring(translateX, {
-                toValue: openRef.current ? -DELETE_ACTION_WIDTH : 0,
-                useNativeDriver: true,
-                friction: 9,
-                tension: 80
-              }).start();
-            }
-          }),
-      [translateX]
+function ActivityLine({ label, activity }: { label: string; activity: LastPackActivity | null }) {
+  return (
+    <View style={styles.activityBox}>
+      <Text style={styles.activityLabel}>{label}</Text>
+      <Text style={styles.activityValue}>{activity?.title ?? '---'}</Text>
+      {activity ? <Text style={styles.activityMeta}>{activity.meta}</Text> : null}
+    </View>
   );
+}
+
+function FriendAvatar({ item }: { item: PackFriendLiveItem }) {
+  const initial = item.dogName.trim().slice(0, 1).toUpperCase() || 'B';
+
+  if (item.avatarUrl) {
+    return <Image source={{ uri: item.avatarUrl }} style={styles.friendAvatar} />;
+  }
 
   return (
-      <View style={styles.swipeClip}>
-        <View style={styles.deleteBehind}>
-          <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Elimina evento ${category.label}`}
-              disabled={deleting}
-              onPress={onDelete}
-              style={({ pressed }) => [
-                styles.deleteAction,
-                pressed ? styles.deleteActionPressed : null,
-                deleting ? styles.deleteActionDisabled : null
-              ]}
-          >
-            <Text style={styles.deleteActionText}>{deleting ? '...' : 'Elimina'}</Text>
-          </Pressable>
-        </View>
+    <View style={[styles.friendAvatar, styles.friendAvatarFallback]}>
+      <Text style={styles.friendAvatarText}>{initial}</Text>
+    </View>
+  );
+}
 
-        <Animated.View
-            {...panResponder.panHandlers}
-            style={[
-              styles.eventRow,
-              {
-                transform: [{ translateX }]
-              }
-            ]}
-        >
-          <View style={styles.eventIcon}>
-            <BauBookIcon name={category.icon} size={18} />
+function CollapsibleFriends({
+  title,
+  items,
+  expanded,
+  onToggle,
+}: {
+  title: string;
+  items: PackFriendLiveItem[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const count = items.length;
+
+  return (
+    <View style={styles.friendsBox}>
+      <Pressable onPress={onToggle} style={({ pressed }) => [styles.friendsHeader, pressed && styles.pressed]}>
+        <Text style={styles.friendsTitle}>{title}: {count}</Text>
+        <Text style={styles.friendsToggle}>{expanded ? 'Nascondi' : 'Mostra'}</Text>
+      </Pressable>
+
+      {expanded ? (
+        count > 0 ? (
+          <View style={styles.friendList}>
+            {items.map((item) => (
+              <View key={item.id} style={styles.friendRow}>
+                <FriendAvatar item={item} />
+                <Text style={styles.friendName}>{item.dogName}</Text>
+              </View>
+            ))}
           </View>
-          <View style={styles.eventTextWrap}>
-            <Text style={styles.eventTitle} numberOfLines={1}>{category.label}</Text>
-            <Text style={styles.eventNote} numberOfLines={1}>{event.note}</Text>
-          </View>
-          <Text style={styles.eventDate} numberOfLines={1}>{formatDay(event.createdAt)}</Text>
-        </Animated.View>
-      </View>
+        ) : (
+          <Text style={styles.emptyInline}>Nessun amico del branco in questo stato.</Text>
+        )
+      ) : null}
+    </View>
   );
 }
 
 export function HomeDogDiaryLite() {
-  const [events, setEvents] = useState<DogDiaryEvent[]>([]);
-  const [filter, setFilter] = useState<DogDiaryFilter>('all');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<DogDiaryCategory>('walk');
-  const [note, setNote] = useState('');
-  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const auth = useAuthAccount();
+  const profileId = auth.profile?.id ?? '';
+  const dogId = auth.dogs[0]?.id ?? '';
+  const [state, setState] = useState<PackDiaryState>(emptyPackDiaryState);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [walkFriendsOpen, setWalkFriendsOpen] = useState(false);
+  const [presenceFriendsOpen, setPresenceFriendsOpen] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  const canLoad = Boolean(profileId && dogId);
 
-    loadDogDiaryEvents<DogDiaryEvent>()
-        .then((loadedEvents) => {
-          if (mounted) {
-            setEvents(loadedEvents);
-          }
-        })
-        .catch(() => {
-          if (mounted) {
-            setEvents([]);
-          }
-        });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  async function persist(nextEvents: DogDiaryEvent[]) {
-    const savedEvents = await saveDogDiaryEvents<DogDiaryEvent>(nextEvents);
-    setEvents(savedEvents);
-  }
-
-  async function removeEvent(eventId: string) {
-    if (deletingEventId) {
+  const refresh = useCallback(async () => {
+    if (!canLoad) {
+      setState({
+        ...emptyPackDiaryState,
+        source: 'empty',
+        message: 'Completa profilo e cane per attivare il Diario smart del branco.',
+      });
+      setErrorMessage('');
       return;
     }
 
-    const previousEvents = events;
-    const nextEvents = events.filter((event) => event.id !== eventId);
-
-    setDeletingEventId(eventId);
-    setEvents(nextEvents);
+    setLoading(true);
+    setErrorMessage('');
 
     try {
-      await deleteDogDiaryEvent(eventId);
-    } catch {
-      setEvents(previousEvents);
+      const nextState = await loadPackDiaryState(profileId, dogId);
+      setState(nextState);
+    } catch (error) {
+      setState({
+        ...emptyPackDiaryState,
+        source: 'fallback',
+        message: 'Non riesco a leggere il branco ora.',
+      });
+      setErrorMessage(error instanceof Error ? error.message : 'Errore temporaneo nel Diario smart del branco.');
     } finally {
-      setDeletingEventId(null);
+      setLoading(false);
     }
-  }
+  }, [canLoad, dogId, profileId]);
 
-  async function addEvent() {
-    const category = getCategory(selectedCategory);
-    const cleanNote = note.trim();
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
-    const newEvent: DogDiaryEvent = {
-      id: makeId(),
-      category: selectedCategory,
-      note: cleanNote || category.label,
-      createdAt: new Date().toISOString()
-    };
-
-    const nextEvents = [newEvent, ...events].slice(0, 30);
-    await persist(nextEvents);
-    setNote('');
-    setSelectedCategory('walk');
-    setModalOpen(false);
-  }
-
-  const summary = useMemo(() => {
-    const last7Days = events.filter((event) => isWithinLastDays(event.createdAt, 7));
-    const lastEvent = events[0];
-    const lastWalk = events.find((event) => event.category === 'walk');
-    const lastHealth = events.find((event) => event.category === 'vet' || event.category === 'medicine');
-
-    return {
-      last7DaysCount: last7Days.length,
-      lastEvent,
-      lastWalk,
-      lastHealth
-    };
-  }, [events]);
-
-  const visibleEvents = useMemo(() => {
-    return events.filter((event) => matchesFilter(event, filter)).slice(0, 6);
-  }, [events, filter]);
+  const statusLabel = useMemo(() => {
+    if (loading) {
+      return 'Aggiorno il branco...';
+    }
+    return state.message || 'Il riepilogo live del branco appare qui.';
+  }, [loading, state.message]);
 
   return (
-      <View style={styles.card}>
-        <View style={[styles.headerRow, styles.diaryHeaderAligned]}>
-          <View style={styles.titleWrap}>
-            <View style={styles.iconBubble}>
-              <Image
-            source={require('../../../../assets/baubook/brand/avatar_instagram_round.png')}
-            style={styles.diaryAvatarLogo}
-            resizeMode="contain"
-          />
-            </View>
-            <View style={styles.titleTextWrap}>
-              <Text style={styles.eyebrow}>Dog Diary</Text>
-              <Text style={styles.title} numberOfLines={2}>
-                Piccole cose.. il mio diario smart!
-              </Text>
-            </View>
-          </View>
-
-          <Pressable accessibilityRole="button" onPress={() => setModalOpen(true)} style={[styles.addButton, styles.addButtonAligned]}>
-            <Text style={styles.addButtonText}>+ Evento</Text>
-          </Pressable>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <View style={styles.titleWrap}>
+          <Image source={packDiaryIcon} style={styles.titleIcon} />
+          <Text style={styles.title}>Diario smart del branco</Text>
         </View>
 
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLine}>{summary.last7DaysCount} eventi negli ultimi 7 giorni</Text>
-          <Text style={styles.summaryLine}>
-            Ultimo evento: {summary.lastEvent ? getCategory(summary.lastEvent.category).label + ' - ' + formatDay(summary.lastEvent.createdAt) : 'nessun evento registrato'}
-          </Text>
-          <Text style={styles.summaryLine}>
-            Ultima passeggiata: {summary.lastWalk ? formatDay(summary.lastWalk.createdAt) : 'non ancora registrata'}
-          </Text>
-          <Text style={styles.summaryLine}>
-            Salute: {summary.lastHealth ? getCategory(summary.lastHealth.category).label + ' - ' + formatDay(summary.lastHealth.createdAt) : 'nessuna nota salute recente'}
-          </Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map((item) => {
-            const active = item.key === filter;
-            return (
-                <Pressable
-                    key={item.key}
-                    accessibilityRole="button"
-                    onPress={() => setFilter(item.key)}
-                    style={[styles.filterChip, active ? styles.filterChipActive : null]}
-                >
-                  <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>{item.label}</Text>
-                </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {visibleEvents.length ? (
-            <View style={styles.eventList}>
-              {visibleEvents.map((event) => {
-                const category = getCategory(event.category);
-                const deleting = deletingEventId === event.id;
-
-                return (
-                    <DogDiaryEventRow
-                        key={event.id}
-                        event={event}
-                        category={category}
-                        deleting={deleting}
-                        onDelete={() => void removeEvent(event.id)}
-                    />
-                );
-              })}
-            </View>
-        ) : (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyTitle}>Nessun evento in questo filtro</Text>
-              <Text style={styles.emptyText}>Aggiungi una passeggiata, una nota salute o un evento per iniziare.</Text>
-            </View>
-        )}
-
-        <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
-          <View style={styles.backdrop}>
-            <View style={styles.sheet}>
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Aggiungi evento</Text>
-                <Pressable accessibilityRole="button" onPress={() => setModalOpen(false)}>
-                  <Text style={styles.closeText}>Chiudi</Text>
-                </Pressable>
-              </View>
-
-              <Text style={styles.inputLabel}>Categoria</Text>
-              <View style={styles.categoryGrid}>
-                {CATEGORIES.map((category) => {
-                  const active = category.key === selectedCategory;
-                  return (
-                      <Pressable
-                          key={category.key}
-                          accessibilityRole="button"
-                          onPress={() => setSelectedCategory(category.key)}
-                          style={[styles.categoryChip, active ? styles.categoryChipActive : null]}
-                      >
-                        <BauBookIcon name={category.icon} size={16} />
-                        <Text style={[styles.categoryText, active ? styles.categoryTextActive : null]}>{category.label}</Text>
-                      </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.inputLabel}>Nota</Text>
-              <TextInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Scrivi una nota breve"
-                  multiline
-                  style={styles.noteInput}
-              />
-
-              <Pressable accessibilityRole="button" onPress={addEvent} style={styles.saveButton}>
-                <Text style={styles.saveButtonText}>Salva evento</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Aggiorna Diario smart del branco"
+          disabled={loading}
+          onPress={refresh}
+          style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed, loading && styles.refreshButtonDisabled]}
+        >
+          <Text style={styles.refreshText}>{loading ? '...' : 'Aggiorna'}</Text>
+        </Pressable>
       </View>
+
+      <Text style={styles.statusText}>{statusLabel}</Text>
+
+      <View style={styles.activityGrid}>
+        <ActivityLine label="Ultima passeggiata inserita" activity={state.lastWalk} />
+        <ActivityLine label="Ultima presenza attivata" activity={state.lastPresence} />
+      </View>
+
+      <CollapsibleFriends
+        title="Amici del branco in passeggiata"
+        items={state.walkingFriends}
+        expanded={walkFriendsOpen}
+        onToggle={() => setWalkFriendsOpen((current) => !current)}
+      />
+
+      <CollapsibleFriends
+        title="Amici del branco presenti"
+        items={state.presentFriends}
+        expanded={presenceFriendsOpen}
+        onToggle={() => setPresenceFriendsOpen((current) => !current)}
+      />
+
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+    </View>
   );
 }
 
@@ -387,287 +456,174 @@ export default HomeDogDiaryLite;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     backgroundColor: '#fffaf3',
     borderWidth: 1,
-    borderColor: '#eadfce'
+    borderColor: '#eadfce',
+    gap: spacing.md,
+    ...shadows.card,
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
     alignItems: 'center',
-    marginBottom: 14
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   titleWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: spacing.sm,
   },
-  titleTextWrap: {
-    flex: 1,
-    minWidth: 0
-  },
-  iconBubble: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3e6d4'
-  },
-  diaryAvatarLogo: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-  eyebrow: {
-    color: '#7a5a36',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
+  titleIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#f4e6cf',
+    resizeMode: 'contain',
   },
   title: {
-    color: '#2b241d',
-    fontSize: 13,
-    fontWeight: '900',
-    marginTop: 2
-  },
-  addButton: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#2f7d46'
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '900'
-  },
-  summaryBox: {
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: '#f7efe3',
-    marginBottom: 12
-  },
-  summaryTitle: {
-    color: '#2b241d',
-    fontSize: 14,
-    fontWeight: '900',
-    marginBottom: 6
-  },
-  summaryLine: {
-    color: '#66584d',
-    fontSize: 13,
-    lineHeight: 19
-  },
-  filterRow: {
-    gap: 8,
-    paddingBottom: 10
-  },
-  filterChip: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#f3eadf'
-  },
-  filterChipActive: {
-    backgroundColor: '#2f7d46'
-  },
-  filterText: {
-    color: '#6c5b4c',
-    fontSize: 12,
-    fontWeight: '800'
-  },
-  filterTextActive: {
-    color: '#fff'
-  },
-  eventList: {
-    gap: 8
-  },
-  swipeClip: {
-    position: 'relative',
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    overflow: 'hidden'
-  },
-  deleteBehind: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'flex-end',
-    backgroundColor: '#ffffff'
-  },
-  eventRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 0,
-    paddingVertical: 10,
-    paddingLeft: 10,
-    paddingRight: 16,
-    backgroundColor: '#ffffff'
-  },
-  eventIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#eef8f0'
-  },
-  eventTextWrap: {
     flex: 1,
-    minWidth: 0
+    color: colors.ink,
+    fontSize: typography.h3,
+    lineHeight: 22,
+    fontWeight: '900',
   },
-  eventTitle: {
-    color: '#2b241d',
-    fontSize: 14,
-    fontWeight: '900'
+  refreshButton: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
-  eventNote: {
-    color: '#6c5b4c',
-    fontSize: 13,
-    marginTop: 2
+  refreshButtonDisabled: {
+    opacity: 0.62,
   },
-  eventDate: {
-    minWidth: 58,
-    marginLeft: 8,
-    color: '#7a5a36',
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'right'
+  refreshText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
   },
-  deleteAction: {
-    width: DELETE_ACTION_WIDTH,
-    height: '100%',
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    backgroundColor: '#ef4a3f'
-  },
-  deleteActionPressed: {
-    opacity: 0.82
-  },
-  deleteActionDisabled: {
-    opacity: 0.55
-  },
-  deleteActionText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900'
-  },
-  emptyBox: {
-    borderRadius: 18,
-    padding: 14,
-    backgroundColor: '#ffffff'
-  },
-  emptyTitle: {
-    color: '#2b241d',
-    fontSize: 14,
-    fontWeight: '900'
-  },
-  emptyText: {
-    color: '#6c5b4c',
-    fontSize: 13,
+  statusText: {
+    color: colors.text,
+    fontSize: typography.small,
     lineHeight: 19,
-    marginTop: 4
+    fontWeight: '800',
   },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.28)'
+  activityGrid: {
+    gap: spacing.sm,
   },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    backgroundColor: '#fff'
+  activityBox: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: 4,
   },
-  sheetHeader: {
+  activityLabel: {
+    color: colors.primaryDark,
+    fontSize: typography.tiny,
+    lineHeight: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  activityValue: {
+    color: colors.ink,
+    fontSize: typography.body,
+    lineHeight: 21,
+    fontWeight: '900',
+  },
+  activityMeta: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  friendsBox: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#fffdf8',
+    overflow: 'hidden',
+  },
+  friendsHeader: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  sheetTitle: {
-    color: '#2b241d',
-    fontSize: 20,
-    fontWeight: '900'
-  },
-  closeText: {
-    color: '#7a5a36',
-    fontSize: 14,
-    fontWeight: '900'
-  },
-  inputLabel: {
-    color: '#2b241d',
-    fontSize: 13,
+  friendsTitle: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: typography.body,
+    lineHeight: 21,
     fontWeight: '900',
-    marginBottom: 8
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14
+  friendsToggle: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
   },
-  categoryChip: {
+  friendList: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  friendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#f3eadf'
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
   },
-  categoryChipActive: {
-    backgroundColor: '#dff1e3'
+  friendAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f4e6cf',
   },
-  categoryText: {
-    color: '#6c5b4c',
-    fontSize: 12,
-    fontWeight: '800'
-  },
-  categoryTextActive: {
-    color: '#24452d'
-  },
-  noteInput: {
-    minHeight: 90,
-    borderWidth: 1,
-    borderColor: '#eadfce',
-    borderRadius: 14,
-    padding: 12,
-    color: '#2b241d',
-    backgroundColor: '#fffaf3',
-    textAlignVertical: 'top',
-    marginBottom: 14
-  },
-  saveButton: {
-    minHeight: 48,
-    borderRadius: 16,
+  friendAvatarFallback: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2f7d46'
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '900'
+  friendAvatarText: {
+    color: colors.primaryDark,
+    fontSize: typography.body,
+    fontWeight: '900',
   },
-  diaryHeaderAligned: {
-    alignItems: 'center'
+  friendName: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: '900',
   },
-  addButtonAligned: {
-    alignSelf: 'center',
-    justifyContent: 'center',
-    minHeight: 34,
-    marginTop: 0,
-    paddingHorizontal: 16
-  }
+  emptyInline: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
+    padding: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '900',
+  },
+  pressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.98 }],
+  },
 });
