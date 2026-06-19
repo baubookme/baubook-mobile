@@ -662,7 +662,6 @@ const styles = StyleSheet.create({
     fontSize: typography.tiny,
     fontWeight: '800',
     textAlign: 'center',
-    paddingVertical: spacing.md,
   },
   pressed: {
     opacity: 0.86,

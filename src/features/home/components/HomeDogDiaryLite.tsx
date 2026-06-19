@@ -390,7 +390,7 @@ export function HomeDogDiaryLite({ onNavigate }: HomeDogDiaryLiteProps) {
       setState({
         ...emptyPackDiaryState,
         source: 'empty',
-        message: 'Completa profilo e cane per attivare il Diario smart del branco.',
+        message: 'Completa profilo e 🐾 per attivare il Diario smart del branco.',
       });
       setErrorMessage('');
       return;
@@ -439,7 +439,7 @@ export function HomeDogDiaryLite({ onNavigate }: HomeDogDiaryLiteProps) {
 
         <View style={styles.headerMain}>
           <View style={styles.titleButtonRow}>
-            <Text style={styles.titleText}>{'Diario smart\ndel branco'}</Text>
+            <Text style={styles.titleText}>{'Diario smart\ndel branco 🐾'}</Text>
 
             <Pressable
               accessibilityRole="button"
