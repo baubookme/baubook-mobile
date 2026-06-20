@@ -227,7 +227,7 @@ export function ProfileScreen() {
             onPress={() => void handleDeletionRequest()}
           />
           {!auth.isSignedIn ? <Text style={styles.helperText}>Effettua il login per inviare una richiesta.</Text> : null}
-          {deletionRequestPending ? <Text style={styles.helperText}>Una richiesta è gia stata inviata ed è in attesa di gestione.</Text> : null}
+          {deletionRequestPending ? <Text style={styles.helperText}>Una richiesta è stata inviata ed è in attesa di gestione.</Text> : null}
           {deletionMessage ? <Text style={styles.successBox}>{deletionMessage}</Text> : null}
           {deletionError ? <Text style={styles.errorBox}>{deletionError}</Text> : null}
         </View>
