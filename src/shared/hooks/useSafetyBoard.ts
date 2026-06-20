@@ -83,11 +83,11 @@ export function useSafetyBoard(currentProfileId?: string | null) {
     setState((current) => ({ ...current, status: 'loading', actionMessage: 'Creo alert smarrimento...' }));
     try {
       await createLostDogAlert(input);
-      setState((current) => ({ ...current, actionMessage: 'Alert smarrimento creato con disclaimer registrato ✔️' }));
+      setState((current) => ({ ...current, actionMessage: 'Segnalazione creata con disclaimer registrato ✔️' }));
       reload();
     }
     catch (error) {
-      setState((current) => ({ ...current, status: 'error', actionMessage: 'Creazione alert smarrimento non riuscita ❗', errorMessage: normalizeHookError(error) }));
+      setState((current) => ({ ...current, status: 'error', actionMessage: 'Creazione segnalazione non riuscita ❗', errorMessage: normalizeHookError(error) }));
     }
   }, [reload]);
 
@@ -95,11 +95,11 @@ export function useSafetyBoard(currentProfileId?: string | null) {
     setState((current) => ({ ...current, status: 'loading', actionMessage: 'Creo segnalazione Pericolo...' }));
     try {
       await createDangerReport(input);
-      setState((current) => ({ ...current, actionMessage: 'Segnalazione Pericolo creata con disclaimer registrato ✔️' }));
+      setState((current) => ({ ...current, actionMessage: 'Segnalazione creata con disclaimer registrato ✔️' }));
       reload();
     }
     catch (error) {
-      setState((current) => ({ ...current, status: 'error', actionMessage: 'Creazione segnalazione Pericolo non riuscita ❗', errorMessage: normalizeHookError(error) }));
+      setState((current) => ({ ...current, status: 'error', actionMessage: 'Creazione segnalazione non riuscita ❗', errorMessage: normalizeHookError(error) }));
     }
   }, [reload]);
 
@@ -119,11 +119,11 @@ export function useSafetyBoard(currentProfileId?: string | null) {
     setState((current) => ({ ...current, status: 'loading', actionMessage: 'Chiudo alert smarrimento...' }));
     try {
       await closeLostDogAlert(alertId);
-      setState((current) => ({ ...current, actionMessage: 'Alert smarrimento chiuso ✔️' }));
+      setState((current) => ({ ...current, actionMessage: 'Alert smarrimento dismesso ✔️' }));
       reload();
     }
     catch (error) {
-      setState((current) => ({ ...current, status: 'error', actionMessage: 'Chiusura alert non riuscita ❗', errorMessage: normalizeHookError(error) }));
+      setState((current) => ({ ...current, status: 'error', actionMessage: 'Chiusura segnalazione non riuscita ❗', errorMessage: normalizeHookError(error) }));
     }
   }, [reload]);
 
@@ -135,7 +135,7 @@ export function useSafetyBoard(currentProfileId?: string | null) {
       reload();
     }
     catch (error) {
-      setState((current) => ({ ...current, status: 'error', actionMessage: 'Dismissione segnalazione non riuscita ❗', errorMessage: normalizeHookError(error) }));
+      setState((current) => ({ ...current, status: 'error', actionMessage: 'Chiusura segnalazione non riuscita ❗', errorMessage: normalizeHookError(error) }));
     }
   }, [reload]);
 

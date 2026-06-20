@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScrollView } from "react-native";
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Easing, Animated, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Location from "expo-location";
 
 import {
@@ -213,6 +213,8 @@ export function AlertsScreen() {
   const lastSafetyLimitPopupMessageRef = useRef<string | null>(null);
   const [safetyNotice, setSafetyNotice] = useState<SafetyNoticeState>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTranslateY = useRef(new Animated.Value(80)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
   const screenScrollRef = useRef<ScrollView | null>(null);
 
   const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
@@ -271,14 +273,49 @@ export function AlertsScreen() {
     }
 
     setToastMessage(safetyBoard.actionMessage);
+    toastTranslateY.setValue(80);
+    toastOpacity.setValue(0);
+
+    Animated.parallel([
+      Animated.timing(toastTranslateY, {
+        toValue: 0,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     const timeoutId = setTimeout(() => {
-      setToastMessage((currentMessage) =>
-        currentMessage === safetyBoard.actionMessage ? null : currentMessage,
-      );
-    }, 4000);
+      Animated.parallel([
+        Animated.timing(toastTranslateY, {
+          toValue: 80,
+          duration: 220,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setToastMessage((currentMessage) =>
+            currentMessage === safetyBoard.actionMessage ? null : currentMessage,
+          );
+        }
+      });
+    }, 3800);
 
     return () => clearTimeout(timeoutId);
-  }, [safetyBoard.actionMessage]);
+  }, [safetyBoard.actionMessage, toastOpacity, toastTranslateY]);
 
   useEffect(() => {
     const message = safetyBoard.errorMessage;
@@ -454,12 +491,8 @@ export function AlertsScreen() {
   };
 
   return (
-    <Screen scrollRef={screenScrollRef}>
-      {toastMessage ? (
-        <View pointerEvents="none" style={styles.toastOverlay}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      ) : null}
+    <View style={styles.screenShell}>
+      <Screen scrollRef={screenScrollRef}>
       {safetyNotice ? (
         <SafetyNoticeCard
           title={safetyNotice.title}
@@ -776,7 +809,19 @@ export function AlertsScreen() {
             ) : null}
           </View>
         )}
-      </AppCard>    </Screen>
+      </AppCard>      </Screen>
+      {toastMessage ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.toastOverlay,
+            { opacity: toastOpacity, transform: [{ translateY: toastTranslateY }] },
+          ]}
+        >
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </Animated.View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1015,25 +1060,48 @@ function SafetyCard({
 }
 
 const styles = StyleSheet.create({
-  toastOverlay: {
-    position: "absolute",
-    top: spacing.sm,
-    left: spacing.md,
-    right: spacing.md,
-    zIndex: 40,
-    alignItems: "center",
-  },
-  toastText: {
-    maxWidth: "100%",
+toastText: {
+    maxWidth: 330,
     overflow: "hidden",
-    borderRadius: radius.pill,
-    backgroundColor: colors.greenSoft,
-    color: colors.success,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    color: colors.ink,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: typography.small,
     fontWeight: "900",
+    lineHeight: 19,
+    textAlign: "left",
+    shadowColor: "#000000",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  screenShell: {
+    flex: 1,
+  },
+toastText: {
+    maxWidth: 360,
+    overflow: "hidden",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    color: colors.ink,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.small,
+    fontWeight: "900",
+    lineHeight: 19,
     textAlign: "center",
+    shadowColor: "#000000",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   hero: {
     gap: spacing.sm,
@@ -1434,5 +1502,32 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: typography.small,
     fontWeight: "900",
+  },
+  toastOverlay: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.md,
+    bottom: 118,
+    zIndex: 80,
+    alignItems: "center",
+    pointerEvents: "none",
+  },
+  toastText: {
+    maxWidth: 420,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    color: colors.ink,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.small,
+    fontWeight: "900",
+    textAlign: "center",
+    shadowColor: "#000000",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 });
