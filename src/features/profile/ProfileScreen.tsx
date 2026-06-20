@@ -151,7 +151,7 @@ export function ProfileScreen() {
             <View style={styles.metricGrid}>
               <Metric label="Email" value={auth.user?.email ?? 'non disponibile'} />
               <Metric label="Profile ID" value={auth.profile?.id ?? 'profilo in creazione'} />
-              <Metric label="Cani salvati" value={String(auth.dogs.length)} />
+              <Metric label="Pelosi salvati" value={String(auth.dogs.length)} />
             </View>
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nome profilo visibile</Text>
