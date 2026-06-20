@@ -180,7 +180,7 @@ export function ProfileScreen() {
       </AppCard>
 
       <AppCard>
-        <SectionHeader eyebrow="Cancellazione account" title="Richiesta cancellazione account" description="Flusso leggero, utile per beta e review store. Richiede login e migration 0008 applicata." />
+        <SectionHeader eyebrow="Cancellazione account" title="Richiesta cancellazione account" />
         <View style={styles.formStack}>
           <TextInput
             value={deletionReason}
@@ -203,23 +203,7 @@ export function ProfileScreen() {
       </AppCard>
 
 
-      <AppCard>
-        <SectionHeader eyebrow="Supabase live check" title="Backend" description={supabaseStatus.status === 'loading' ? 'Controllo app_config, feature_flags, places, passeggiate, presenze e safety...' : liveStatus?.message ?? supabaseStatus.errorMessage ?? 'In attesa di verifica Supabase.'} />
-        <View style={styles.metricGrid}>
-          <Metric label="Supabase URL" value={supabaseSummary.url || 'non configurato'} />
-          <Metric label="Client key" value={supabaseSummary.keyPrefix || 'non configurata'} />
-          <Metric label="Ultimo check" value={liveStatus?.lastCheckedAt ?? 'non ancora eseguito'} />
-        </View>
-      </AppCard>
 
-      <AppCard>
-        <SectionHeader eyebrow="Debug parlante" title="Runtime" description="Dati utili per capire subito piattaforma, Metro, errori e build." />
-        <View style={styles.diagnosticsList}>
-          {diagnostics.map((item) => (
-            <Metric key={item.label} label={item.label} value={item.value} />
-          ))}
-        </View>
-      </AppCard>
 
 
     </Screen>

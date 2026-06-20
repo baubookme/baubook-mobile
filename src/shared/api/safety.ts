@@ -37,20 +37,30 @@ export interface SafetyBoardResult {
 
 export interface CreateLostDogAlertInput {
   dogId: string;
-  placeId: string;
+  placeId?: string | null;
   description: string;
   lastSeenMinutesAgo: number;
   ttlHours: number;
   disclaimerAccepted: boolean;
+  locationMode?: 'current' | 'manual';
+  locationLabel?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  manualAddress?: string | null;
 }
 
 export interface CreateDangerReportInput {
-  placeId: string;
+  placeId?: string | null;
   dangerType: DangerType;
   description: string;
   severity: number;
   ttlHours: number;
   disclaimerAccepted: boolean;
+  locationMode?: 'current' | 'manual';
+  locationLabel?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  manualAddress?: string | null;
 }
 
 export interface CreateSightingInput {
@@ -75,6 +85,11 @@ interface RemoteLostAlertRow {
   dog_id: string | null;
   owner_id: string | null;
   source_place_id: string | null;
+  location_mode?: string | null;
+  location_label?: string | null;
+  location_latitude?: number | null;
+  location_longitude?: number | null;
+  manual_address?: string | null;
   description: string | null;
   status: AlertStatus;
   moderation_status: string;
@@ -116,8 +131,8 @@ const dangerHints: Record<DangerType, string> = {
   suspected_poison: 'Non toccare nulla, tieni il cane lontano e valuta una segnalazione alle autorità competenti.',
   loose_dog: 'Non inseguire o bloccare l’animale: segnala con prudenza e resta a distanza.',
   unsafe_area: 'Evita la zona e aggiungi dettagli utili senza indicare persone o indirizzi privati.',
-  traffic: 'Usa l’area come avviso temporaneo: non sostituisce segnalazioni formali o interventi urgenti.',
-  broken_fence: 'Indica il punto in modo approssimativo e verifica che la segnalazione resti temporanea.',
+  traffic: 'Sii prudente e usa un guinzaglio: non sostituisce segnalazioni formali o interventi urgenti.',
+  broken_fence: 'Fai attenzione prima di liberare il tuo amico e verifica che la segnalazione sia valida.',
   other: 'Descrivi solo fatti osservati e non pubblicare accuse verso persone identificabili.',
 };
 
@@ -193,7 +208,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
   const profile = firstRelation(row.profiles);
   const place = firstRelation(row.places);
   const dogName = dog?.name ?? 'Cane BauBook';
-  const placeName = place?.name ?? 'zona indicativa';
+  const placeName = row.location_label?.trim() || place?.name || 'zona indicativa';
 
   return {
     id: row.id,
@@ -228,7 +243,7 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
   const profile = firstRelation(row.profiles);
   const place = firstRelation(row.places);
   const dangerType = normalizeDangerType(row.danger_type);
-  const placeName = place?.name ?? 'zona indicativa';
+  const placeName = row.location_label?.trim() || place?.name || 'zona indicativa';
   const alertStatus: AlertStatus = row.status === 'active' || row.status === 'confirmed' ? 'active' : row.status === 'expired' ? 'expired' : 'resolved';
 
   return {
@@ -310,7 +325,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
     const [lostResult, dangerResult] = await Promise.all([
       client
         .from('lost_dog_alerts')
-        .select('id, dog_id, owner_id, source_place_id, description, status, moderation_status, expires_at, created_at, last_seen_at, radius_m, dogs(name), profiles(display_name), places:source_place_id(name)')
+        .select('id, dog_id, owner_id, source_place_id, location_mode, location_label, location_latitude, location_longitude, manual_address, description, status, moderation_status, expires_at, created_at, last_seen_at, radius_m, dogs(name), profiles(display_name), places:source_place_id(name)')
         .eq('status', 'active')
         .eq('moderation_status', 'approved')
         .gt('expires_at', nowIso)
@@ -318,7 +333,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
         .limit(20),
       client
         .from('danger_reports')
-        .select('id, reporter_id, source_place_id, danger_type, description, severity, status, moderation_status, expires_at, created_at, radius_m, profiles(display_name), places:source_place_id(name)')
+        .select('id, reporter_id, source_place_id, location_mode, location_label, location_latitude, location_longitude, manual_address, danger_type, description, severity, status, moderation_status, expires_at, created_at, radius_m, profiles(display_name), places:source_place_id(name)')
         .in('status', ['active', 'confirmed'])
         .in('moderation_status', ['approved', 'pending'])
         .gt('expires_at', nowIso)
@@ -371,17 +386,23 @@ export function hintForDangerType(type: DangerType): string {
 
 export async function createLostDogAlert(input: CreateLostDogAlertInput): Promise<void> {
   const client = getSupabaseClient();
+
   if (!client) {
     throw new Error('Supabase non configurato.');
   }
 
   const { error } = await client.rpc('create_lost_dog_alert', {
     dog_id_input: input.dogId,
-    place_id_input: input.placeId,
+    place_id_input: input.placeId ?? null,
     description_input: input.description,
     last_seen_minutes_ago_input: input.lastSeenMinutesAgo,
     ttl_hours_input: input.ttlHours,
     disclaimer_accepted_input: input.disclaimerAccepted,
+    location_mode_input: input.locationMode ?? 'current',
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
@@ -391,17 +412,23 @@ export async function createLostDogAlert(input: CreateLostDogAlertInput): Promis
 
 export async function createDangerReport(input: CreateDangerReportInput): Promise<void> {
   const client = getSupabaseClient();
+
   if (!client) {
     throw new Error('Supabase non configurato.');
   }
 
   const { error } = await client.rpc('create_danger_report', {
-    place_id_input: input.placeId,
+    place_id_input: input.placeId ?? null,
     danger_type_input: input.dangerType,
     description_input: input.description,
     severity_input: input.severity,
     ttl_hours_input: input.ttlHours,
     disclaimer_accepted_input: input.disclaimerAccepted,
+    location_mode_input: input.locationMode ?? 'current',
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {

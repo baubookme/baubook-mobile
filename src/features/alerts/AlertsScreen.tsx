@@ -1,23 +1,11 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScrollView } from "react-native";
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as Location from "expo-location";
 
 import {
-  labelForDangerType,
-  formatSafetyCreatedAt,
   dangerIconForType,
+  formatSafetyCreatedAt,
   type DangerType,
   type SafetyAlertModel,
 } from "../../shared/api/safety";
@@ -25,18 +13,27 @@ import { baubookImages } from "../../shared/assets/images";
 import { useAuthAccount } from "../../shared/auth/AuthProvider";
 import { AppButton } from "../../shared/components/AppButton";
 import { AppCard } from "../../shared/components/AppCard";
-import { IconBubble } from "../../shared/components/IconBubble";
 import { Screen } from "../../shared/components/Screen";
-import { SectionHeader } from "../../shared/components/SectionHeader";
 import { Tag } from "../../shared/components/Tag";
 import { useSafetyBoard } from "../../shared/hooks/useSafetyBoard";
-import { useSupabasePlaces } from "../../shared/hooks/useSupabasePublicData";
+import { getSupabaseClient } from "../../shared/lib/supabase";
 import { colors, radius, spacing, typography } from "../../shared/theme/theme";
+
+type LocationMode = "current" | "manual";
+
+interface SafetyLocationPayload {
+  locationMode: LocationMode;
+  locationLabel: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  manualAddress: string | null;
+}
 
 const lostTtlOptions = [6, 24, 48];
 const dangerTtlOptions = [2, 6, 24, 72];
-const lastSeenOptions = [15, 30, 60, 180];
+const presumedMissingOptions = [15, 30, 60, 180];
 const severityOptions = [1, 2, 3, 4, 5];
+
 const LOST_DESCRIPTION_MIN_LENGTH = 15;
 const DANGER_DESCRIPTION_MIN_LENGTH = 15;
 
@@ -50,23 +47,17 @@ const dangerTypeOptions: Array<{ type: DangerType; label: string }> = [
 ];
 
 const lostDisclaimer = [
-  "L’area è indicativa e non è un tracciamento in tempo reale.",
-  "Non pubblico indirizzi privati, telefoni personali o dati sensibili nel testo.",
-  "BauBook non sostituisce emergenze, veterinario, autorità o associazioni: se serve, contatto i canali appropriati.",
-  "Chiuderò l’alert appena il cane sarà recuperato o l’informazione non sarà più utile.",
+  "Pubblico solo informazioni utili e non dati sensibili.",
+  "La posizione è indicativa: non pubblico indirizzi privati o numeri personali.",
+  "BauBook non sostituisce autorità, veterinario o canali ufficiali.",
+  "Chiuderò l’alert appena non sarà più utile.",
 ];
 
 const dangerDisclaimer = [
-  "Segnalo solo fatti osservati o ragionevolmente verificabili, senza accuse a persone identificabili.",
-  "La segnalazione ha TTL e può essere rimossa/moderata se abusiva, falsa o non più utile.",
-  "Non tocco oggetti sospetti e tengo il cane lontano dalla zona indicata.",
-  "Se c’è un rischio immediato, uso anche i canali ufficiali o di emergenza appropriati.",
-];
-
-const sightingDisclaimer = [
-  "Invio solo informazioni utili e non inseguo il cane.",
-  "La posizione è approssimata su un luogo BauBook, non un indirizzo privato.",
-  "Se dichiaro “recuperato”, lo faccio solo se ho informazioni affidabili.",
+  "Segnalo solo fatti osservati o ragionevolmente verificabili.",
+  "Non accuso persone identificabili e non inserisco dati sensibili.",
+  "Tengo il cane lontano dalla zona e uso canali ufficiali se il rischio è immediato.",
+  "Chiuderò la segnalazione quando non sarà più utile.",
 ];
 
 type SafetyNoticeState = {
@@ -78,16 +69,12 @@ function isLostLimitError(message?: string | null) {
   if (!message) {
     return false;
   }
-
   const normalized = message.toLowerCase();
-
   return (
-      normalized.includes("limite beta") &&
-      (
-          normalized.includes("smarrimento") ||
-          normalized.includes("lost") ||
-          normalized.includes("create_lost_dog_alert")
-      )
+    normalized.includes("limite beta") &&
+    (normalized.includes("smarrimento") ||
+      normalized.includes("lost") ||
+      normalized.includes("create_lost_dog_alert"))
   );
 }
 
@@ -95,16 +82,12 @@ function isDangerLimitError(message?: string | null) {
   if (!message) {
     return false;
   }
-
   const normalized = message.toLowerCase();
-
   return (
-      normalized.includes("limite beta") &&
-      (
-          normalized.includes("pericolo") ||
-          normalized.includes("danger") ||
-          normalized.includes("create_danger")
-      )
+    normalized.includes("limite beta") &&
+    (normalized.includes("pericolo") ||
+      normalized.includes("danger") ||
+      normalized.includes("create_danger"))
   );
 }
 
@@ -112,13 +95,148 @@ function isSafetyLimitError(message?: string | null) {
   return isLostLimitError(message) || isDangerLimitError(message);
 }
 
+async function resolveReadableLocationLabel(latitude: number, longitude: number): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await client.functions.invoke("resolve-location-label", {
+      body: { latitude, longitude },
+    });
+
+    if (error || !data || typeof data.label !== "string") {
+      return null;
+    }
+
+    const label = data.label.trim();
+    return label.length ? label : null;
+  } catch {
+    return null;
+  }
+}
+
+function useSafetyLocationDraft(initialLabel: string) {
+  const [locationMode, setLocationMode] = useState<LocationMode>("current");
+  const [manualAddress, setManualAddress] = useState("");
+  const [currentLocationPayload, setCurrentLocationPayload] = useState<SafetyLocationPayload | null>(null);
+  const [locationStatusMessage, setLocationStatusMessage] = useState<string | null>(initialLabel);
+  const [locationResolving, setLocationResolving] = useState(false);
+
+  const manualAddressValue = manualAddress.trim();
+  const manualAddressReady = manualAddressValue.length >= 10;
+  const locationReady = locationMode === "current" || manualAddressReady;
+
+  const resolvedLocationLabel =
+    locationMode === "current"
+      ? currentLocationPayload?.locationLabel ?? "Posizione attuale da rilevare"
+      : manualAddressValue || "Indirizzo manuale da inserire";
+
+  const resolveCurrentLocationPayload = async (): Promise<SafetyLocationPayload | null> => {
+    setLocationResolving(true);
+    setLocationStatusMessage("Rilevo la posizione...");
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        setLocationStatusMessage("Permesso posizione non concesso. Usa un indirizzo manuale.");
+        return null;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const label = (await resolveReadableLocationLabel(latitude, longitude)) ?? "Posizione condivisa";
+
+      const payload: SafetyLocationPayload = {
+        locationMode: "current",
+        locationLabel: label,
+        locationLatitude: latitude,
+        locationLongitude: longitude,
+        manualAddress: null,
+      };
+
+      setCurrentLocationPayload(payload);
+      setLocationStatusMessage(`Posizione rilevata: ${label}`);
+      return payload;
+    } catch {
+      setLocationStatusMessage("Non riesco a leggere la posizione. Usa un indirizzo manuale.");
+      return null;
+    } finally {
+      setLocationResolving(false);
+    }
+  };
+
+  const resolveManualLocationPayload = async (): Promise<SafetyLocationPayload | null> => {
+    if (!manualAddressReady) {
+      setLocationStatusMessage("Inserisci almeno 10 caratteri per usare l’indirizzo manuale.");
+      return null;
+    }
+
+    return {
+      locationMode: "manual",
+      locationLabel: manualAddressValue,
+      locationLatitude: null,
+      locationLongitude: null,
+      manualAddress: manualAddressValue,
+    };
+  };
+
+  const prepareLocationPayload = async (): Promise<SafetyLocationPayload | null> => {
+    if (locationMode === "manual") {
+      return resolveManualLocationPayload();
+    }
+    return currentLocationPayload ?? resolveCurrentLocationPayload();
+  };
+
+  return {
+    locationMode,
+    setLocationMode,
+    manualAddress,
+    setManualAddress,
+    manualAddressValue,
+    manualAddressReady,
+    locationReady,
+    resolvedLocationLabel,
+    locationStatusMessage,
+    locationResolving,
+    resolveCurrentLocationPayload,
+    prepareLocationPayload,
+  };
+}
+
+type SafetyLocationDraft = ReturnType<typeof useSafetyLocationDraft>;
+
 export function AlertsScreen() {
   const auth = useAuthAccount();
-  const placesState = useSupabasePlaces();
   const safetyBoard = useSafetyBoard(auth.profile?.id);
   const lastSafetyLimitPopupMessageRef = useRef<string | null>(null);
   const [safetyNotice, setSafetyNotice] = useState<SafetyNoticeState>(null);
   const screenScrollRef = useRef<ScrollView | null>(null);
+
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
+  const [lostDescription, setLostDescription] = useState(
+    "Cane smarrito: se lo vedi, segnala con prudenza senza inseguirlo.",
+  );
+  const [dangerDescription, setDangerDescription] = useState(
+    "Segnalazione temporanea da verificare: tenere i cani lontani dalla zona.",
+  );
+  const [lostTtlHours, setLostTtlHours] = useState(24);
+  const [dangerTtlHours, setDangerTtlHours] = useState(6);
+  const [presumedMissingMinutesAgo, setPresumedMissingMinutesAgo] = useState(30);
+  const [dangerType, setDangerType] = useState<DangerType | null>(null);
+  const [severity, setSeverity] = useState(2);
+  const [lostAccepted, setLostAccepted] = useState(false);
+  const lostCreateInFlightRef = useRef(false);
+  const [lostCreateInFlight, setLostCreateInFlight] = useState(false);
+  const [dangerAccepted, setDangerAccepted] = useState(false);
+  const dangerCreateInFlightRef = useRef(false);
+  const [dangerCreateInFlight, setDangerCreateInFlight] = useState(false);
+  const [dangerDraftExpanded, setDangerDraftExpanded] = useState(false);
+  const [lostDraftExpanded, setLostDraftExpanded] = useState(false);
+
+  const lostLocation = useSafetyLocationDraft("Rileva la posizione dello smarrimento o usa un indirizzo manuale.");
+  const dangerLocation = useSafetyLocationDraft("Rileva la posizione del pericolo o usa un indirizzo manuale.");
 
   const scrollToSafetyNotice = () => {
     requestAnimationFrame(() => {
@@ -132,9 +250,8 @@ export function AlertsScreen() {
     setSafetyNotice({
       title: "Limite segnalazioni raggiunto ⛔",
       message:
-          "Hai già creato 3 alert smarrimento nelle ultime 24 ore per questo profilo. Riprova più tardi o chiudi un alert non più utile.",
+        "Hai già creato 3 alert smarrimento nelle ultime 24 ore per questo profilo.\nRiprova più tardi o chiudi un alert non più utile.",
     });
-
     scrollToSafetyNotice();
   };
 
@@ -142,72 +259,30 @@ export function AlertsScreen() {
     setSafetyNotice({
       title: "Limite segnalazioni raggiunto ⛔",
       message:
-          "Hai già creato 3 alert pericolo nelle ultime 24 ore per questo profilo. Riprova più tardi o chiudi una segnalazione non più utile.",
+        "Hai già creato 3 alert pericolo nelle ultime 24 ore per questo profilo.\nRiprova più tardi o chiudi una segnalazione non più utile.",
     });
-
     scrollToSafetyNotice();
   };
 
   useEffect(() => {
     const message = safetyBoard.errorMessage;
-
     if (!message) {
       lastSafetyLimitPopupMessageRef.current = null;
       return;
     }
-
     if (lastSafetyLimitPopupMessageRef.current === message) {
       return;
     }
-
     if (isLostLimitError(message)) {
       lastSafetyLimitPopupMessageRef.current = message;
       showLostLimitNotice();
       return;
     }
-
     if (isDangerLimitError(message)) {
       lastSafetyLimitPopupMessageRef.current = message;
       showDangerLimitNotice();
     }
   }, [safetyBoard.errorMessage]);
-
-  const livePlaces = useMemo(
-      () =>
-          placesState.places.filter(
-              (place) => place.id && !place.id.endsWith("-demo"),
-          ),
-      [placesState.places],
-  );
-  const selectablePlaces = livePlaces.length ? livePlaces : placesState.places;
-
-  const [selectedDogId, setSelectedDogId] = useState<string | null>(
-      auth.dogs[0]?.id ?? null,
-  );
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
-      selectablePlaces[0]?.id ?? null,
-  );
-  const [lostDescription, setLostDescription] = useState(
-      "Ultimo avvistamento in zona: se lo vedi, segnala senza inseguirlo.",
-  );
-  const [dangerDescription, setDangerDescription] = useState(
-      "Segnalazione temporanea da verificare: tenere i cani lontani dalla zona.",
-  );
-  const [sightingNote, setSightingNote] = useState(
-      "Avvistato in zona, non inseguito.",
-  );
-  const [lostTtlHours, setLostTtlHours] = useState(24);
-  const [dangerTtlHours, setDangerTtlHours] = useState(6);
-  const [lastSeenMinutesAgo, setLastSeenMinutesAgo] = useState(30);
-  const [dangerType, setDangerType] = useState<DangerType>("suspected_poison");
-  const [severity, setSeverity] = useState(2);
-  const [lostAccepted, setLostAccepted] = useState(false);
-  const lostCreateInFlightRef = useRef(false);
-  const [lostCreateInFlight, setLostCreateInFlight] = useState(false);
-  const [dangerAccepted, setDangerAccepted] = useState(false);
-  const dangerCreateInFlightRef = useRef(false);
-  const [dangerCreateInFlight, setDangerCreateInFlight] = useState(false);
-  const [sightingAccepted, setSightingAccepted] = useState(false);
 
   useEffect(() => {
     if (!selectedDogId && auth.dogs[0]?.id) {
@@ -215,86 +290,101 @@ export function AlertsScreen() {
     }
   }, [auth.dogs, selectedDogId]);
 
-  useEffect(() => {
-    if (!selectedPlaceId && selectablePlaces[0]?.id) {
-      setSelectedPlaceId(selectablePlaces[0].id);
-    }
-  }, [selectablePlaces, selectedPlaceId]);
+  const selectedDog = auth.dogs.find((dog) => dog.id === selectedDogId) ?? auth.dogs[0] ?? null;
 
-  const selectedDog =
-      auth.dogs.find((dog) => dog.id === selectedDogId) ?? auth.dogs[0] ?? null;
-  const selectedPlace =
-      selectablePlaces.find((place) => place.id === selectedPlaceId) ??
-      selectablePlaces[0] ??
-      null;
-  const canUseLiveWrites =
-      auth.isSignedIn &&
-      placesState.source === "supabase" &&
-      Boolean(selectedPlace);
-  const lostDescriptionReady =
-      lostDescription.trim().length >= LOST_DESCRIPTION_MIN_LENGTH;
-  const dangerDescriptionReady =
-      dangerDescription.trim().length >= DANGER_DESCRIPTION_MIN_LENGTH;
+  const userAuthVerified = Boolean(
+    auth.isSignedIn &&
+      (auth.profile?.isVerifiedEmail ||
+        auth.profile?.isVerifiedPhone ||
+        auth.user?.email_confirmed_at ||
+        auth.user?.phone_confirmed_at ||
+        auth.user?.confirmed_at),
+  );
+
+  const accountReadOnly = !userAuthVerified;
+
+  const myActiveLostAlert = useMemo(
+    () =>
+      safetyBoard.alerts.find(
+        (alert) => alert.type === "lost_dog" && alert.isMine && alert.dogId === selectedDog?.id,
+      ) ?? null,
+    [safetyBoard.alerts, selectedDog?.id],
+  );
+
+  const myActiveDangerAlert = useMemo(
+    () => safetyBoard.alerts.find((alert) => alert.type === "danger" && alert.isMine) ?? null,
+    [safetyBoard.alerts],
+  );
+
+  const lostReadOnly = accountReadOnly || Boolean(myActiveLostAlert);
+  const dangerReadOnly = accountReadOnly || Boolean(myActiveDangerAlert);
+  const profileReady = auth.isSignedIn && Boolean(auth.profile);
+  const dogReady = Boolean(selectedDog);
+
+  const lostDescriptionReady = lostDescription.trim().length >= LOST_DESCRIPTION_MIN_LENGTH;
+  const dangerDescriptionReady = dangerDescription.trim().length >= DANGER_DESCRIPTION_MIN_LENGTH;
+  const dangerTypeReady = Boolean(dangerType);
+
   const canCreateLost =
-      canUseLiveWrites &&
-      Boolean(selectedDog) &&
-      lostAccepted &&
-      lostDescriptionReady &&
-      !lostCreateInFlight &&
-      safetyBoard.status !== "loading";
+    profileReady &&
+    userAuthVerified &&
+    dogReady &&
+    lostAccepted &&
+    lostDescriptionReady &&
+    lostLocation.locationReady &&
+    !lostReadOnly &&
+    !lostCreateInFlight &&
+    safetyBoard.status !== "loading";
+
   const canCreateDanger =
-      canUseLiveWrites &&
-      dangerAccepted &&
-      dangerDescriptionReady &&
-      !dangerCreateInFlight &&
-      safetyBoard.status !== "loading";
-  const canCreateSighting =
-      canUseLiveWrites && sightingAccepted && safetyBoard.status !== "loading";
+    profileReady &&
+    userAuthVerified &&
+    dangerAccepted &&
+    dangerDescriptionReady &&
+    dangerTypeReady &&
+    dangerLocation.locationReady &&
+    !dangerReadOnly &&
+    !dangerCreateInFlight &&
+    safetyBoard.status !== "loading";
 
   const handleCreateLost = async () => {
-    if (
-        !selectedDog ||
-        !selectedPlace ||
-        !canCreateLost ||
-        lostCreateInFlightRef.current
-    ) {
+    if (!selectedDog || !canCreateLost || lostCreateInFlightRef.current) {
       return;
     }
 
-    const dogId = selectedDog.id;
-    const placeId = selectedPlace.id;
+    const locationPayload = await lostLocation.prepareLocationPayload();
+    if (!locationPayload) {
+      return;
+    }
+
     const descriptionToPublish = lostDescription.trim();
-    const lastSeen = lastSeenMinutesAgo;
+    const lastSeen = presumedMissingMinutesAgo;
     const ttlHours = lostTtlHours;
     const disclaimerAccepted = lostAccepted;
 
     lostCreateInFlightRef.current = true;
     setLostCreateInFlight(true);
     setLostAccepted(false);
-    setLostDescription("");
 
     try {
       await safetyBoard.createLostAlert({
-        dogId,
-        placeId,
+        dogId: selectedDog.id,
+        placeId: null,
         description: descriptionToPublish,
         lastSeenMinutesAgo: lastSeen,
         ttlHours,
         disclaimerAccepted,
+        ...locationPayload,
       });
     } catch (error) {
-      const message =
-          error instanceof Error ? error.message : String(error ?? "");
-
+      const message = error instanceof Error ? error.message : String(error ?? "");
       if (isLostLimitError(message)) {
         showLostLimitNotice();
       } else {
         setSafetyNotice({
           title: "Ops, qualcosa non è andato",
-          message:
-              "Non sono riuscito a creare l’alert smarrimento. Riprova tra poco.",
+          message: "Non sono riuscito a creare l’alert smarrimento.\nRiprova tra poco.",
         });
-
         scrollToSafetyNotice();
       }
     } finally {
@@ -304,7 +394,12 @@ export function AlertsScreen() {
   };
 
   const handleCreateDanger = async () => {
-    if (!selectedPlace || !canCreateDanger || dangerCreateInFlightRef.current) {
+    if (!canCreateDanger || dangerCreateInFlightRef.current || !dangerType) {
+      return;
+    }
+
+    const locationPayload = await dangerLocation.prepareLocationPayload();
+    if (!locationPayload) {
       return;
     }
 
@@ -314,30 +409,26 @@ export function AlertsScreen() {
     dangerCreateInFlightRef.current = true;
     setDangerCreateInFlight(true);
     setDangerAccepted(false);
-    setDangerDescription("");
 
     try {
       await safetyBoard.createDanger({
-        placeId: selectedPlace.id,
+        placeId: null,
         dangerType,
         description: descriptionToPublish,
         severity,
         ttlHours: dangerTtlHours,
         disclaimerAccepted,
+        ...locationPayload,
       });
     } catch (error) {
-      const message =
-          error instanceof Error ? error.message : String(error ?? "");
-
+      const message = error instanceof Error ? error.message : String(error ?? "");
       if (isDangerLimitError(message)) {
         showDangerLimitNotice();
       } else {
         setSafetyNotice({
           title: "Ops, qualcosa non è andato",
-          message:
-              "Non sono riuscito a creare la segnalazione pericolo. Riprova tra poco.",
+          message: "Non sono riuscito a creare la segnalazione pericolo.\nRiprova tra poco.",
         });
-
         scrollToSafetyNotice();
       }
     } finally {
@@ -346,651 +437,571 @@ export function AlertsScreen() {
     }
   };
 
-  const handleSighting = (
-      alert: SafetyAlertModel,
-      sightingType: "seen" | "recovered",
-  ) => {
-    if (!selectedPlace || !canCreateSighting) {
-      return;
-    }
-
-    void safetyBoard.createSighting({
-      alertId: alert.id,
-      placeId: selectedPlace.id,
-      sightingType,
-      note: sightingNote,
-      disclaimerAccepted: sightingAccepted,
-    });
-  };
-
   return (
-      <Screen scrollRef={screenScrollRef}>
-        <SectionHeader
-            eyebrow="Community locale"
-            title="Emergenze vere, niente panico globale!"
+    <Screen scrollRef={screenScrollRef}>
+      {safetyNotice ? (
+        <SafetyNoticeCard
+          title={safetyNotice.title}
+          message={safetyNotice.message}
+          onClose={() => setSafetyNotice(null)}
         />
+      ) : null}
 
-        {safetyNotice ? (
-            <SafetyNoticeCard
-                title={safetyNotice.title}
-                message={safetyNotice.message}
-                onClose={() => setSafetyNotice(null)}
-            />
+      <View style={styles.hero}>
+        <Text style={styles.eyebrow}>SICUREZZA</Text>
+        <Text style={styles.screenTitle}>Aiuto</Text>
+        <Text style={styles.bodyText}>
+          Apri solo segnalazioni reali, temporanee e utili alla comunità BauBook.
+        </Text>
+        <View style={styles.tagsRow}>
+          <Tag
+            label={userAuthVerified ? "✓ utente verificato" : "* utente non verificato"}
+            tone={userAuthVerified ? "green" : "red"}
+          />
+        </View>
+      </View>
+
+      {!userAuthVerified ? (
+        <AppCard tone="danger">
+          <Text style={styles.cardTitle}>Sezione in sola lettura</Text>
+          <Text style={styles.bodyText}>
+            Per aprire segnalazioni serve un utente verificato via email o OTP. Puoi leggere gli alert, ma non puoi crearli o modificarli.
+          </Text>
+        </AppCard>
+      ) : null}
+
+      {safetyBoard.errorMessage && !isSafetyLimitError(safetyBoard.errorMessage) ? (
+        <Text style={styles.errorBox}>{safetyBoard.errorMessage}</Text>
+      ) : null}
+
+      {safetyBoard.actionMessage ? <Text style={styles.successBox}>{safetyBoard.actionMessage}</Text> : null}
+
+      {!auth.isSignedIn ? (
+        <Text style={styles.warningBox}>Vai in Setup e accedi: le funzioni safety richiedono sessione utente.</Text>
+      ) : null}
+
+      {auth.isSignedIn && !auth.dogs.length ? (
+        <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo cane prima di creare un alert smarrimento.</Text>
+      ) : null}
+
+      <AppCard tone="danger">
+        <View style={styles.cardHeader}>
+          <Image source={baubookImages.icons.lostDog} style={styles.cardIcon} />
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>MI SONO PERSO</Text>
+            <Text style={styles.cardTitle}>Alert smarrimento</Text>
+            <Text style={styles.bodyText}>Il cane resta il tuo. La posizione viene rilevata o inserita manualmente.</Text>
+          </View>
+        </View>
+
+        {myActiveLostAlert ? (
+          <>
+            <ReadonlyWarning message="Hai un alert smarrimento già attivo" />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setLostDraftExpanded((value) => !value)}
+              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
+            >
+              <Text style={styles.collapsibleTitle}>
+                {lostDraftExpanded ? "Nascondi dettagli alert smarrimento" : "Mostra dettagli alert smarrimento"}
+              </Text>
+              <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
+            </Pressable>
+          </>
         ) : null}
 
-        <AppCard tone="danger">
-          <View style={styles.criticalHeader}>
-            <IconBubble
-                source={baubookImages.icons.safety}
-                size={72}
-                tone="plain"
-            />
-            <View style={styles.criticalCopy}>
-              <Text style={styles.eyebrow}>Sicurezza</Text>
-              <Text style={styles.cardTitle}>
-                Utilizza queste funzioni responsabilmente. ℹ️
-              </Text>
-              <Text style={styles.bodyText}>
-                Tutti gli alert sono temporanei, geolocalizzati in modo
-                approssimativo e segnalabili.
-              </Text>
-            </View>
-          </View>
-          <View style={styles.tagsRow}>
-            <Tag
-                label={
-                  auth.isSignedIn ? "utente verificato email" : "login richiesto"
-                }
-                tone={auth.isSignedIn ? "green" : "orange"}
-            />
-            <Tag
-                label={
-                  placesState.source === "supabase" ? "luoghi live" : "luoghi demo"
-                }
-                tone={placesState.source === "supabase" ? "green" : "orange"}
-            />
-            <Tag
-                label={
-                  safetyBoard.source === "supabase" ? "alert live" : "fallback demo"
-                }
-                tone={safetyBoard.source === "supabase" ? "teal" : "orange"}
-            />
-          </View>
-          {safetyBoard.errorMessage && !isSafetyLimitError(safetyBoard.errorMessage) ? (
-              <Text selectable style={styles.errorBox}>
-                {safetyBoard.errorMessage}
-              </Text>
-          ) : null}
-          {safetyBoard.actionMessage ? (
-              <Text style={styles.successBox}>{safetyBoard.actionMessage}</Text>
-          ) : null}
-        </AppCard>
-
-        <AppCard tone="warm">
-          <Text style={styles.cardTitle}>Spazio condiviso</Text>
-          <Text style={styles.bodyText}>
-            Le azioni sotto usano il cane e il luogo selezionati. Per ora l’area è
-            costruita attorno a un luogo BauBook, non a un disegno libero su
-            mappa.
-          </Text>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Cane</Text>
-            <View style={styles.chipRow}>
-              {auth.dogs.length ? (
+        {myActiveLostAlert && !lostDraftExpanded ? null : (
+          <View style={myActiveLostAlert ? styles.collapsibleContent : undefined}>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Cane</Text>
+              <View style={styles.chipRow}>
+                {auth.dogs.length ? (
                   auth.dogs.map((dog) => (
-                      <ChoiceChip
-                          key={dog.id}
-                          label={dog.name}
-                          selected={dog.id === selectedDogId}
-                          onPress={() => setSelectedDogId(dog.id)}
-                      />
+                    <ChoiceChip
+                      key={dog.id}
+                      label={dog.name}
+                      selected={dog.id === selectedDog?.id}
+                      disabled={accountReadOnly || Boolean(myActiveLostAlert)}
+                      onPress={() => setSelectedDogId(dog.id)}
+                    />
                   ))
-              ) : (
-                  <Tag label="nessun cane salvato" tone="orange" />
-              )}
+                ) : (
+                  <Text style={styles.helperText}>Nessun cane salvato nel profilo.</Text>
+                )}
+              </View>
             </View>
-          </View>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Zona indicativa</Text>
-            <View style={styles.chipRow}>
-              {selectablePlaces.slice(0, 8).map((place) => (
-                  <ChoiceChip
-                      key={place.id}
-                      label={place.name}
-                      selected={place.id === selectedPlace?.id}
-                      onPress={() => setSelectedPlaceId(place.id)}
-                  />
-              ))}
-            </View>
-          </View>
-          {!auth.isSignedIn ? (
-              <Text style={styles.helperText}>
-                Vai in Setup e accedi: le funzioni safety richiedono sessione
-                utente.
-              </Text>
-          ) : null}
-          {auth.isSignedIn && !auth.dogs.length ? (
-              <Text style={styles.helperText}>
-                Vai in “Io sono...” e salva il primo cane prima di creare un alert
-                smarrimento.
-              </Text>
-          ) : null}
-          {placesState.source !== "supabase" ? (
-              <Text style={styles.helperText}>
-                Le scritture sono disabilitate finché i luoghi non arrivano da
-                Supabase live.
-              </Text>
-          ) : null}
-        </AppCard>
 
-        <AppCard tone="danger">
-          <View style={styles.criticalHeader}>
-            <IconBubble
-                source={baubookImages.icons.lostDog}
-                size={72}
-                tone="plain"
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Ora smarrimento presunta</Text>
+              <View style={styles.chipRow}>
+                {presumedMissingOptions.map((minutes) => (
+                  <ChoiceChip
+                    key={minutes}
+                    label={minutes < 60 ? `${minutes} min fa` : `${Math.round(minutes / 60)} h fa`}
+                    selected={presumedMissingMinutesAgo === minutes}
+                    disabled={lostReadOnly}
+                    onPress={() => setPresumedMissingMinutesAgo(minutes)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <LocationInputPanel
+              draft={lostLocation}
+              disabled={lostReadOnly}
+              title="Da dove segnalo"
+              readOnlyLocationLabel={myActiveLostAlert?.placeName ?? null}
             />
-            <View style={styles.criticalCopy}>
-              <Text style={styles.eyebrow}>Mi sono perso!</Text>
-              <Text style={styles.cardTitle}>
-                Alert smarrimento con scadenza obbligatoria
-              </Text>
-              <Text style={styles.bodyText}>
-                Default 24h, massimo beta 48h. Un solo alert attivo per cane: se
-                lo ritrovi, lo chiudi.
-              </Text>
-            </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Ultimo avvistamento</Text>
-            <View style={styles.chipRow}>
-              {lastSeenOptions.map((minutes) => (
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>TTL alert</Text>
+              <View style={styles.chipRow}>
+                {lostTtlOptions.map((hours) => (
                   <ChoiceChip
-                      key={minutes}
-                      label={`${minutes} min fa`}
-                      selected={lastSeenMinutesAgo === minutes}
-                      onPress={() => setLastSeenMinutesAgo(minutes)}
+                    key={hours}
+                    label={`${hours}h`}
+                    selected={lostTtlHours === hours}
+                    disabled={lostReadOnly}
+                    onPress={() => setLostTtlHours(hours)}
                   />
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>TTL alert</Text>
-            <View style={styles.chipRow}>
-              {lostTtlOptions.map((hours) => (
-                  <ChoiceChip
-                      key={hours}
-                      label={`${hours}h`}
-                      selected={lostTtlHours === hours}
-                      onPress={() => setLostTtlHours(hours)}
-                  />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>
-              Descrizione pubblica nel rispetto della privacy 🔒
-            </Text>
-            <TextInput
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy</Text>
+              <TextInput
                 value={lostDescription}
                 onChangeText={setLostDescription}
+                editable={!lostReadOnly}
                 multiline
-                style={[styles.input, styles.textArea]}
-            />
-            <Text
-                style={[
-                  styles.helperText,
-                  !lostDescriptionReady ? styles.helperTextDanger : null,
-                ]}
+                placeholder="Cosa è successo? Colore, pettorina, comportamento, direzione..."
+                placeholderTextColor={colors.muted}
+                style={[styles.input, styles.textArea, lostReadOnly && styles.inputReadonly]}
+              />
+              {!lostDescriptionReady ? (
+                <Text style={styles.helperTextDanger}>
+                  Descrizione smarrimento obbligatoria: almeno {LOST_DESCRIPTION_MIN_LENGTH} caratteri.
+                </Text>
+              ) : null}
+            </View>
+
+            {!lostReadOnly ? (
+              <DisclaimerBox
+                title="Prima di pubblicare"
+                items={lostDisclaimer}
+                accepted={lostAccepted}
+                disabled={false}
+                onToggle={() => setLostAccepted((value) => !value)}
+              />
+            ) : null}
+
+            {!myActiveLostAlert ? (
+              <View style={styles.createActionRow}>
+                <AppButton
+                  label={lostCreateInFlight ? "Pubblico..." : "Apri segnalazione"}
+                  disabled={!canCreateLost}
+                  onPress={handleCreateLost}
+                  variant="danger"
+                />
+              </View>
+            ) : null}
+          </View>
+        )}
+      </AppCard>
+
+      <AppCard>
+        <View style={styles.cardHeader}>
+          <Image source={dangerIconForType(dangerType ?? "other")} style={styles.cardIcon} />
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>PERICOLO TEMPORANEO</Text>
+            <Text style={styles.cardTitle}>Segnalazione pericolo</Text>
+            <Text style={styles.bodyText}>Segnala solo situazioni reali e temporanee, con posizione reale o indirizzo manuale.</Text>
+          </View>
+        </View>
+
+        {myActiveDangerAlert ? (
+          <>
+            <ReadonlyWarning message="Hai una segnalazione pericolo già attiva" />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setDangerDraftExpanded((value) => !value)}
+              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
             >
-              Descrizione smarrimento obbligatoria: almeno{" "}
-              {LOST_DESCRIPTION_MIN_LENGTH} caratteri.
-            </Text>
-          </View>
-
-          <DisclaimerBox
-              title="Disclaimer smarrimento"
-              items={lostDisclaimer}
-              accepted={lostAccepted}
-              onToggle={() => setLostAccepted((value) => !value)}
-          />
-
-          <View style={styles.actionRow}>
-            <AppButton
-                label={
-                  safetyBoard.status === "loading" || lostCreateInFlight
-                      ? "Creo..."
-                      : "Crea alert"
-                }
-                variant="danger"
-                icon={baubookImages.icons.lostDog}
-                disabled={!canCreateLost}
-                onPress={handleCreateLost}
-            />
-            <AppButton
-                label="Ricarica"
-                variant="ghost"
-                icon={baubookImages.icons.search}
-                onPress={safetyBoard.reload}
-            />
-          </View>
-        </AppCard>
-
-        <AppCard tone="warm">
-          <View style={styles.criticalHeader}>
-            <Image
-                source={dangerIconForType(dangerType)}
-                style={styles.dangerTypeCircleIcon}
-            />
-            <View style={styles.criticalCopy}>
-              <Text style={styles.eyebrow}>Pericolo!</Text>
-              <Text style={styles.cardTitle}>Segnalazioni temporanee</Text>
-              <Text style={styles.bodyText}>
-                Durata variabile, gravità da 1-5, moderazione iniziale pending ma
-                visibile in beta locale.
+              <Text style={styles.collapsibleTitle}>
+                {dangerDraftExpanded ? "Nascondi dettagli segnalazione" : "Mostra dettagli segnalazione"}
               </Text>
-            </View>
-          </View>
+              <Text style={styles.collapsibleIcon}>{dangerDraftExpanded ? "−" : "+"}</Text>
+            </Pressable>
+          </>
+        ) : null}
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Tipo pericolo</Text>
-            <View style={styles.chipRow}>
-              {dangerTypeOptions.map((option) => (
+        {myActiveDangerAlert && !dangerDraftExpanded ? null : (
+          <View style={myActiveDangerAlert ? styles.collapsibleContent : undefined}>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Tipo pericolo</Text>
+              <View style={styles.chipRow}>
+                {dangerTypeOptions.map((option) => (
                   <ChoiceChip
-                      key={option.type}
-                      label={option.label}
-                      selected={dangerType === option.type}
-                      onPress={() => setDangerType(option.type)}
+                    key={option.type}
+                    label={option.label}
+                    selected={dangerType === option.type}
+                    disabled={dangerReadOnly}
+                    onPress={() => setDangerType(option.type)}
                   />
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Durata segnalazione</Text>
-            <View style={styles.chipRow}>
-              {dangerTtlOptions.map((hours) => (
+            <LocationInputPanel
+              draft={dangerLocation}
+              disabled={dangerReadOnly}
+              title="Da dove segnalo"
+              readOnlyLocationLabel={myActiveDangerAlert?.placeName ?? null}
+            />
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Durata segnalazione</Text>
+              <View style={styles.chipRow}>
+                {dangerTtlOptions.map((hours) => (
                   <ChoiceChip
-                      key={hours}
-                      label={`${hours}h`}
-                      selected={dangerTtlHours === hours}
-                      onPress={() => setDangerTtlHours(hours)}
+                    key={hours}
+                    label={`${hours}h`}
+                    selected={dangerTtlHours === hours}
+                    disabled={dangerReadOnly}
+                    onPress={() => setDangerTtlHours(hours)}
                   />
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Gravità</Text>
-            <View style={styles.chipRow}>
-              {severityOptions.map((value) => (
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Gravità</Text>
+              <View style={styles.chipRow}>
+                {severityOptions.map((value) => (
                   <ChoiceChip
-                      key={value}
-                      label={`${value}`}
-                      selected={severity === value}
-                      onPress={() => setSeverity(value)}
+                    key={value}
+                    label={`${value}/5`}
+                    selected={severity === value}
+                    disabled={dangerReadOnly}
+                    onPress={() => setSeverity(value)}
                   />
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>
-              Descrizione pubblica nel rispetto della privacy 🔒
-            </Text>
-            <TextInput
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy</Text>
+              <TextInput
                 value={dangerDescription}
                 onChangeText={setDangerDescription}
+                editable={!dangerReadOnly}
                 multiline
-                style={[styles.input, styles.textArea]}
-            />
-            <Text
-                style={[
-                  styles.helperText,
-                  !dangerDescriptionReady ? styles.helperTextDanger : null,
-                ]}
-            >
-              Descrizione obbligatoria: almeno {DANGER_DESCRIPTION_MIN_LENGTH}{" "}
-              caratteri.
-            </Text>
+                placeholder="Descrivi cosa hai visto e perché è temporaneamente rischioso."
+                placeholderTextColor={colors.muted}
+                style={[styles.input, styles.textArea, dangerReadOnly && styles.inputReadonly]}
+              />
+              {!dangerDescriptionReady ? (
+                <Text style={styles.helperTextDanger}>
+                  Descrizione obbligatoria: almeno {DANGER_DESCRIPTION_MIN_LENGTH} caratteri.
+                </Text>
+              ) : null}
+            </View>
+
+            {!dangerReadOnly ? (
+              <DisclaimerBox
+                title="Prima di pubblicare"
+                items={dangerDisclaimer}
+                accepted={dangerAccepted}
+                disabled={false}
+                onToggle={() => setDangerAccepted((value) => !value)}
+              />
+            ) : null}
+
+            {!myActiveDangerAlert ? (
+              <View style={styles.createActionRow}>
+                <AppButton
+                  label={dangerCreateInFlight ? "Pubblico..." : "Apri segnalazione"}
+                  disabled={!canCreateDanger}
+                  onPress={handleCreateDanger}
+                  variant="danger"
+                />
+              </View>
+            ) : null}
           </View>
+        )}
+      </AppCard>
 
-          <DisclaimerBox
-              title="Disclaimer pericolo"
-              items={dangerDisclaimer}
-              accepted={dangerAccepted}
-              onToggle={() => setDangerAccepted((value) => !value)}
-          />
+      <View style={styles.sectionBlock}>
+        <Text style={styles.eyebrow}>ALERT ATTIVI</Text>
+        <Text style={styles.sectionTitle}>Segnalazioni aperte</Text>
+        <Text style={styles.bodyText}>
+          Gli avvistamenti non sono un’azione globale: devono partire da un alert esistente.
+        </Text>
+      </View>
 
-          <View style={styles.actionRow}>
-            <AppButton
-                label={
-                  safetyBoard.status === "loading" || dangerCreateInFlight
-                      ? "Creo..."
-                      : "Crea Pericolo"
-                }
-                variant="danger"
-                icon={baubookImages.icons.danger}
-                disabled={!canCreateDanger}
-                onPress={handleCreateDanger}
-            />
-            <AppButton
-                label="Ricarica"
-                variant="ghost"
-                icon={baubookImages.icons.search}
-                onPress={safetyBoard.reload}
-            />
-          </View>
-        </AppCard>
-
-        <AppCard tone="pink">
-          <Text style={styles.cardTitle}>Azioni su avvistamenti</Text>
-          <Text style={styles.bodyText}>
-            Prima di inviare “Avvistato!” o “Recuperato!” serve confermare le
-            regole. Il dato resta approssimato al luogo selezionato.
-          </Text>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nota avvistamento</Text>
-            <TextInput
-                value={sightingNote}
-                onChangeText={setSightingNote}
-                multiline
-                style={[styles.input, styles.textAreaSmall]}
-            />
-          </View>
-          <DisclaimerBox
-              title="Disclaimer Avvistamento"
-              items={sightingDisclaimer}
-              accepted={sightingAccepted}
-              onToggle={() => setSightingAccepted((value) => !value)}
-              compact
-          />
-        </AppCard>
-
-        <View style={styles.alertList}>
-          <SectionHeader
-              eyebrow="Bacheca sicurezza"
-              title={
-                safetyBoard.status === "loading"
-                    ? "Carico alert..."
-                    : "Segnalazioni attive"
+      <View style={styles.alertList}>
+        {safetyBoard.alerts.length ? (
+          safetyBoard.alerts.map((alert) => (
+            <SafetyCard
+              key={`${alert.type}-${alert.id}`}
+              alert={alert}
+              isBusy={safetyBoard.status === "loading"}
+              onCloseLost={() => void safetyBoard.closeLostAlert(alert.id)}
+              onCloseDanger={() => void safetyBoard.closeDanger(alert.id)}
+              onReport={() =>
+                void safetyBoard.reportContent(alert.type === "lost_dog" ? "lost_dog_alert" : "danger_report", alert.id)
               }
-              description={safetyBoard.message}
-          />
-
-          {safetyBoard.alerts.length ? (
-              safetyBoard.alerts.map((alert) => (
-                  <SafetyCard
-                      key={`${alert.type}-${alert.id}`}
-                      alert={alert}
-                      canCreateSighting={canCreateSighting}
-                      isBusy={safetyBoard.status === "loading"}
-                      onSeen={() => handleSighting(alert, "seen")}
-                      onRecovered={() => handleSighting(alert, "recovered")}
-                      onCloseLost={() => void safetyBoard.closeLostAlert(alert.id)}
-                      onCloseDanger={() => void safetyBoard.closeDanger(alert.id)}
-                      onReport={() =>
-                          void safetyBoard.reportContent(
-                              alert.type === "lost_dog"
-                                  ? "lost_dog_alert"
-                                  : "danger_report",
-                              alert.id,
-                          )
-                      }
-                  />
-              ))
-          ) : (
-              <AppCard>
-                <Text style={styles.cardTitle}>Nessun alert attivo</Text>
-              </AppCard>
-          )}
-        </View>
-      </Screen>
+            />
+          ))
+        ) : (
+          <AppCard>
+            <Text style={styles.bodyText}>Nessun alert attivo.</Text>
+          </AppCard>
+        )}
+      </View>
+    </Screen>
   );
 }
 
 function SafetyNoticeCard({
-                            title,
-                            message,
-                            onClose,
-                          }: {
+  title,
+  message,
+  onClose,
+}: {
   title: string;
   message: string;
   onClose: () => void;
 }) {
   return (
-      <View style={styles.safetyNoticeCard}>
-        <View style={styles.safetyNoticeHeader}>
-          <View style={styles.safetyNoticeCopy}>
-            <Text style={styles.safetyNoticeTitle}>{title}</Text>
-            <Text style={styles.safetyNoticeMessage}>{message}</Text>
-          </View>
-        </View>
-
-        <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.safetyNoticeButton,
-              pressed && styles.choiceChipPressed,
-            ]}
-        >
-          <Text style={styles.safetyNoticeButtonText}>Ho capito</Text>
-        </Pressable>
+    <AppCard tone="danger">
+      <View style={styles.safetyNoticeHeader}>
+        <Text style={styles.safetyNoticeTitle}>{title}</Text>
+        <Text style={styles.safetyNoticeMessage}>{message}</Text>
       </View>
+      <View style={styles.actionRowEnd}>
+        <AppButton label="Ho capito" variant="danger" onPress={onClose} />
+      </View>
+    </AppCard>
   );
 }
 
+function LocationInputPanel({
+  draft,
+  disabled,
+  title,
+  readOnlyLocationLabel,
+}: {
+  draft: SafetyLocationDraft;
+  disabled: boolean;
+  title: string;
+  readOnlyLocationLabel?: string | null;
+}) {
+  const readonlySummary = readOnlyLocationLabel?.trim() || draft.resolvedLocationLabel;
+
+  if (disabled) {
+    return (
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>{title}</Text>
+        <Text style={styles.locationSummary}>Posizione: {readonlySummary}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>{title}</Text>
+      <View style={styles.locationModeRow}>
+        <ChoiceChip
+          label="Posizione attuale"
+          selected={draft.locationMode === "current"}
+          disabled={false}
+          onPress={() => {
+            draft.setLocationMode("current");
+            void draft.resolveCurrentLocationPayload();
+          }}
+        />
+        <ChoiceChip
+          label="Indirizzo manuale"
+          selected={draft.locationMode === "manual"}
+          disabled={false}
+          onPress={() => draft.setLocationMode("manual")}
+        />
+      </View>
+
+      {draft.locationMode === "manual" ? (
+        <View style={styles.manualAddressBlock}>
+          <TextInput
+            value={draft.manualAddress}
+            onChangeText={draft.setManualAddress}
+            editable
+            placeholder="Es. Via Roma 10, Mestre"
+            placeholderTextColor={colors.muted}
+            style={styles.input}
+          />
+          <Text style={draft.manualAddressReady || draft.manualAddressValue.length === 0 ? styles.helperText : styles.helperTextDanger}>
+            Inserisci almeno 10 caratteri per usare l’indirizzo manuale.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.currentLocationBox}>
+          <Text style={styles.helperText}>
+            {draft.locationStatusMessage ?? "Rileva la posizione attuale per una segnalazione utile."}
+          </Text>
+          <AppButton
+            label={draft.locationResolving ? "Rilevo..." : "Rileva posizione"}
+            disabled={draft.locationResolving}
+            onPress={() => void draft.resolveCurrentLocationPayload()}
+            variant="secondary"
+          />
+        </View>
+      )}
+
+      <Text style={styles.locationSummary}>Posizione: {draft.resolvedLocationLabel}</Text>
+    </View>
+  );
+}
 function ChoiceChip({
-                      label,
-                      selected,
-                      onPress,
-                    }: {
+  label,
+  selected,
+  disabled = false,
+  onPress,
+}: {
   label: string;
   selected: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   return (
-      <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.choiceChip,
-            selected && styles.choiceChipSelected,
-            pressed && styles.choiceChipPressed,
-          ]}
-      >
-        <Text
-            style={[
-              styles.choiceChipText,
-              selected && styles.choiceChipTextSelected,
-            ]}
-            numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </Pressable>
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.choiceChip,
+        selected && styles.choiceChipSelected,
+        disabled && styles.choiceChipDisabled,
+        pressed && !disabled && styles.choiceChipPressed,
+      ]}
+    >
+      <Text style={[styles.choiceChipText, selected && styles.choiceChipTextSelected, disabled && styles.choiceChipTextDisabled]}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
 function DisclaimerBox({
-                         title,
-                         items,
-                         accepted,
-                         onToggle,
-                         compact = false,
-                       }: {
+  title,
+  items,
+  accepted,
+  disabled,
+  onToggle,
+}: {
   title: string;
   items: string[];
   accepted: boolean;
+  disabled: boolean;
   onToggle: () => void;
-  compact?: boolean;
 }) {
   return (
-      <View
-          style={[styles.disclaimerBox, compact && styles.disclaimerBoxCompact]}
+    <View style={styles.disclaimerBox}>
+      <Text style={styles.disclaimerTitle}>{title}</Text>
+      {items.map((item) => (
+        <View key={item} style={styles.disclaimerItem}>
+          <Text style={styles.disclaimerBullet}>•</Text>
+          <Text style={styles.disclaimerText}>{item}</Text>
+        </View>
+      ))}
+      <Pressable
+        disabled={disabled}
+        onPress={onToggle}
+        style={({ pressed }) => [
+          styles.acceptRow,
+          accepted && styles.acceptRowSelected,
+          disabled && styles.acceptRowDisabled,
+          pressed && !disabled && styles.choiceChipPressed,
+        ]}
       >
-        <Text style={styles.disclaimerTitle}>{title}</Text>
-        {items.map((item) => (
-            <View key={item} style={styles.disclaimerItem}>
-              <Text style={styles.disclaimerBullet}>•</Text>
-              <Text style={styles.disclaimerText}>{item}</Text>
-            </View>
-        ))}
-        <Pressable
-            onPress={onToggle}
-            style={({ pressed }) => [
-              styles.acceptRow,
-              accepted && styles.acceptRowSelected,
-              pressed && styles.choiceChipPressed,
-            ]}
-        >
-          <Text
-              style={[styles.acceptMark, accepted && styles.acceptMarkSelected]}
-          >
-            {accepted ? "✓" : "!"}
-          </Text>
-          <Text
-              style={[styles.acceptText, accepted && styles.acceptTextSelected]}
-          >
-            Ho letto e accetto prima di pubblicare.
-          </Text>
-        </Pressable>
-      </View>
+        <Text style={[styles.acceptMark, accepted && styles.acceptMarkSelected]}>{accepted ? "✓" : "!"}</Text>
+        <Text style={[styles.acceptText, accepted && styles.acceptTextSelected]}>
+          Ho letto e accetto prima di pubblicare.
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ReadonlyWarning({ message }: { message: string }) {
+  return (
+    <View style={styles.readonlyWarning}>
+      <Text style={styles.readonlyWarningText}>⚠️ {message}</Text>
+    </View>
   );
 }
 
 function SafetyCard({
-                      alert,
-                      canCreateSighting,
-                      isBusy,
-                      onSeen,
-                      onRecovered,
-                      onCloseLost,
-                      onCloseDanger,
-                      onReport,
-                    }: {
+  alert,
+  isBusy,
+  onCloseLost,
+  onCloseDanger,
+  onReport,
+}: {
   alert: SafetyAlertModel;
-  canCreateSighting: boolean;
   isBusy: boolean;
-  onSeen: () => void;
-  onRecovered: () => void;
   onCloseLost: () => void;
   onCloseDanger: () => void;
   onReport: () => void;
 }) {
   const danger = alert.type === "danger";
+  const reportDisabled = isBusy || alert.isMine;
 
   return (
-      <AppCard tone={danger ? "warm" : "danger"}>
-        <View style={styles.alertHeader}>
+    <AppCard tone={danger ? "default" : "danger"}>
+      <View style={styles.alertHeader}>
+        <View style={styles.alertIconColumn}>
           {danger ? (
-              <Image source={alert.icon} style={styles.alertCircleIcon} />
+            <Image source={dangerIconForType(alert.dangerType ?? "other")} style={styles.alertCircleIcon} />
           ) : (
-              <IconBubble source={alert.icon} size={62} tone="pink" />
+            <Image source={baubookImages.icons.lostDog} style={styles.alertCircleIcon} />
           )}
-          <View style={styles.alertCopy}>
-            <Text style={styles.alertTitle}>{alert.title}</Text>
-            <Text style={styles.alertMeta}>
-              {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
-            </Text>
-            <Text style={styles.alertDescription}>{alert.description}</Text>
-            <Text style={styles.alertHint}>{alert.actionHint}</Text>
-          </View>
-        </View>
-        <View style={styles.tagsRow}>
-          <Tag
-              label={alert.status}
-              tone={alert.status === "active" ? "red" : "green"}
-          />
-          <Tag
-              label={danger ? "pericolo" : "cane smarrito"}
-              tone={danger ? "orange" : "pink"}
-          />
-          {danger && alert.dangerType ? (
-              <Tag label={labelForDangerType(alert.dangerType)} tone="orange" />
-          ) : null}
           {danger && alert.severity ? (
-              <Tag
-                  label={`severità ${alert.severity}`}
-                  tone={alert.severity >= 4 ? "red" : "orange"}
-              />
+            <Tag label={`Gravità ${alert.severity}/5`} tone={alert.severity >= 4 ? "red" : "orange"} />
           ) : null}
-          <Tag
-              label={`mod ${alert.moderationStatus}`}
-              tone={alert.moderationStatus === "approved" ? "green" : "orange"}
-          />
-          {alert.isMine ? <Tag label="mio" tone="green" /> : null}
         </View>
-        <Text style={styles.timestampText}>
-          Creato: {formatSafetyCreatedAt(alert.createdAtIso)} · da{" "}
-          {danger ? alert.reporterName : alert.ownerName}
-        </Text>
-        <View style={styles.actionRowWrap}>
-          {!danger ? (
-              <>
-                <AppButton
-                    label="Avvistato"
-                    variant="secondary"
-                    icon={baubookImages.icons.sighting}
-                    disabled={!canCreateSighting || isBusy}
-                    onPress={onSeen}
-                />
-                <AppButton
-                    label="Recuperato"
-                    variant="ghost"
-                    icon={baubookImages.icons.recovered}
-                    disabled={!canCreateSighting || isBusy}
-                    onPress={onRecovered}
-                />
-                {alert.isMine ? (
-                    <AppButton
-                        label="Chiudi"
-                        variant="danger"
-                        icon={baubookImages.icons.privacy}
-                        disabled={isBusy}
-                        onPress={onCloseLost}
-                    />
-                ) : null}
-              </>
-          ) : alert.isMine ? (
-              <AppButton
-                  label="Dismetti"
-                  variant="ghost"
-                  icon={baubookImages.icons.privacy}
-                  disabled={isBusy}
-                  onPress={onCloseDanger}
-              />
+        <View style={styles.alertCopy}>
+          <Text style={styles.alertTitle}>{alert.title}</Text>
+          <Text style={styles.alertMeta}>
+            {alert.placeName} · {alert.ttlLabel} · {alert.radiusLabel}
+          </Text>
+          <Text style={styles.alertDescription}>{alert.description}</Text>
+          <Text style={styles.alertHint}>{alert.actionHint}</Text>
+          <Text style={styles.timestampText}>
+            Creato: {formatSafetyCreatedAt(alert.createdAtIso)} · da {danger ? alert.reporterName : alert.ownerName}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.alertActionsRow}>
+        <View style={styles.alertActionLeft}>
+          {!danger && alert.isMine ? (
+            <AppButton label="Chiudi smarrimento" variant="secondary" disabled={isBusy} onPress={onCloseLost} />
           ) : null}
-          <AppButton
-              label="Segnala abuso"
-              variant="ghost"
-              icon={baubookImages.icons.reports}
-              disabled={isBusy}
-              onPress={onReport}
-          />
+          {danger && alert.isMine ? (
+            <AppButton label="Chiudi pericolo" variant="secondary" disabled={isBusy} onPress={onCloseDanger} />
+          ) : null}
         </View>
-      </AppCard>
+        <View style={styles.alertActionRight}>
+          <AppButton label="Segnala abuso" variant="ghost" disabled={reportDisabled} onPress={onReport} />
+        </View>
+      </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  dangerTypeCircleIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    resizeMode: "contain",
-    flexShrink: 0,
-  },
-  criticalHeader: {
-    flexDirection: "row",
-    gap: spacing.md,
-    alignItems: "center",
-  },
-  criticalCopy: {
-    flex: 1,
-    gap: 4,
+  hero: {
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   eyebrow: {
     color: colors.primaryDark,
@@ -998,6 +1009,16 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1,
     textTransform: "uppercase",
+  },
+  screenTitle: {
+    color: colors.ink,
+    fontSize: typography.h1,
+    fontWeight: "900",
+  },
+  sectionTitle: {
+    color: colors.ink,
+    fontSize: typography.h2,
+    fontWeight: "900",
   },
   cardTitle: {
     color: colors.ink,
@@ -1011,19 +1032,29 @@ const styles = StyleSheet.create({
   },
   helperTextDanger: {
     color: colors.danger,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: "800",
   },
   helperText: {
     color: colors.muted,
     fontSize: typography.small,
     lineHeight: 19,
     fontWeight: "700",
-    marginTop: spacing.sm,
   },
   errorBox: {
     marginTop: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.redSoft,
     color: colors.danger,
+    padding: spacing.md,
+    fontSize: typography.small,
+    fontWeight: "800",
+  },
+  warningBox: {
+    borderRadius: radius.md,
+    backgroundColor: colors.orangeSoft,
+    color: colors.primaryDark,
     padding: spacing.md,
     fontSize: typography.small,
     fontWeight: "800",
@@ -1037,29 +1068,8 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "900",
   },
-  safetyNoticeCard: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    backgroundColor: colors.redSoft,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
   safetyNoticeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  safetyNoticeCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  safetyNoticeEyebrow: {
-    color: colors.danger,
-    fontSize: typography.tiny,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    gap: spacing.sm,
   },
   safetyNoticeTitle: {
     color: colors.ink,
@@ -1072,23 +1082,11 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "700",
   },
-  safetyNoticeButton: {
-    alignSelf: "flex-end",
-    borderRadius: radius.pill,
-    backgroundColor: colors.danger,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  safetyNoticeButtonText: {
-    color: "#FFFFFF",
-    fontSize: typography.small,
-    fontWeight: "900",
-  },
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.xs,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   chipRow: {
     flexDirection: "row",
@@ -1109,6 +1107,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primaryDark,
   },
+  choiceChipDisabled: {
+    opacity: 0.76,
+  },
   choiceChipPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
@@ -1120,6 +1121,9 @@ const styles = StyleSheet.create({
   },
   choiceChipTextSelected: {
     color: "#FFFFFF",
+  },
+  choiceChipTextDisabled: {
+    color: colors.ink,
   },
   formGroup: {
     gap: spacing.xs,
@@ -1141,13 +1145,34 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: "700",
   },
+  inputReadonly: {
+    opacity: 0.88,
+    color: colors.text,
+  },
   textArea: {
     minHeight: 96,
     textAlignVertical: "top",
   },
-  textAreaSmall: {
-    minHeight: 72,
-    textAlignVertical: "top",
+  locationModeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  manualAddressBlock: {
+    gap: spacing.xs,
+  },
+  currentLocationBox: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  locationSummary: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "900",
   },
   disclaimerBox: {
     marginTop: spacing.lg,
@@ -1157,9 +1182,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
     gap: spacing.xs,
-  },
-  disclaimerBoxCompact: {
-    padding: spacing.sm,
   },
   disclaimerTitle: {
     color: colors.ink,
@@ -1198,6 +1220,9 @@ const styles = StyleSheet.create({
     borderColor: colors.success,
     backgroundColor: colors.greenSoft,
   },
+  acceptRowDisabled: {
+    opacity: 0.55,
+  },
   acceptMark: {
     width: 26,
     height: 26,
@@ -1220,10 +1245,21 @@ const styles = StyleSheet.create({
   acceptTextSelected: {
     color: colors.success,
   },
+  createActionRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
   actionRow: {
     flexDirection: "row",
     gap: spacing.sm,
     marginTop: spacing.lg,
+  },
+  actionRowEnd: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: spacing.md,
   },
   actionRowWrap: {
     flexDirection: "row",
@@ -1231,8 +1267,70 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
+  alertActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  alertActionLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  alertActionRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  sectionBlock: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  collapsibleHeader: {
+    marginTop: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  collapsibleTitle: {
+    flex: 1,
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "900",
+  },
+  collapsibleIcon: {
+    color: colors.primaryDark,
+    fontSize: typography.h3,
+    fontWeight: "900",
+  },
+  collapsibleContent: {
+    marginTop: spacing.sm,
+  },
   alertList: {
     gap: spacing.md,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    gap: spacing.md,
+    alignItems: "center",
+  },
+  cardIcon: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    resizeMode: "contain",
+    flexShrink: 0,
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 4,
   },
   alertCircleIcon: {
     width: 82,
@@ -1240,6 +1338,11 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     resizeMode: "contain",
     flexShrink: 0,
+  },
+  alertIconColumn: {
+    flexShrink: 0,
+    alignItems: "center",
+    gap: spacing.xs,
   },
   alertHeader: {
     flexDirection: "row",
@@ -1276,34 +1379,17 @@ const styles = StyleSheet.create({
     fontSize: typography.tiny,
     fontWeight: "800",
   },
-  moderationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+  readonlyWarning: {
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.redSoft,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: spacing.md,
   },
-  moderationIcon: {
-    width: 62,
-    height: 62,
-    resizeMode: "contain",
-  },
-  checkList: {
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  checkItem: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  checkMark: {
-    color: colors.success,
-    fontSize: typography.body,
+  readonlyWarningText: {
+    color: colors.danger,
+    fontSize: typography.small,
     fontWeight: "900",
-  },
-  checkText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: typography.body,
-    lineHeight: 22,
-    fontWeight: "700",
   },
 });
