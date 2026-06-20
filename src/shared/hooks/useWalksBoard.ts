@@ -115,7 +115,7 @@ export function useWalksBoard(currentProfileId?: string | null) {
 
     try {
       await createWalkPlan(input);
-      setState((current) => ({ ...current, actionScope: 'walk', actionMessage: 'Passeggiata creata. Bau!' }));
+      setState((current) => ({ ...current, actionScope: 'walk', actionMessage: 'Passeggiata creata, scadrà dopo 90 minuti dalla partenza. Bau!' }));
       reload();
     } catch (error) {
       setState((current) => ({
