@@ -623,6 +623,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   refreshIconButton: {
+    textAlignVertical: 'center',    includeFontPadding: false,    transform: [{ translateY: -3 }],
+
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -633,6 +635,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   refreshIconDisabled: {
+    textAlignVertical: 'center',    includeFontPadding: false,    transform: [{ translateY: -3 }],
+
     opacity: 0.62,
   },
   refreshIconText: {
@@ -643,7 +647,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textAlignVertical: 'center',
     includeFontPadding: false,
-    transform: [{ translateY: -1 }],
+    transform: [{ translateY: -3 }],
   },
   activityGrid: {
     gap: spacing.sm,
