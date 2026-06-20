@@ -56,7 +56,7 @@ const lostDisclaimer = [
 const dangerDisclaimer = [
   "Segnalo solo fatti osservati o ragionevolmente verificabili.",
   "Non accuso persone identificabili e non inserisco dati sensibili.",
-  "Tengo il cane lontano dalla zona e uso canali ufficiali se il rischio è immediato.",
+  "Tengo il cane in sicurezza e uso canali ufficiali se il rischio è immediato.",
   "Chiuderò la segnalazione quando non sarà più utile.",
 ];
 
