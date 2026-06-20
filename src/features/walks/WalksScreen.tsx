@@ -229,9 +229,13 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
     };
   };
 
-  const prepareLocationPayload = async (): Promise<LocationPayload | null> => {
+  const prepareLocationPayload = async (options?: { forceCurrent?: boolean }): Promise<LocationPayload | null> => {
     if (locationMode === 'manual') {
       return resolveManualLocationPayload();
+    }
+
+    if (options?.forceCurrent) {
+      return resolveCurrentLocationPayload();
     }
 
     return currentLocationPayload ?? resolveCurrentLocationPayload();
@@ -302,7 +306,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       return;
     }
 
-    const locationPayload = await prepareLocationPayload();
+    const locationPayload = await prepareLocationPayload({ forceCurrent: true });
     if (!locationPayload) {
       return;
     }
@@ -322,7 +326,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       return;
     }
 
-    const locationPayload = await prepareLocationPayload();
+    const locationPayload = await prepareLocationPayload({ forceCurrent: true });
     if (!locationPayload) {
       return;
     }
@@ -550,11 +554,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                   <View style={styles.centerButtonWrap}>
                     <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endWalkPlan(plan.id)} disabled={actionDisabled} />
                   </View>
-                ) : (
-                  <View style={styles.buttonWrap}>
-                    <AppButton label="Mi interessa" variant="ghost" onPress={() => void walksBoard.joinPlan(plan.id, selectedDog?.id)} disabled={!auth.isSignedIn || actionDisabled} />
-                  </View>
-                )}
+                ) : null}
               </View>
             ))
           ) : (
