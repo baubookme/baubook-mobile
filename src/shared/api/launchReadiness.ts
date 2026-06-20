@@ -136,3 +136,34 @@ export async function requestAccountDeletion(input: AccountDeletionRequestInput)
     requestedAt: row.requested_at,
   };
 }
+
+export async function fetchPendingAccountDeletionRequest(userId: string): Promise<AccountDeletionRequestResult | null> {
+  const client = getSupabaseClient();
+  if (!hasSupabaseConfig || !client) {
+    return null;
+  }
+
+  if (!userId) {
+    return null;
+  }
+
+  const { data, error } = await client
+    .from('account_deletion_requests')
+    .select('id, status, requested_at')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(normalizeError(error));
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const row = data as { id: string; status: string; requested_at: string };
+  return { id: row.id, status: row.status, requestedAt: row.requested_at };
+}

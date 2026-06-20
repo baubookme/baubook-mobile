@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 import { baubookImages } from '../../shared/assets/images';
-import { requestAccountDeletion, fetchActiveSponsoredSlots, type SponsoredSlotModel } from '../../shared/api/launchReadiness';
+import { requestAccountDeletion, fetchActiveSponsoredSlots, fetchPendingAccountDeletionRequest, type SponsoredSlotModel } from '../../shared/api/launchReadiness';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
@@ -47,6 +47,7 @@ export function ProfileScreen() {
   const [deletionReason, setDeletionReason] = useState('');
   const [deletionMessage, setDeletionMessage] = useState('');
   const [deletionError, setDeletionError] = useState('');
+  const [deletionPendingRequest, setDeletionPendingRequest] = useState<{ id: string; status: string; requestedAt: string } | null>(null);
   const [sponsoredSlots, setSponsoredSlots] = useState<SponsoredSlotModel[]>([]);
 
   useEffect(() => {
@@ -71,6 +72,33 @@ export function ProfileScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    if (!auth.isSignedIn || !auth.user?.id) {
+      setDeletionPendingRequest(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    fetchPendingAccountDeletionRequest(auth.user.id)
+      .then((request) => {
+        if (active) {
+          setDeletionPendingRequest(request);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setDeletionPendingRequest(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [auth.isSignedIn, auth.user?.id]);
+
   const launchScore = useMemo(() => {
     return (
       scoreItem(hasSupabaseConfig) +
@@ -83,6 +111,7 @@ export function ProfileScreen() {
 
   const readinessTone = launchScore >= 80 ? 'green' : launchScore >= 40 ? 'orange' : 'red';
   const primarySponsoredSlot = sponsoredSlots[0];
+  const deletionRequestPending = Boolean(deletionPendingRequest);
 
   const handleDeletionRequest = async () => {
     setDeletionMessage('');
@@ -94,7 +123,8 @@ export function ProfileScreen() {
         email: auth.user?.email ?? null,
         reason: deletionReason,
       });
-      setDeletionMessage(`Richiesta cancellazione registrata: ${result.status}.`);
+      setDeletionMessage(`Richiesta cancellazione in stato: ${result.status}.`);
+      setDeletionPendingRequest(result);
       setDeletionReason('');
     } catch (error) {
       setDeletionError(error instanceof Error ? error.message : JSON.stringify(error));
@@ -191,12 +221,13 @@ export function ProfileScreen() {
             multiline
           />
           <AppButton
-            label="Richiedi cancellazione account"
+            label={deletionRequestPending ? 'Richiesta cancellazione in attesa' : 'Richiedi cancellazione account'}
             variant="danger"
-            disabled={!auth.isSignedIn || auth.isBusy}
+            disabled={!auth.isSignedIn || auth.isBusy || deletionRequestPending}
             onPress={() => void handleDeletionRequest()}
           />
-          {!auth.isSignedIn ? <Text style={styles.helperText}>Effettua il login per inviare una richiesta reale.</Text> : null}
+          {!auth.isSignedIn ? <Text style={styles.helperText}>Effettua il login per inviare una richiesta.</Text> : null}
+          {deletionRequestPending ? <Text style={styles.helperText}>Una richiesta è gia stata inviata ed è in attesa di gestione.</Text> : null}
           {deletionMessage ? <Text style={styles.successBox}>{deletionMessage}</Text> : null}
           {deletionError ? <Text style={styles.errorBox}>{deletionError}</Text> : null}
         </View>
