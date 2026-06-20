@@ -218,7 +218,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
   return {
     id: row.id,
     type: 'lost_dog',
-    title: `Mi sono perso! — ${dogName}`,
+    title: `Mi sono perso! — ${dogName} 🐶`,
     area: placeName,
     status: row.status,
     ttlLabel: formatExpiry(row.expires_at),
