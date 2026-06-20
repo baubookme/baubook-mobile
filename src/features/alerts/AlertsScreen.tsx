@@ -538,7 +538,7 @@ export function AlertsScreen() {
       ) : null}
 
       <View style={styles.sectionBlock}>
-        <Text style={styles.eyebrow}>BACHECA SICUREZZA</Text>
+        <Text style={styles.eyebrow}>SAFETY RADAR</Text>
         <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
 
       </View>
@@ -1060,48 +1060,8 @@ function SafetyCard({
 }
 
 const styles = StyleSheet.create({
-toastText: {
-    maxWidth: 330,
-    overflow: "hidden",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    color: colors.ink,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.small,
-    fontWeight: "900",
-    lineHeight: 19,
-    textAlign: "left",
-    shadowColor: "#000000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
-  },
   screenShell: {
     flex: 1,
-  },
-toastText: {
-    maxWidth: 360,
-    overflow: "hidden",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    color: colors.ink,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.small,
-    fontWeight: "900",
-    lineHeight: 19,
-    textAlign: "center",
-    shadowColor: "#000000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
   },
   hero: {
     gap: spacing.sm,
@@ -1507,27 +1467,24 @@ toastText: {
     position: "absolute",
     left: spacing.md,
     right: spacing.md,
-    bottom: 118,
-    zIndex: 80,
-    alignItems: "center",
-    pointerEvents: "none",
-  },
-  toastText: {
-    maxWidth: 420,
+    bottom: 120,
+    zIndex: 50,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: "rgba(255, 255, 255, 0.96)",
-    color: colors.ink,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    shadowColor: "#000000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  toastText: {
+    color: colors.ink,
     fontSize: typography.small,
     fontWeight: "900",
     textAlign: "center",
-    shadowColor: "#000000",
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
 });
