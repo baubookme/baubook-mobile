@@ -71,7 +71,7 @@ function isLostLimitError(message?: string | null) {
   }
   const normalized = message.toLowerCase();
   return (
-    normalized.includes("limite beta") &&
+    normalized.includes("limite") &&
     (normalized.includes("smarrimento") ||
       normalized.includes("lost") ||
       normalized.includes("create_lost_dog_alert"))
@@ -212,11 +212,12 @@ export function AlertsScreen() {
   const safetyBoard = useSafetyBoard(auth.profile?.id);
   const lastSafetyLimitPopupMessageRef = useRef<string | null>(null);
   const [safetyNotice, setSafetyNotice] = useState<SafetyNoticeState>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const screenScrollRef = useRef<ScrollView | null>(null);
 
   const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
   const [lostDescription, setLostDescription] = useState(
-    "Cane smarrito: se lo vedi, segnala con prudenza senza inseguirlo.",
+    "Cane smarrito: se lo vedi, osserva e segnala con prudenza senza inseguirlo.",
   );
   const [dangerDescription, setDangerDescription] = useState(
     "Segnalazione temporanea da verificare: tenere i cani lontani dalla zona.",
@@ -250,7 +251,7 @@ export function AlertsScreen() {
     setSafetyNotice({
       title: "Limite segnalazioni raggiunto ⛔",
       message:
-        "Hai già creato 3 alert smarrimento nelle ultime 24 ore per questo profilo.\nRiprova più tardi o chiudi un alert non più utile.",
+        "Hai già creato 2 alert smarrimento nelle ultime 24 ore per questo profilo.\nRiprova più tardi e ricorda di chiudere le segnalazioni non più utili.",
     });
     scrollToSafetyNotice();
   };
@@ -259,10 +260,25 @@ export function AlertsScreen() {
     setSafetyNotice({
       title: "Limite segnalazioni raggiunto ⛔",
       message:
-        "Hai già creato 3 alert pericolo nelle ultime 24 ore per questo profilo.\nRiprova più tardi o chiudi una segnalazione non più utile.",
+        "Hai già creato 3 alert pericolo nelle ultime 24 ore per questo profilo.\nRiprova più tardi e ricorda di chiudere le segnalazioni non più utili.",
     });
     scrollToSafetyNotice();
   };
+
+  useEffect(() => {
+    if (!safetyBoard.actionMessage) {
+      return;
+    }
+
+    setToastMessage(safetyBoard.actionMessage);
+    const timeoutId = setTimeout(() => {
+      setToastMessage((currentMessage) =>
+        currentMessage === safetyBoard.actionMessage ? null : currentMessage,
+      );
+    }, 4000);
+
+    return () => clearTimeout(timeoutId);
+  }, [safetyBoard.actionMessage]);
 
   useEffect(() => {
     const message = safetyBoard.errorMessage;
@@ -439,6 +455,11 @@ export function AlertsScreen() {
 
   return (
     <Screen scrollRef={screenScrollRef}>
+      {toastMessage ? (
+        <View pointerEvents="none" style={styles.toastOverlay}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      ) : null}
       {safetyNotice ? (
         <SafetyNoticeCard
           title={safetyNotice.title}
@@ -448,24 +469,25 @@ export function AlertsScreen() {
       ) : null}
 
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>SICUREZZA</Text>
-        <Text style={styles.screenTitle}>Aiuto</Text>
-        <Text style={styles.bodyText}>
-          Apri solo segnalazioni reali, temporanee e utili alla comunità BauBook.
-        </Text>
-        <View style={styles.tagsRow}>
+        <View style={styles.heroTitleRow}>
+          <Text style={styles.eyebrow}>AIUTO PER LA COMMUNITY</Text>
           <Tag
             label={userAuthVerified ? "✓ utente verificato" : "* utente non verificato"}
             tone={userAuthVerified ? "green" : "red"}
           />
         </View>
+
+        <Text style={styles.bodyText}>
+          Apri solo segnalazioni reali, temporanee e utili alla comunità BauBook. {"\n"}
+          Utilizza queste funzioni responsabilmente. ℹ️
+        </Text>
       </View>
 
       {!userAuthVerified ? (
         <AppCard tone="danger">
           <Text style={styles.cardTitle}>Sezione in sola lettura</Text>
           <Text style={styles.bodyText}>
-            Per aprire segnalazioni serve un utente verificato via email o OTP. Puoi leggere gli alert, ma non puoi crearli o modificarli.
+            Per aprire segnalazioni serve un utente verificato via email o OTP. Puoi leggere gli avvisi, ma non puoi crearli o modificarli.
           </Text>
         </AppCard>
       ) : null}
@@ -474,141 +496,40 @@ export function AlertsScreen() {
         <Text style={styles.errorBox}>{safetyBoard.errorMessage}</Text>
       ) : null}
 
-      {safetyBoard.actionMessage ? <Text style={styles.successBox}>{safetyBoard.actionMessage}</Text> : null}
-
       {!auth.isSignedIn ? (
-        <Text style={styles.warningBox}>Vai in Setup e accedi: le funzioni safety richiedono sessione utente.</Text>
+        <Text style={styles.warningBox}>Vai in Setup e accedi: le funzioni di aiuto richiedono un utente valido.</Text>
       ) : null}
 
       {auth.isSignedIn && !auth.dogs.length ? (
-        <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo cane prima di creare un alert smarrimento.</Text>
+        <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo 🐶 prima di creare un alert smarrimento.</Text>
       ) : null}
 
-      <AppCard tone="danger">
-        <View style={styles.cardHeader}>
-          <Image source={baubookImages.icons.lostDog} style={styles.cardIcon} />
-          <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>MI SONO PERSO</Text>
-            <Text style={styles.cardTitle}>Alert smarrimento</Text>
-            <Text style={styles.bodyText}>Il cane resta il tuo. La posizione viene rilevata o inserita manualmente.</Text>
-          </View>
-        </View>
+      <View style={styles.sectionBlock}>
+        <Text style={styles.eyebrow}>BACHECA SICUREZZA</Text>
+        <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
 
-        {myActiveLostAlert ? (
-          <>
-            <ReadonlyWarning message="Hai un alert smarrimento già attivo" />
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setLostDraftExpanded((value) => !value)}
-              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
-            >
-              <Text style={styles.collapsibleTitle}>
-                {lostDraftExpanded ? "Nascondi dettagli alert smarrimento" : "Mostra dettagli alert smarrimento"}
-              </Text>
-              <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
-            </Pressable>
-          </>
-        ) : null}
+      </View>
 
-        {myActiveLostAlert && !lostDraftExpanded ? null : (
-          <View style={myActiveLostAlert ? styles.collapsibleContent : undefined}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Cane</Text>
-              <View style={styles.chipRow}>
-                {auth.dogs.length ? (
-                  auth.dogs.map((dog) => (
-                    <ChoiceChip
-                      key={dog.id}
-                      label={dog.name}
-                      selected={dog.id === selectedDog?.id}
-                      disabled={accountReadOnly || Boolean(myActiveLostAlert)}
-                      onPress={() => setSelectedDogId(dog.id)}
-                    />
-                  ))
-                ) : (
-                  <Text style={styles.helperText}>Nessun cane salvato nel profilo.</Text>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Ora smarrimento presunta</Text>
-              <View style={styles.chipRow}>
-                {presumedMissingOptions.map((minutes) => (
-                  <ChoiceChip
-                    key={minutes}
-                    label={minutes < 60 ? `${minutes} min fa` : `${Math.round(minutes / 60)} h fa`}
-                    selected={presumedMissingMinutesAgo === minutes}
-                    disabled={lostReadOnly}
-                    onPress={() => setPresumedMissingMinutesAgo(minutes)}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <LocationInputPanel
-              draft={lostLocation}
-              disabled={lostReadOnly}
-              title="Da dove segnalo"
-              readOnlyLocationLabel={myActiveLostAlert?.placeName ?? null}
+      <View style={styles.alertList}>
+        {safetyBoard.alerts.length ? (
+          safetyBoard.alerts.map((alert) => (
+            <SafetyCard
+              key={`${alert.type}-${alert.id}`}
+              alert={alert}
+              isBusy={safetyBoard.status === "loading"}
+              onCloseLost={() => void safetyBoard.closeLostAlert(alert.id)}
+              onCloseDanger={() => void safetyBoard.closeDanger(alert.id)}
+              onReport={() =>
+                void safetyBoard.reportContent(alert.type === "lost_dog" ? "lost_dog_alert" : "danger_report", alert.id)
+              }
             />
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>TTL alert</Text>
-              <View style={styles.chipRow}>
-                {lostTtlOptions.map((hours) => (
-                  <ChoiceChip
-                    key={hours}
-                    label={`${hours}h`}
-                    selected={lostTtlHours === hours}
-                    disabled={lostReadOnly}
-                    onPress={() => setLostTtlHours(hours)}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy</Text>
-              <TextInput
-                value={lostDescription}
-                onChangeText={setLostDescription}
-                editable={!lostReadOnly}
-                multiline
-                placeholder="Cosa è successo? Colore, pettorina, comportamento, direzione..."
-                placeholderTextColor={colors.muted}
-                style={[styles.input, styles.textArea, lostReadOnly && styles.inputReadonly]}
-              />
-              {!lostDescriptionReady ? (
-                <Text style={styles.helperTextDanger}>
-                  Descrizione smarrimento obbligatoria: almeno {LOST_DESCRIPTION_MIN_LENGTH} caratteri.
-                </Text>
-              ) : null}
-            </View>
-
-            {!lostReadOnly ? (
-              <DisclaimerBox
-                title="Prima di pubblicare"
-                items={lostDisclaimer}
-                accepted={lostAccepted}
-                disabled={false}
-                onToggle={() => setLostAccepted((value) => !value)}
-              />
-            ) : null}
-
-            {!myActiveLostAlert ? (
-              <View style={styles.createActionRow}>
-                <AppButton
-                  label={lostCreateInFlight ? "Pubblico..." : "Apri segnalazione"}
-                  disabled={!canCreateLost}
-                  onPress={handleCreateLost}
-                  variant="danger"
-                />
-              </View>
-            ) : null}
-          </View>
+          ))
+        ) : (
+          <AppCard>
+            <Text style={styles.bodyText}>Nessuna segnalazione attiva.</Text>
+          </AppCard>
         )}
-      </AppCard>
+      </View>
 
       <AppCard>
         <View style={styles.cardHeader}>
@@ -622,7 +543,7 @@ export function AlertsScreen() {
 
         {myActiveDangerAlert ? (
           <>
-            <ReadonlyWarning message="Hai una segnalazione pericolo già attiva" />
+            <ReadonlyWarning message="Hai una segnalazione pericolo attiva." />
             <Pressable
               accessibilityRole="button"
               onPress={() => setDangerDraftExpanded((value) => !value)}
@@ -732,35 +653,130 @@ export function AlertsScreen() {
         )}
       </AppCard>
 
-      <View style={styles.sectionBlock}>
-        <Text style={styles.eyebrow}>ALERT ATTIVI</Text>
-        <Text style={styles.sectionTitle}>Segnalazioni aperte</Text>
-        <Text style={styles.bodyText}>
-          Gli avvistamenti non sono un’azione globale: devono partire da un alert esistente.
-        </Text>
-      </View>
+      <AppCard tone="danger">
+        <View style={styles.cardHeader}>
+          <Image source={baubookImages.safetyCircles.lostHelp} style={styles.cardIcon} />
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>MI SONO PERSO</Text>
+            <Text style={styles.cardTitle}>Alert smarrimento</Text>
+            <Text style={styles.bodyText}>La posizione viene rilevata o va inserita manualmente.</Text>
+          </View>
+        </View>
 
-      <View style={styles.alertList}>
-        {safetyBoard.alerts.length ? (
-          safetyBoard.alerts.map((alert) => (
-            <SafetyCard
-              key={`${alert.type}-${alert.id}`}
-              alert={alert}
-              isBusy={safetyBoard.status === "loading"}
-              onCloseLost={() => void safetyBoard.closeLostAlert(alert.id)}
-              onCloseDanger={() => void safetyBoard.closeDanger(alert.id)}
-              onReport={() =>
-                void safetyBoard.reportContent(alert.type === "lost_dog" ? "lost_dog_alert" : "danger_report", alert.id)
-              }
+        {myActiveLostAlert ? (
+          <>
+            <ReadonlyWarning message="Hai un alert smarrimento attivo." />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setLostDraftExpanded((value) => !value)}
+              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
+            >
+              <Text style={styles.collapsibleTitle}>
+                {lostDraftExpanded ? "Nascondi dettagli smarrimento" : "Mostra dettagli smarrimento"}
+              </Text>
+              <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {myActiveLostAlert && !lostDraftExpanded ? null : (
+          <View style={myActiveLostAlert ? styles.collapsibleContent : undefined}>
+            <View style={styles.formGroup}>
+              <View style={styles.chipRow}>
+                {auth.dogs.length ? (
+                  auth.dogs.map((dog) => (
+                    <ChoiceChip
+                      key={dog.id}
+                      label={dog.name}
+                      selected={dog.id === selectedDog?.id}
+                      disabled={accountReadOnly || Boolean(myActiveLostAlert)}
+                      onPress={() => setSelectedDogId(dog.id)}
+                    />
+                  ))
+                ) : (
+                  <Text style={styles.helperText}>Nessun 🐶 salvato nel profilo.</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Ora smarrimento presunta</Text>
+              <View style={styles.chipRow}>
+                {presumedMissingOptions.map((minutes) => (
+                  <ChoiceChip
+                    key={minutes}
+                    label={minutes < 60 ? `${minutes} min fa` : `${Math.round(minutes / 60)} h fa`}
+                    selected={presumedMissingMinutesAgo === minutes}
+                    disabled={lostReadOnly}
+                    onPress={() => setPresumedMissingMinutesAgo(minutes)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <LocationInputPanel
+              draft={lostLocation}
+              disabled={lostReadOnly}
+              title="Da dove segnalo"
+              readOnlyLocationLabel={myActiveLostAlert?.placeName ?? null}
             />
-          ))
-        ) : (
-          <AppCard>
-            <Text style={styles.bodyText}>Nessun alert attivo.</Text>
-          </AppCard>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Durata alert</Text>
+              <View style={styles.chipRow}>
+                {lostTtlOptions.map((hours) => (
+                  <ChoiceChip
+                    key={hours}
+                    label={`${hours}h`}
+                    selected={lostTtlHours === hours}
+                    disabled={lostReadOnly}
+                    onPress={() => setLostTtlHours(hours)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Descrizione pubblica nel rispetto della privacy</Text>
+              <TextInput
+                value={lostDescription}
+                onChangeText={setLostDescription}
+                editable={!lostReadOnly}
+                multiline
+                placeholder="Cosa è successo? Colore, pettorina, comportamento, direzione..."
+                placeholderTextColor={colors.muted}
+                style={[styles.input, styles.textArea, lostReadOnly && styles.inputReadonly]}
+              />
+              {!lostDescriptionReady ? (
+                <Text style={styles.helperTextDanger}>
+                  Descrizione smarrimento obbligatoria: almeno {LOST_DESCRIPTION_MIN_LENGTH} caratteri.
+                </Text>
+              ) : null}
+            </View>
+
+            {!lostReadOnly ? (
+              <DisclaimerBox
+                title="Prima di pubblicare"
+                items={lostDisclaimer}
+                accepted={lostAccepted}
+                disabled={false}
+                onToggle={() => setLostAccepted((value) => !value)}
+              />
+            ) : null}
+
+            {!myActiveLostAlert ? (
+              <View style={styles.createActionRow}>
+                <AppButton
+                  label={lostCreateInFlight ? "Pubblico..." : "Apri segnalazione"}
+                  disabled={!canCreateLost}
+                  onPress={handleCreateLost}
+                  variant="danger"
+                />
+              </View>
+            ) : null}
+          </View>
         )}
-      </View>
-    </Screen>
+      </AppCard>    </Screen>
   );
 }
 
@@ -962,7 +978,7 @@ function SafetyCard({
           {danger ? (
             <Image source={dangerIconForType(alert.dangerType ?? "other")} style={styles.alertCircleIcon} />
           ) : (
-            <Image source={baubookImages.icons.lostDog} style={styles.alertCircleIcon} />
+            <Image source={baubookImages.safetyCircles.lostHelp} style={styles.alertCircleIcon} />
           )}
           {danger && alert.severity ? (
             <Tag label={`Gravità ${alert.severity}/5`} tone={alert.severity >= 4 ? "red" : "orange"} />
@@ -984,10 +1000,10 @@ function SafetyCard({
       <View style={styles.alertActionsRow}>
         <View style={styles.alertActionLeft}>
           {!danger && alert.isMine ? (
-            <AppButton label="Chiudi smarrimento" variant="secondary" disabled={isBusy} onPress={onCloseLost} />
+            <AppButton label="Disattiva 🛑" variant="secondary" disabled={isBusy} onPress={onCloseLost} />
           ) : null}
           {danger && alert.isMine ? (
-            <AppButton label="Chiudi pericolo" variant="secondary" disabled={isBusy} onPress={onCloseDanger} />
+            <AppButton label="Disattiva 🛑" variant="secondary" disabled={isBusy} onPress={onCloseDanger} />
           ) : null}
         </View>
         <View style={styles.alertActionRight}>
@@ -999,9 +1015,36 @@ function SafetyCard({
 }
 
 const styles = StyleSheet.create({
+  toastOverlay: {
+    position: "absolute",
+    top: spacing.sm,
+    left: spacing.md,
+    right: spacing.md,
+    zIndex: 40,
+    alignItems: "center",
+  },
+  toastText: {
+    maxWidth: "100%",
+    overflow: "hidden",
+    borderRadius: radius.pill,
+    backgroundColor: colors.greenSoft,
+    color: colors.success,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.small,
+    fontWeight: "900",
+    textAlign: "center",
+  },
   hero: {
     gap: spacing.sm,
     paddingBottom: spacing.sm,
+  },
+  heroTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    flexWrap: "wrap",
   },
   eyebrow: {
     color: colors.primaryDark,

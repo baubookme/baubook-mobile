@@ -116,6 +116,11 @@ interface RemoteDangerReportRow {
   radius_m: number | null;
   profiles?: RelatedProfileRow | RelatedProfileRow[] | null;
   places?: RelatedNameRow | RelatedNameRow[] | null;
+  location_mode: "current" | "manual" | null;
+  location_label: string | null;
+  location_latitude: number | null;
+  location_longitude: number | null;
+  manual_address: string | null;
 }
 
 const dangerLabels: Record<DangerType, string> = {
@@ -129,8 +134,8 @@ const dangerLabels: Record<DangerType, string> = {
 
 const dangerHints: Record<DangerType, string> = {
   suspected_poison: 'Non toccare nulla, tieni il cane lontano e valuta una segnalazione alle autorità competenti.',
-  loose_dog: 'Non inseguire o bloccare l’animale: segnala con prudenza e resta a distanza.',
-  unsafe_area: 'Evita la zona e aggiungi dettagli utili senza indicare persone o indirizzi privati.',
+  loose_dog: 'Non inseguire o bloccare l’animale: procedi con prudenza e resta a distanza.',
+  unsafe_area: 'Evita la zona o osserva dettagli utili senza indicare persone o indirizzi privati.',
   traffic: 'Sii prudente e usa un guinzaglio: non sostituisce segnalazioni formali o interventi urgenti.',
   broken_fence: 'Fai attenzione prima di liberare il tuo amico e verifica che la segnalazione sia valida.',
   other: 'Descrivi solo fatti osservati e non pubblicare accuse verso persone identificabili.',
