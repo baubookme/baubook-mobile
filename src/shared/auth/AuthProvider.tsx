@@ -222,7 +222,7 @@ export function AuthProvider({children}: PropsWithChildren) {
             const nextProfile = await ensureCurrentProfile(displayName);
             setProfile(nextProfile);
             setStatus('signed_in');
-            setMessage('Profilo utente salvato su BauBook.');
+            setMessage('Profilo utente salvato su BauBook 💾');
             setErrorMessage(undefined);
         } catch (error) {
             setStatus('error');
@@ -247,7 +247,7 @@ export function AuthProvider({children}: PropsWithChildren) {
                 return exists ? current.map((item) => (item.id === savedDog.id ? savedDog : item)) : [...current, savedDog];
             });
             setStatus('signed_in');
-            setMessage('Profilo salvato 🐾. Bau!');
+            setMessage('Profilo salvato 🐾. Bau! 💾');
             setErrorMessage(undefined);
             return savedDog;
         } catch (error) {
