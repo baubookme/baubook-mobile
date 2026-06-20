@@ -377,6 +377,7 @@ export function AlertsScreen() {
   const lostDescriptionReady = lostDescription.trim().length >= LOST_DESCRIPTION_MIN_LENGTH;
   const dangerDescriptionReady = dangerDescription.trim().length >= DANGER_DESCRIPTION_MIN_LENGTH;
   const dangerTypeReady = Boolean(dangerType);
+  const displayDangerType = myActiveDangerAlert?.dangerType ?? dangerType;
 
   const canCreateLost =
     profileReady &&
@@ -566,7 +567,7 @@ export function AlertsScreen() {
 
       <AppCard>
         <View style={styles.cardHeader}>
-          <Image source={dangerIconForType(dangerType ?? "other")} style={styles.cardIcon} />
+          <Image source={dangerIconForType(displayDangerType ?? "other")} style={styles.cardIcon} />
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>PERICOLO TEMPORANEO</Text>
             <Text style={styles.cardTitle}>Segnalazione pericolo</Text>
@@ -599,7 +600,7 @@ export function AlertsScreen() {
                   <ChoiceChip
                     key={option.type}
                     label={option.label}
-                    selected={dangerType === option.type}
+                    selected={displayDangerType === option.type}
                     disabled={dangerReadOnly}
                     onPress={() => setDangerType(option.type)}
                   />
