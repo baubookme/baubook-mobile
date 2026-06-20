@@ -1,4 +1,5 @@
-import type { PropsWithChildren } from 'react';
+import { Children } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,8 +11,15 @@ interface AppCardProps extends PropsWithChildren {
   tone?: 'default' | 'warm' | 'teal' | 'pink' | 'danger';
 }
 
+
+function stripWhitespaceTextChildren(children: ReactNode) {
+  return Children.toArray(children).filter(
+    (child) => typeof child !== "string" || child.trim().length > 0,
+  );
+}
 export function AppCard({ children, elevated = true, style, tone = 'default' }: AppCardProps) {
-  return <View style={[styles.card, toneStyles[tone], elevated && shadows.card, style]}>{children}</View>;
+  const cardChildren = stripWhitespaceTextChildren(children);
+  return <View style={[styles.card, toneStyles[tone], elevated && shadows.card, style]}>{cardChildren}</View>;
 }
 
 const styles = StyleSheet.create({

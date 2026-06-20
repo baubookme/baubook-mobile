@@ -1,4 +1,5 @@
-import type { PropsWithChildren, RefObject } from "react";
+import { Children } from "react";
+import type { PropsWithChildren, RefObject, ReactNode } from "react";
 import {
   Platform,
   SafeAreaView,
@@ -25,7 +26,14 @@ const topPadding = Platform.select({
   default: spacing.md,
 });
 
+
+function stripWhitespaceTextChildren(children: ReactNode) {
+  return Children.toArray(children).filter(
+    (child) => typeof child !== "string" || child.trim().length > 0,
+  );
+}
 export function Screen({ children, scroll = true, scrollRef }: ScreenProps) {
+  const screenChildren = stripWhitespaceTextChildren(children);
   return (
       <SafeAreaView style={styles.safeArea}>
         {scroll ? (
@@ -34,10 +42,10 @@ export function Screen({ children, scroll = true, scrollRef }: ScreenProps) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-              {children}
+              {screenChildren}
             </ScrollView>
         ) : (
-            <View style={styles.fixedContent}>{children}</View>
+            <View style={styles.fixedContent}>{screenChildren}</View>
         )}
       </SafeAreaView>
   );
