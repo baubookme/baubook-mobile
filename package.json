@@ -1,6 +1,6 @@
 {
   "name": "baubook",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -50,9 +50,9 @@
   },
   "baubook": {
     "baseline": "2.3.0",
-    "releaseName": "Production Backend Cutover",
-    "releaseTag": "v0.6.0-production-backend-cutover",
-    "releaseDate": "2026-06-11",
-    "label": "Production Backend Cutover"
+    "releaseName": "BauBook 0.6.1 Clean Baseline",
+    "releaseTag": "baubook-0.6.1-clean-baseline",
+    "releaseDate": "2026-06-20",
+    "label": "Clean Baseline"
   }
 }

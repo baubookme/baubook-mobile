@@ -2,7 +2,7 @@
   "expo": {
     "name": "BauBook! Venezia-Mestre",
     "slug": "baubook",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "me.baubook.app",
-      "buildNumber": "28",
+      "buildNumber": "29",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 28
+      "versionCode": 29
     },
     "web": {
       "bundler": "metro",
@@ -39,11 +39,11 @@
       "baseline": "2.3.0",
       "launchReadiness": "beta-experience-cartoon-toolbar",
       "sponsoredLiteDefault": false,
-      "releaseName": "BauBook 2.0.0 Beta Experience + Cartoon Toolbar",
+      "releaseName": "BauBook 0.6.1 Clean Baseline",
       "cartoonToolbar": true,
       "sponsoredLiteDefaultEnabled": false,
       "baubookBaseline": "2.3.0",
-      "baubookReleaseName": "Production Backend Cutover",
+      "baubookReleaseName": "BauBook 0.6.1 Clean Baseline",
       "nativeMapViewMarkers": true,
       "mapProvider": "react-native-maps",
       "baubookLaunchMode": "no-store-device-beta",
@@ -52,7 +52,7 @@
       },
       "baubook": {
         "baseline": "2.3.0",
-        "label": "Production Backend Cutover"
+        "label": "Clean Baseline"
       },
       "mapCareCommandCenter": true,
       "productionBackendCutover": true,
