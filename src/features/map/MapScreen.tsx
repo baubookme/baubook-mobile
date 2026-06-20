@@ -258,7 +258,7 @@ export function MapScreen() {
 
       setNearby((current) => ({
         ...current,
-        message: 'Luoghi dal database ricaricati. Usa la posizione attuale per vedere solo quelli vicini e utili.',
+        message: 'Luoghi ricaricati. Usa la posizione attuale per vedere solo quelli vicini e utili.',
       }));
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : JSON.stringify(error);
