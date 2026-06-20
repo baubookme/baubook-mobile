@@ -9,7 +9,9 @@ import type { TabKey } from '../../../shared/types/domain';
 
 const packDiaryIcon = require('../../../../assets/baubook/cartoon-icons/home_today_pilot.png');
 const friendFallbackAvatar = require('../../../../assets/baubook/brand/avatar_instagram_round.png');
-const recordOpenIcon = require('../../../../assets/baubook/home/pack_diary_record_open.png');
+
+const MINUTE_MS = 60 * 1000;
+const WALK_DEFAULT_DURATION_MINUTES = 90;
 
 type Relation<T> = T | T[] | null | undefined;
 
@@ -28,6 +30,7 @@ type RemoteWalkRow = {
   owner_id: string | null;
   place_id: string | null;
   starts_at: string | null;
+  ends_at: string | null;
   created_at: string | null;
   updated_at: string | null;
   location_label: string | null;
@@ -63,6 +66,7 @@ type PackFriendLiveItem = {
   dogName: string;
   avatarUrl: string | null;
   kind: 'walk' | 'presence';
+  expiresAt: string;
 };
 
 type PackDiaryState = {
@@ -88,6 +92,15 @@ function firstRelation<T>(value: Relation<T>): T | null {
     return null;
   }
   return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function parseTime(value?: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
 }
 
 function formatDateTime(value?: string | null): string {
@@ -154,8 +167,64 @@ function makePresenceActivity(row: RemotePresenceRow): LastPackActivity {
   };
 }
 
-function friendFromWalk(row: RemoteWalkRow, friendsByDogId: Map<string, DogFriendModel>): PackFriendLiveItem | null {
+function getWalkExpiresAt(row: RemoteWalkRow): string | null {
+  const explicitEndsAt = parseTime(row.ends_at);
+  if (explicitEndsAt) {
+    return new Date(explicitEndsAt).toISOString();
+  }
+
+  const startsAt = parseTime(row.starts_at);
+  if (startsAt) {
+    return new Date(startsAt + WALK_DEFAULT_DURATION_MINUTES * MINUTE_MS).toISOString();
+  }
+
+  const createdAt = parseTime(row.created_at);
+  return createdAt ? new Date(createdAt + WALK_DEFAULT_DURATION_MINUTES * MINUTE_MS).toISOString() : null;
+}
+
+function getRemainingMinutes(expiresAt: string): number {
+  const expiresAtMs = parseTime(expiresAt);
+  if (!expiresAtMs) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((expiresAtMs - Date.now()) / MINUTE_MS));
+}
+
+function formatRemainingTime(expiresAt: string): string {
+  const totalMinutes = getRemainingMinutes(expiresAt);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function getExpiryTone(expiresAt: string): 'danger' | 'warning' | 'ok' {
+  const minutes = getRemainingMinutes(expiresAt);
+
+  if (minutes < 10) {
+    return 'danger';
+  }
+
+  if (minutes < 60) {
+    return 'warning';
+  }
+
+  return 'ok';
+}
+
+function friendFromWalk(
+  row: RemoteWalkRow,
+  friendsByDogId: Map<string, DogFriendModel>,
+  nowMs: number,
+): PackFriendLiveItem | null {
   if (!row.dog_id) {
+    return null;
+  }
+
+  const expiresAt = getWalkExpiresAt(row);
+  const expiresAtMs = parseTime(expiresAt);
+  if (!expiresAt || !expiresAtMs || expiresAtMs <= nowMs) {
     return null;
   }
 
@@ -170,11 +239,21 @@ function friendFromWalk(row: RemoteWalkRow, friendsByDogId: Map<string, DogFrien
     dogName,
     avatarUrl,
     kind: 'walk',
+    expiresAt,
   };
 }
 
-function friendFromPresence(row: RemotePresenceRow, friendsByDogId: Map<string, DogFriendModel>): PackFriendLiveItem | null {
-  if (!row.dog_id) {
+function friendFromPresence(
+  row: RemotePresenceRow,
+  friendsByDogId: Map<string, DogFriendModel>,
+  nowMs: number,
+): PackFriendLiveItem | null {
+  if (!row.dog_id || !row.expires_at) {
+    return null;
+  }
+
+  const expiresAtMs = parseTime(row.expires_at);
+  if (!expiresAtMs || expiresAtMs <= nowMs) {
     return null;
   }
 
@@ -189,6 +268,7 @@ function friendFromPresence(row: RemotePresenceRow, friendsByDogId: Map<string, 
     dogName,
     avatarUrl,
     kind: 'presence',
+    expiresAt: row.expires_at,
   };
 }
 
@@ -224,7 +304,7 @@ async function loadPackDiaryState(profileId: string, dogId: string): Promise<Pac
 
   const { data: ownWalkRows, error: ownWalkError } = await client
     .from('walk_plans')
-    .select('id,dog_id,owner_id,place_id,starts_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+    .select('id,dog_id,owner_id,place_id,starts_at,ends_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
     .eq('owner_id', profileId)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -248,13 +328,16 @@ async function loadPackDiaryState(profileId: string, dogId: string): Promise<Pac
   let presentFriends: PackFriendLiveItem[] = [];
 
   if (friendDogIds.length > 0) {
+    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+
     const { data: friendWalkRows, error: friendWalkError } = await client
       .from('walk_plans')
-      .select('id,dog_id,owner_id,place_id,starts_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
+      .select('id,dog_id,owner_id,place_id,starts_at,ends_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
       .in('dog_id', friendDogIds)
       .eq('active', true)
       .order('starts_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (friendWalkError) {
       throw friendWalkError;
@@ -265,7 +348,7 @@ async function loadPackDiaryState(profileId: string, dogId: string): Promise<Pac
       .select('id,dog_id,profile_id,place_id,status,expires_at,created_at,updated_at,location_label,message,dogs(name,avatar_url),places(name)')
       .in('dog_id', friendDogIds)
       .eq('active', true)
-      .gt('expires_at', new Date().toISOString())
+      .gt('expires_at', nowIso)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -275,13 +358,13 @@ async function loadPackDiaryState(profileId: string, dogId: string): Promise<Pac
 
     walkingFriends = uniqueByDog(
       ((friendWalkRows ?? []) as RemoteWalkRow[])
-        .map((row) => friendFromWalk(row, friendsByDogId))
+        .map((row) => friendFromWalk(row, friendsByDogId, nowMs))
         .filter((item): item is PackFriendLiveItem => Boolean(item)),
     );
 
     presentFriends = uniqueByDog(
       ((friendPresenceRows ?? []) as RemotePresenceRow[])
-        .map((row) => friendFromPresence(row, friendsByDogId))
+        .map((row) => friendFromPresence(row, friendsByDogId, nowMs))
         .filter((item): item is PackFriendLiveItem => Boolean(item)),
     );
   }
@@ -320,6 +403,30 @@ function FriendAvatar({ item }: { item: PackFriendLiveItem }) {
   );
 }
 
+function ExpiryBadge({ item, onPress }: { item: PackFriendLiveItem; onPress: (item: PackFriendLiveItem) => void }) {
+  const tone = getExpiryTone(item.expiresAt);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Apri Passeggiate e Presenze per ${item.dogName}`}
+      hitSlop={8}
+      onPress={() => onPress(item)}
+      style={({ pressed }) => [styles.expiryBadge, pressed && styles.pressed]}
+    >
+      <View
+        style={[
+          styles.expiryDot,
+          tone === 'danger' && styles.expiryDotDanger,
+          tone === 'warning' && styles.expiryDotWarning,
+          tone === 'ok' && styles.expiryDotOk,
+        ]}
+      />
+      <Text style={styles.expiryText}>Scade tra {formatRemainingTime(item.expiresAt)}</Text>
+    </Pressable>
+  );
+}
+
 function CollapsibleFriends({
   title,
   items,
@@ -349,15 +456,7 @@ function CollapsibleFriends({
               <View key={`${item.kind}-${item.id}`} style={styles.friendRow}>
                 <FriendAvatar item={item} />
                 <Text style={styles.friendName}>{item.dogName}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Apri Passeggiate e Presenze per ${item.dogName}`}
-                  hitSlop={8}
-                  onPress={() => onOpenItem(item)}
-                  style={({ pressed }) => [styles.friendAction, pressed && styles.pressed]}
-                >
-                  <Image source={recordOpenIcon} style={styles.friendActionIcon} />
-                </Pressable>
+                <ExpiryBadge item={item} onPress={onOpenItem} />
               </View>
             ))}
           </View>
@@ -438,23 +537,22 @@ export function HomeDogDiaryLite({ onNavigate }: HomeDogDiaryLiteProps) {
         <Image source={packDiaryIcon} style={styles.titleIcon} />
 
         <View style={styles.headerMain}>
-          <View style={styles.titleButtonRow}>
-            <Text style={styles.titleText}>{'Diario smart\ndel branco 🐾'}</Text>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Aggiorna Diario smart del branco"
-              disabled={loading}
-              onPress={refresh}
-              style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed, loading && styles.refreshButtonDisabled]}
-            >
-              <Text style={styles.refreshText}>{loading ? '...' : 'Aggiorna'}</Text>
-            </Pressable>
-          </View>
+          <Text style={styles.titleText} numberOfLines={2}>Diario smart del branco 🐾</Text>
         </View>
       </View>
 
-      <Text style={styles.statusText}>{statusLabel}</Text>
+      <View style={styles.statusRow}>
+        <Text style={styles.statusText}>{statusLabel}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Aggiorna Diario smart del branco"
+          disabled={loading}
+          onPress={refresh}
+          style={({ pressed }) => [styles.statusRefreshButton, pressed && styles.pressed, loading && styles.statusRefreshButtonDisabled]}
+        >
+          <Text style={styles.statusRefreshIcon}>{loading ? '...' : '↻'}</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.activityGrid}>
         <ActivityLine label="Ultima passeggiata inserita" activity={state.lastWalk} />
@@ -513,43 +611,49 @@ const styles = StyleSheet.create({
     minWidth: 0,
     justifyContent: 'center',
   },
-  titleButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
   titleText: {
-    flex: 1,
-    minWidth: 0,
     color: colors.ink,
     fontSize: 20,
     lineHeight: 23,
     fontWeight: '900',
   },
-  refreshButton: {
-    minWidth: 108,
+  statusRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  refreshButtonDisabled: {
-    opacity: 0.62,
-  },
-  refreshText: {
-    color: colors.primaryDark,
-    fontSize: typography.small,
-    fontWeight: '900',
+    gap: spacing.sm,
   },
   statusText: {
+    flex: 1,
+    minWidth: 0,
     color: colors.text,
     fontSize: typography.small,
     lineHeight: 19,
     fontWeight: '800',
+  },
+  statusRefreshButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  statusRefreshButtonDisabled: {
+    opacity: 0.62,
+  },
+  statusRefreshIcon: {
+    width: 30,
+    height: 30,
+    color: colors.primaryDark,
+    fontSize: 26,
+    lineHeight: 29,
+    fontWeight: '900',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    transform: [{ translateY: -1 }],
   },
   activityGrid: {
     gap: spacing.sm,
@@ -641,22 +745,42 @@ const styles = StyleSheet.create({
   },
   friendName: {
     flex: 1,
+    minWidth: 0,
     color: colors.ink,
     fontSize: typography.body,
     fontWeight: '900',
   },
-  friendAction: {
-    width: 84,
-    height: 58,
-    marginRight: -8,
+  expiryBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    gap: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#fffaf3',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
   },
-  friendActionIcon: {
-    width: 55,
-    height: 40,
-    resizeMode: 'contain',
+  expiryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  expiryDotDanger: {
+    backgroundColor: '#d6453d',
+  },
+  expiryDotWarning: {
+    backgroundColor: '#f2b84b',
+  },
+  expiryDotOk: {
+    backgroundColor: '#47a35c',
+  },
+  expiryText: {
+    color: colors.ink,
+    fontSize: typography.tiny,
+    lineHeight: 15,
+    fontWeight: '900',
   },
   emptyInline: {
     borderTopWidth: 1,
