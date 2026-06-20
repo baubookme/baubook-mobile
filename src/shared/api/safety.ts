@@ -25,7 +25,7 @@ export interface SafetyAlertModel extends AlertModel {
   isMine: boolean;
   moderationStatus: string;
   radiusLabel: string;
-  actionHint: string;
+  dogAvatarUrl: string | null; actionHint: string;
 }
 
 export interface SafetyBoardResult {
@@ -71,9 +71,7 @@ export interface CreateSightingInput {
   disclaimerAccepted: boolean;
 }
 
-interface RelatedNameRow {
-  name?: string | null;
-}
+interface RelatedNameRow { name?: string | null; avatar_url?: string | null; }
 
 interface RelatedProfileRow {
   id?: string | null;
@@ -228,8 +226,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
     ownerId: row.owner_id,
     reporterId: null,
     dogId: row.dog_id,
-    dogName,
-    ownerName: profile?.display_name ?? 'Umano BauBook',
+    dogName, dogAvatarUrl: dog?.avatar_url ?? null, ownerName: profile?.display_name ?? 'Umano BauBook',
     reporterName: '',
     placeId: row.source_place_id,
     placeName,
@@ -264,8 +261,7 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     ownerId: null,
     reporterId: row.reporter_id,
     dogId: null,
-    dogName: null,
-    ownerName: '',
+    dogName: null, dogAvatarUrl: null, ownerName: '',
     reporterName: profile?.display_name ?? 'Umano BauBook',
     placeId: row.source_place_id,
     placeName,
@@ -289,8 +285,7 @@ function demoToSafety(alert: AlertModel): SafetyAlertModel {
     ownerId: null,
     reporterId: null,
     dogId: null,
-    dogName: danger ? null : 'Spritz demo',
-    ownerName: danger ? '' : 'Demo BauBook',
+    dogName: danger ? null : 'Spritz demo', dogAvatarUrl: null, ownerName: danger ? '' : 'Demo BauBook',
     reporterName: danger ? 'Demo BauBook' : '',
     placeId: null,
     placeName: alert.area,
@@ -330,7 +325,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
     const [lostResult, dangerResult] = await Promise.all([
       client
         .from('lost_dog_alerts')
-        .select('id, dog_id, owner_id, source_place_id, location_mode, location_label, location_latitude, location_longitude, manual_address, description, status, moderation_status, expires_at, created_at, last_seen_at, radius_m, dogs(name), profiles(display_name), places:source_place_id(name)')
+        .select('id, dog_id, owner_id, source_place_id, location_mode, location_label, location_latitude, location_longitude, manual_address, description, status, moderation_status, expires_at, created_at, last_seen_at, radius_m, dogs(name, avatar_url), profiles(display_name), places:source_place_id(name)')
         .eq('status', 'active')
         .eq('moderation_status', 'approved')
         .gt('expires_at', nowIso)

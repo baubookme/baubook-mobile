@@ -1023,7 +1023,12 @@ function SafetyCard({
           {danger ? (
             <Image source={dangerIconForType(alert.dangerType ?? "other")} style={styles.alertCircleIcon} />
           ) : (
-            <Image source={baubookImages.safetyCircles.lostHelp} style={styles.alertCircleIcon} />
+            <>
+              <Image source={baubookImages.safetyCircles.lostHelp} style={styles.alertCircleIcon} />
+              {alert.dogAvatarUrl ? (
+                <Image source={{ uri: alert.dogAvatarUrl }} style={styles.alertCircleIcon} />
+              ) : null}
+            </>
           )}
           {danger && alert.severity ? (
             <Tag label={`Gravità ${alert.severity}/5`} tone={alert.severity >= 4 ? "red" : "orange"} />
