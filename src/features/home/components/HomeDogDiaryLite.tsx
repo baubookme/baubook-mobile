@@ -375,7 +375,7 @@ async function loadPackDiaryState(profileId: string, dogId: string): Promise<Pac
     walkingFriends,
     presentFriends,
     source: 'supabase',
-    message: friends.length ? `${friends.length} amici del branco collegati.` : 'Aggiungi amici dal Branco per vedere chi è in giro.',
+    message: friends.length ? `${friends.length} amici del branco collegati.` : 'Aggiungi amici al Branco per vedere chi è in giro.',
   };
 }
 
