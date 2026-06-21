@@ -8,6 +8,23 @@ export type SafetyBoardSource = 'supabase' | 'fallback';
 export type DangerType = 'suspected_poison' | 'loose_dog' | 'unsafe_area' | 'traffic' | 'broken_fence' | 'other';
 export type SightingType = 'seen' | 'maybe_seen' | 'recovered';
 
+export interface LostDogSightingModel {
+  alertId: string;
+  sightingId: string;
+  reporterId: string | null;
+  reporterName: string;
+  sightingType: SightingType;
+  note: string | null;
+  sightingAtIso: string;
+  updatedAtIso: string;
+  locationMode: 'current' | 'manual';
+  locationLabel: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  manualAddress: string | null;
+  isMine: boolean;
+}
+
 export interface SafetyAlertModel extends AlertModel {
   source: SafetyBoardSource;
   ownerId: string | null;
@@ -23,9 +40,12 @@ export interface SafetyAlertModel extends AlertModel {
   expiresAtIso: string;
   createdAtIso: string;
   isMine: boolean;
+  hasMyAbuseReport: boolean;
   moderationStatus: string;
   radiusLabel: string;
-  dogAvatarUrl: string | null; actionHint: string;
+  dogAvatarUrl: string | null;
+  actionHint: string;
+  sightings: LostDogSightingModel[];
 }
 
 export interface SafetyBoardResult {
@@ -65,10 +85,14 @@ export interface CreateDangerReportInput {
 
 export interface CreateSightingInput {
   alertId: string;
-  placeId: string;
   sightingType: SightingType;
   note: string;
   disclaimerAccepted: boolean;
+  locationMode?: 'current' | 'manual';
+  locationLabel?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  manualAddress?: string | null;
 }
 
 interface RelatedNameRow { name?: string | null; avatar_url?: string | null; }
@@ -119,6 +143,29 @@ interface RemoteDangerReportRow {
   location_latitude: number | null;
   location_longitude: number | null;
   manual_address: string | null;
+}
+
+
+interface RemoteLostDogSightingRow {
+  alert_id: string;
+  sighting_id: string;
+  reporter_id: string | null;
+  reporter_name: string | null;
+  sighting_type: string | null;
+  note: string | null;
+  sighting_at: string | null;
+  updated_at: string | null;
+  location_mode: string | null;
+  location_label: string | null;
+  location_latitude: number | null;
+  location_longitude: number | null;
+  manual_address: string | null;
+  is_mine: boolean | null;
+}
+
+interface RemoteSafetyReportTargetRow {
+  target_type: string;
+  target_id: string;
 }
 
 const dangerLabels: Record<DangerType, string> = {
@@ -235,9 +282,11 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
     expiresAtIso: row.expires_at,
     createdAtIso: row.created_at,
     isMine: Boolean(currentProfileId && row.owner_id === currentProfileId),
+    hasMyAbuseReport: false,
     moderationStatus: row.moderation_status,
     radiusLabel: `${row.radius_m ?? 350} m indicativi`,
     actionHint: 'Non inseguire il cane e non entrare in proprietà private. Invia un avvistamento se hai informazioni utili.',
+    sightings: [],
   };
 }
 
@@ -270,9 +319,11 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     expiresAtIso: row.expires_at,
     createdAtIso: row.created_at,
     isMine: Boolean(currentProfileId && row.reporter_id === currentProfileId),
+    hasMyAbuseReport: false,
     moderationStatus: row.moderation_status,
     radiusLabel: `${row.radius_m ?? 250} m indicativi`,
     actionHint: dangerHints[dangerType],
+    sightings: [],
   };
 }
 
@@ -294,10 +345,118 @@ function demoToSafety(alert: AlertModel): SafetyAlertModel {
     expiresAtIso: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
     createdAtIso: new Date().toISOString(),
     isMine: false,
+    hasMyAbuseReport: false,
     moderationStatus: 'approved',
     radiusLabel: 'area demo',
     actionHint: danger ? dangerHints.suspected_poison : 'Flusso demo: crea alert, raccogli avvistamenti, chiudi quando risolto.',
+    sightings: [],
   };
+}
+
+
+function targetKey(targetType: 'lost_dog_alert' | 'danger_report', targetId: string): string {
+  return `${targetType}:${targetId}`;
+}
+
+function normalizeSightingType(value: string | null | undefined): SightingType {
+  switch (value) {
+    case 'maybe_seen':
+    case 'recovered':
+    case 'seen':
+      return value;
+    default:
+      return 'seen';
+  }
+}
+
+function remoteSightingToModel(row: RemoteLostDogSightingRow): LostDogSightingModel {
+  const sightingAt = row.sighting_at ?? row.updated_at ?? new Date().toISOString();
+  const updatedAt = row.updated_at ?? sightingAt;
+  const locationLabel = row.location_label?.trim() || row.manual_address?.trim() || 'Posizione condivisa';
+
+  return {
+    alertId: row.alert_id,
+    sightingId: row.sighting_id,
+    reporterId: row.reporter_id,
+    reporterName: row.reporter_name?.trim() || 'Umano BauBook',
+    sightingType: normalizeSightingType(row.sighting_type),
+    note: row.note?.trim() || null,
+    sightingAtIso: sightingAt,
+    updatedAtIso: updatedAt,
+    locationMode: row.location_mode === 'manual' ? 'manual' : 'current',
+    locationLabel,
+    locationLatitude: row.location_latitude,
+    locationLongitude: row.location_longitude,
+    manualAddress: row.manual_address?.trim() || null,
+    isMine: Boolean(row.is_mine),
+  };
+}
+
+async function fetchMyReportKeys(
+  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  currentProfileId: string | null | undefined,
+  alerts: Array<{ id: string; type: 'lost_dog' | 'danger' }>,
+): Promise<Set<string>> {
+  const keys = new Set<string>();
+  if (!currentProfileId || !alerts.length) {
+    return keys;
+  }
+
+  const targetIds = alerts.map((alert) => alert.id);
+  const { data, error } = await client
+    .from('reports')
+    .select('target_type, target_id')
+    .eq('reporter_id', currentProfileId)
+    .in('target_id', targetIds)
+    .in('target_type', ['lost_dog_alert', 'danger_report']);
+
+  if (error) {
+    return keys;
+  }
+
+  ((data ?? []) as RemoteSafetyReportTargetRow[]).forEach((row) => {
+    if (row.target_type && row.target_id) {
+      keys.add(targetKey(row.target_type as 'lost_dog_alert' | 'danger_report', row.target_id));
+    }
+  });
+
+  return keys;
+}
+
+async function fetchSightingsByAlert(
+  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  alertIds: string[],
+): Promise<Map<string, LostDogSightingModel[]>> {
+  const sightingsByAlert = new Map<string, LostDogSightingModel[]>();
+  if (!alertIds.length) {
+    return sightingsByAlert;
+  }
+
+  const { data, error } = await client.rpc('fetch_lost_dog_sightings_for_alerts', {
+    alert_ids_input: alertIds,
+  });
+
+  if (error) {
+    return sightingsByAlert;
+  }
+
+  ((data ?? []) as RemoteLostDogSightingRow[]).forEach((row) => {
+    const sighting = remoteSightingToModel(row);
+    const current = sightingsByAlert.get(sighting.alertId) ?? [];
+    current.push(sighting);
+    sightingsByAlert.set(sighting.alertId, current);
+  });
+
+  sightingsByAlert.forEach((items, alertId) => {
+    sightingsByAlert.set(
+      alertId,
+      items
+        .sort((a, b) => new Date(b.sightingAtIso).getTime() - new Date(a.sightingAtIso).getTime())
+        .slice(0, 5),
+    );
+  });
+
+  return sightingsByAlert;
 }
 
 async function expireStaleAlerts(): Promise<void> {
@@ -350,8 +509,28 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
       };
     }
 
-    const lost = ((lostResult.data ?? []) as RemoteLostAlertRow[]).map((row) => remoteLostToModel(row, currentProfileId));
-    const dangers = ((dangerResult.data ?? []) as RemoteDangerReportRow[]).map((row) => remoteDangerToModel(row, currentProfileId));
+    const rawLost = (lostResult.data ?? []) as RemoteLostAlertRow[];
+    const rawDangers = (dangerResult.data ?? []) as RemoteDangerReportRow[];
+
+    const baseLost = rawLost.map((row) => remoteLostToModel(row, currentProfileId));
+    const baseDangers = rawDangers.map((row) => remoteDangerToModel(row, currentProfileId));
+    const baseAlerts = [...baseLost, ...baseDangers];
+
+    const [reportKeys, sightingsByAlert] = await Promise.all([
+      fetchMyReportKeys(client, currentProfileId, baseAlerts),
+      fetchSightingsByAlert(client, baseLost.map((alert) => alert.id)),
+    ]);
+
+    const lost = baseLost.map((alert) => ({
+      ...alert,
+      hasMyAbuseReport: reportKeys.has(targetKey('lost_dog_alert', alert.id)),
+      sightings: sightingsByAlert.get(alert.id) ?? [],
+    }));
+    const dangers = baseDangers.map((alert) => ({
+      ...alert,
+      hasMyAbuseReport: reportKeys.has(targetKey('danger_report', alert.id)),
+      sightings: [],
+    }));
     const alerts = [...lost, ...dangers].sort((a, b) => new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime());
 
     return {
@@ -442,12 +621,16 @@ export async function createLostDogSighting(input: CreateSightingInput): Promise
     throw new Error('Supabase non configurato.');
   }
 
-  const { error } = await client.rpc('create_lost_dog_sighting', {
+  const { error } = await client.rpc('upsert_lost_dog_sighting', {
     alert_id_input: input.alertId,
-    place_id_input: input.placeId,
     sighting_type_input: input.sightingType,
     note_input: input.note,
     disclaimer_accepted_input: input.disclaimerAccepted,
+    location_mode_input: input.locationMode ?? 'current',
+    location_label_input: input.locationLabel ?? null,
+    location_latitude_input: input.locationLatitude ?? null,
+    location_longitude_input: input.locationLongitude ?? null,
+    manual_address_input: input.manualAddress ?? null,
   });
 
   if (error) {
@@ -489,13 +672,17 @@ export async function closeDangerReport(reportId: string, note?: string): Promis
   }
 }
 
-export async function reportSafetyContent(targetType: 'lost_dog_alert' | 'danger_report', targetId: string, description?: string): Promise<void> {
+export async function reportSafetyContent(
+  targetType: 'lost_dog_alert' | 'danger_report',
+  targetId: string,
+  description?: string,
+): Promise<{ alreadyReported: boolean }> {
   const client = getSupabaseClient();
   if (!client) {
     throw new Error('Supabase non configurato.');
   }
 
-  const { error } = await client.rpc('report_safety_content', {
+  const { data, error } = await client.rpc('report_safety_content', {
     target_type_input: targetType,
     target_id_input: targetId,
     reason_input: 'false_alert',
@@ -505,4 +692,11 @@ export async function reportSafetyContent(targetType: 'lost_dog_alert' | 'danger
   if (error) {
     throw new Error(normalizeError(error));
   }
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const value = data as { alreadyReported?: unknown; already_reported?: unknown };
+    return { alreadyReported: Boolean(value.alreadyReported ?? value.already_reported) };
+  }
+
+  return { alreadyReported: false };
 }

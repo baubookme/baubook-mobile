@@ -18,6 +18,10 @@ export const baubookImages = {
   safetyCircles: {
     lostHelp: require('../../../assets/baubook/safety-circles/lost_help.png') as ImageSourcePropType,
   },
+  safety: {
+    sighting: require('../../../assets/baubook/safety/sighting.png') as ImageSourcePropType,
+    sightingBadge: require('../../../assets/baubook/safety/sighting_badge.png') as ImageSourcePropType,
+  },
   quickActions: {
     walk: require('../../../assets/baubook/quick-actions/walk.png') as ImageSourcePropType,
     map: require('../../../assets/baubook/quick-actions/map.png') as ImageSourcePropType,

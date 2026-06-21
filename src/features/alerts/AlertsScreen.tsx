@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScrollView } from "react-native";
-import { Easing, Animated, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Easing, Animated, Image, Modal, Pressable, ScrollView as RNScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Location from "expo-location";
 
 import {
@@ -240,6 +240,11 @@ export function AlertsScreen() {
 
   const lostLocation = useSafetyLocationDraft("Rileva la posizione dello smarrimento o usa un indirizzo manuale.");
   const dangerLocation = useSafetyLocationDraft("Rileva la posizione del pericolo o usa un indirizzo manuale.");
+  const sightingLocation = useSafetyLocationDraft("Rileva la posizione dell’avvistamento o usa un indirizzo manuale.");
+  const [sightingAlert, setSightingAlert] = useState<SafetyAlertModel | null>(null);
+  const [sightingNote, setSightingNote] = useState("");
+  const [sightingAccepted, setSightingAccepted] = useState(false);
+  const [sightingSubmitting, setSightingSubmitting] = useState(false);
 
   const scrollToSafetyNotice = () => {
     requestAnimationFrame(() => {
@@ -491,6 +496,53 @@ export function AlertsScreen() {
     }
   };
 
+  const canUseCommunityActions = profileReady && userAuthVerified;
+
+  const openSightingSheet = (alert: SafetyAlertModel) => {
+    if (!canUseCommunityActions || alert.type !== "lost_dog" || alert.isMine) {
+      return;
+    }
+    setSightingAlert(alert);
+    setSightingNote("");
+    setSightingAccepted(false);
+  };
+
+  const closeSightingSheet = () => {
+    if (sightingSubmitting) {
+      return;
+    }
+    setSightingAlert(null);
+    setSightingNote("");
+    setSightingAccepted(false);
+  };
+
+  const handleSubmitSighting = async () => {
+    if (!sightingAlert || !canUseCommunityActions || !sightingAccepted || sightingSubmitting) {
+      return;
+    }
+
+    const locationPayload = await sightingLocation.prepareLocationPayload();
+    if (!locationPayload) {
+      return;
+    }
+
+    setSightingSubmitting(true);
+    try {
+      await safetyBoard.createSighting({
+        alertId: sightingAlert.id,
+        sightingType: "seen",
+        note: sightingNote.trim(),
+        disclaimerAccepted: sightingAccepted,
+        ...locationPayload,
+      });
+      setSightingAlert(null);
+      setSightingNote("");
+      setSightingAccepted(false);
+    } finally {
+      setSightingSubmitting(false);
+    }
+  };
+
   return (
     <View style={styles.screenShell}>
       <Screen scrollRef={screenScrollRef}>
@@ -551,8 +603,10 @@ export function AlertsScreen() {
               key={`${alert.type}-${alert.id}`}
               alert={alert}
               isBusy={safetyBoard.status === "loading"}
+              canInteract={canUseCommunityActions}
               onCloseLost={() => void safetyBoard.closeLostAlert(alert.id)}
               onCloseDanger={() => void safetyBoard.closeDanger(alert.id)}
+              onOpenSighting={() => openSightingSheet(alert)}
               onReport={() =>
                 void safetyBoard.reportContent(alert.type === "lost_dog" ? "lost_dog_alert" : "danger_report", alert.id)
               }
@@ -811,6 +865,18 @@ export function AlertsScreen() {
           </View>
         )}
       </AppCard>      </Screen>
+      <SightingBottomSheet
+        alert={sightingAlert}
+        draft={sightingLocation}
+        note={sightingNote}
+        accepted={sightingAccepted}
+        submitting={sightingSubmitting}
+        canSubmit={Boolean(sightingAlert && sightingAccepted && sightingLocation.locationReady && !sightingSubmitting)}
+        onChangeNote={setSightingNote}
+        onToggleAccepted={() => setSightingAccepted((value) => !value)}
+        onSubmit={() => void handleSubmitSighting()}
+        onClose={closeSightingSheet}
+      />
       {toastMessage ? (
         <Animated.View
           pointerEvents="none"
@@ -1001,21 +1067,212 @@ function ReadonlyWarning({ message }: { message: string }) {
   );
 }
 
+function formatSightingLabel(sightingType: string): string {
+  switch (sightingType) {
+    case "recovered":
+      return "Recupero";
+    case "maybe_seen":
+      return "Forse visto";
+    case "seen":
+    default:
+      return "Avvistato";
+  }
+}
+
+function SightingActionButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.sightingActionButton,
+        disabled && styles.sightingActionButtonDisabled,
+        pressed && !disabled && styles.choiceChipPressed,
+      ]}
+    >
+      <Image source={baubookImages.safety.sightingBadge} style={styles.sightingActionIcon} />
+      <Text style={styles.sightingActionText}>Avvistato!</Text>
+    </Pressable>
+  );
+}
+
+function SightingsPreview({ alert }: { alert: SafetyAlertModel }) {
+  const [expanded, setExpanded] = useState(false);
+  const [openSightingId, setOpenSightingId] = useState<string | null>(null);
+  const sightings = alert.sightings ?? [];
+
+  if (!sightings.length) {
+    return null;
+  }
+
+  return (
+    <View style={styles.sightingsBox}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setExpanded((value) => !value)}
+        style={({ pressed }) => [styles.sightingsHeader, pressed && styles.choiceChipPressed]}
+      >
+        <View style={styles.sightingsHeaderLeft}>
+          <Image source={baubookImages.safety.sightingBadge} style={styles.sightingSmallIcon} />
+          <Text style={styles.sightingsTitle}>Avvistamenti ({sightings.length})</Text>
+        </View>
+        <Text style={styles.collapsibleIcon}>{expanded ? "−" : "+"}</Text>
+      </Pressable>
+
+      {expanded ? (
+        <View style={styles.sightingsGrid}>
+          {sightings.map((sighting) => {
+            const isOpen = openSightingId === sighting.sightingId;
+            return (
+              <Pressable
+                key={sighting.sightingId}
+                accessibilityRole="button"
+                onPress={() => setOpenSightingId((current) => (current === sighting.sightingId ? null : sighting.sightingId))}
+                style={({ pressed }) => [styles.sightingCard, pressed && styles.choiceChipPressed]}
+              >
+                <View style={styles.sightingCardHeader}>
+                  <Text style={styles.sightingCardTitle}>{formatSafetyCreatedAt(sighting.sightingAtIso)}</Text>
+                  <Text style={styles.sightingCardPlace}>{sighting.locationLabel}</Text>
+                </View>
+                {isOpen ? (
+                  <View style={styles.sightingDetail}>
+                    <Text style={styles.sightingDetailText}>Tipo: {formatSightingLabel(sighting.sightingType)}</Text>
+                    <Text style={styles.sightingDetailText}>Segnalato da: {sighting.reporterName}</Text>
+                    {sighting.note ? <Text style={styles.sightingDetailText}>Nota: {sighting.note}</Text> : null}
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function SightingBottomSheet({
+  alert,
+  draft,
+  note,
+  accepted,
+  submitting,
+  canSubmit,
+  onChangeNote,
+  onToggleAccepted,
+  onSubmit,
+  onClose,
+}: {
+  alert: SafetyAlertModel | null;
+  draft: SafetyLocationDraft;
+  note: string;
+  accepted: boolean;
+  submitting: boolean;
+  canSubmit: boolean;
+  onChangeNote: (value: string) => void;
+  onToggleAccepted: () => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  if (!alert) {
+    return null;
+  }
+
+  return (
+    <Modal transparent visible animationType="slide" presentationStyle="overFullScreen" onRequestClose={onClose}>
+      <View style={styles.sightingOverlay}>
+        <Pressable style={styles.sightingBackdrop} onPress={onClose} />
+        <View style={styles.sightingSheet}>
+          <View style={styles.sightingSheetHandle} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Chiudi avvistamento"
+            hitSlop={12}
+            style={({ pressed }) => [styles.sightingCloseButton, pressed && styles.choiceChipPressed]}
+            onPress={onClose}
+          >
+            <Text style={styles.sightingCloseText}>×</Text>
+          </Pressable>
+
+          <RNScrollView
+            style={styles.sightingSheetScroll}
+            contentContainerStyle={styles.sightingSheetContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.sightingSheetHeader}>
+              <Image source={baubookImages.safety.sighting} style={styles.sightingHeroIcon} />
+              <View style={styles.sightingSheetCopy}>
+                <Text style={styles.eyebrow}>AVVISTAMENTO</Text>
+                <Text style={styles.cardTitle}>Hai visto {alert.dogName ?? "questo cane"}?</Text>
+                <Text style={styles.helperText}>Registra un solo avvistamento per questo alert. Se lo aggiorni, sostituisce quello precedente.</Text>
+              </View>
+            </View>
+
+            <LocationInputPanel draft={draft} disabled={false} title="Dove lo hai visto" />
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nota facoltativa</Text>
+              <TextInput
+                value={note}
+                onChangeText={onChangeNote}
+                editable={!submitting}
+                multiline
+                placeholder="Es. visto dirigersi verso il parco, senza inseguirlo."
+                placeholderTextColor={colors.muted}
+                style={[styles.input, styles.textArea]}
+              />
+            </View>
+
+            <DisclaimerBox
+              title="Prima di inviare"
+              items={[
+                "Ho visto o credo di aver visto il cane segnalato.",
+                "Non pubblicherò dati sensibili o accuse verso persone.",
+                "Non inseguo il cane e non entro in proprietà private.",
+              ]}
+              accepted={accepted}
+              disabled={submitting}
+              onToggle={onToggleAccepted}
+            />
+          </RNScrollView>
+
+          <View style={styles.sheetActionsRow}>
+            <AppButton label="Annulla" variant="ghost" disabled={submitting} onPress={onClose} />
+            <AppButton
+              label={submitting ? "Invio..." : "Registra"}
+              variant="danger"
+              disabled={!canSubmit}
+              onPress={onSubmit}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function SafetyCard({
   alert,
   isBusy,
+  canInteract,
   onCloseLost,
   onCloseDanger,
+  onOpenSighting,
   onReport,
 }: {
   alert: SafetyAlertModel;
   isBusy: boolean;
+  canInteract: boolean;
   onCloseLost: () => void;
   onCloseDanger: () => void;
+  onOpenSighting: () => void;
   onReport: () => void;
 }) {
   const danger = alert.type === "danger";
-  const reportDisabled = isBusy || alert.isMine;
+  const reportDisabled = isBusy || alert.isMine || alert.hasMyAbuseReport || !canInteract;
+  const canReport = !reportDisabled;
+  const canSighting = !danger && !alert.isMine && canInteract && !isBusy;
 
   return (
     <AppCard tone={danger ? "default" : "danger"}>
@@ -1053,14 +1310,24 @@ function SafetyCard({
           {!danger && alert.isMine ? (
             <AppButton label="Disattiva 🛑" variant="secondary" disabled={isBusy} onPress={onCloseLost} />
           ) : null}
+          {!danger && !alert.isMine ? (
+            <SightingActionButton disabled={!canSighting} onPress={onOpenSighting} />
+          ) : null}
           {danger && alert.isMine ? (
             <AppButton label="Disattiva 🛑" variant="secondary" disabled={isBusy} onPress={onCloseDanger} />
           ) : null}
         </View>
         <View style={styles.alertActionRight}>
-          <AppButton label="Segnala abuso" variant="ghost" disabled={reportDisabled} onPress={onReport} />
+          <AppButton
+            label={alert.hasMyAbuseReport ? "Già segnalato" : "Segnala abuso"}
+            variant="ghost"
+            disabled={!canReport}
+            onPress={onReport}
+          />
         </View>
       </View>
+
+      {!danger ? <SightingsPreview alert={alert} /> : null}
     </AppCard>
   );
 }
@@ -1468,6 +1735,187 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: typography.small,
     fontWeight: "900",
+  },
+  sightingsBox: {
+    marginTop: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  sightingsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  sightingsHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  sightingSmallIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    resizeMode: "contain",
+  },
+  sightingsTitle: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "900",
+  },
+  sightingsGrid: {
+    gap: spacing.sm,
+  },
+  sightingCard: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#FFFFFF",
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  sightingCardHeader: {
+    gap: 2,
+  },
+  sightingCardTitle: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "900",
+  },
+  sightingCardPlace: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "800",
+  },
+  sightingDetail: {
+    marginTop: spacing.xs,
+    gap: 2,
+  },
+  sightingDetailText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
+  sightingActionButton: {
+    minHeight: 48,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.greenSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  sightingActionButtonDisabled: {
+    opacity: 0.55,
+  },
+  sightingActionIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    resizeMode: "contain",
+    flexShrink: 0,
+  },
+  sightingActionText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "900",
+  },
+  sightingOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(40, 28, 31, 0.28)",
+  },
+  sightingBackdrop: {
+    ...StyleSheet.absoluteFill,
+  },
+  sightingSheet: {
+    maxHeight: "85%",
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    shadowColor: "#000000",
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  sightingSheetHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  sightingCloseButton: {
+    position: "absolute",
+    top: spacing.sm,
+    right: spacing.md,
+    zIndex: 2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sightingCloseText: {
+    color: colors.text,
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: "900",
+  },
+  sightingSheetScroll: {
+    flexGrow: 0,
+  },
+  sightingSheetContent: {
+    gap: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
+  },
+  sightingSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingRight: 44,
+  },
+  sightingHeroIcon: {
+    width: 88,
+    height: 82,
+    borderRadius: radius.lg,
+    resizeMode: "cover",
+    flexShrink: 0,
+  },
+  sightingSheetCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  sheetActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   toastOverlay: {
     position: "absolute",

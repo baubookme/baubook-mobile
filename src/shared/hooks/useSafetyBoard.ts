@@ -142,8 +142,17 @@ export function useSafetyBoard(currentProfileId?: string | null) {
   const reportContent = useCallback(async (targetType: 'lost_dog_alert' | 'danger_report', targetId: string) => {
     setState((current) => ({ ...current, status: 'loading', actionMessage: 'Invio report abuso...' }));
     try {
-      await reportSafetyContent(targetType, targetId);
-      setState((current) => ({ ...current, actionMessage: 'Report abuso registrato per moderazione ✔️' }));
+      const result = await reportSafetyContent(targetType, targetId);
+      setState((current) => ({
+        ...current,
+        status: 'success',
+        alerts: current.alerts.map((alert) =>
+          alert.id === targetId ? { ...alert, hasMyAbuseReport: true } : alert,
+        ),
+        actionMessage: result.alreadyReported
+          ? 'Avevi già segnalato questo contenuto. Grazie.'
+          : 'Report abuso registrato per moderazione ✔️',
+      }));
       reload();
     }
     catch (error) {
