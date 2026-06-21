@@ -1091,8 +1091,8 @@ function SightingActionButton({ disabled, onPress }: { disabled: boolean; onPres
         pressed && !disabled && styles.choiceChipPressed,
       ]}
     >
-      <Image source={baubookImages.safety.sightingBadge} style={styles.sightingActionIcon} />
-      <Text style={styles.sightingActionText}>Avvistato!</Text>
+
+      <Text style={styles.sightingActionText}>👀 Avvistato!</Text>
     </Pressable>
   );
 }
@@ -1137,7 +1137,7 @@ function SightingsPreview({ alert }: { alert: SafetyAlertModel }) {
                 </View>
                 {isOpen ? (
                   <View style={styles.sightingDetail}>
-                    <Text style={styles.sightingDetailText}>Tipo: {formatSightingLabel(sighting.sightingType)}</Text>
+
                     <Text style={styles.sightingDetailText}>Segnalato da: {sighting.reporterName}</Text>
                     {sighting.note ? <Text style={styles.sightingDetailText}>Nota: {sighting.note}</Text> : null}
                   </View>
@@ -1203,9 +1203,9 @@ function SightingBottomSheet({
             <View style={styles.sightingSheetHeader}>
               <Image source={baubookImages.safety.sighting} style={styles.sightingHeroIcon} />
               <View style={styles.sightingSheetCopy}>
-                <Text style={styles.eyebrow}>AVVISTAMENTO</Text>
+                <Text style={styles.eyebrow}>AVVISTAMENTO!</Text>
                 <Text style={styles.cardTitle}>Hai visto {alert.dogName ?? "questo cane"}?</Text>
-                <Text style={styles.helperText}>Registra un solo avvistamento per questo alert. Se lo aggiorni, sostituisce quello precedente.</Text>
+                <Text style={styles.helperText}>Registra un solo avvistamento per questo evento. Se lo aggiorni, sostituisce quello precedente.</Text>
               </View>
             </View>
 
@@ -1227,7 +1227,7 @@ function SightingBottomSheet({
             <DisclaimerBox
               title="Prima di inviare"
               items={[
-                "Ho visto o credo di aver visto il cane segnalato.",
+                "Sono ragionevolmente sicuro di aver visto il cane segnalato.",
                 "Non pubblicherò dati sensibili o accuse verso persone.",
                 "Non inseguo il cane e non entro in proprietà private.",
               ]}
@@ -1319,7 +1319,7 @@ function SafetyCard({
         </View>
         <View style={styles.alertActionRight}>
           <AppButton
-            label={alert.hasMyAbuseReport ? "Già segnalato" : "Segnala abuso"}
+            label={alert.hasMyAbuseReport ? "Segnalato 🚨" : "Segnala abuso"}
             variant="ghost"
             disabled={!canReport}
             onPress={onReport}

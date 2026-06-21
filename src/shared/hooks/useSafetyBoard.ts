@@ -150,7 +150,7 @@ export function useSafetyBoard(currentProfileId?: string | null) {
           alert.id === targetId ? { ...alert, hasMyAbuseReport: true } : alert,
         ),
         actionMessage: result.alreadyReported
-          ? 'Avevi già segnalato questo contenuto. Grazie.'
+          ? 'Avevi già segnalato questo avviso. Grazie.'
           : 'Report abuso registrato per moderazione ✔️',
       }));
       reload();
