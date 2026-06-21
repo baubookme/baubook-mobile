@@ -216,6 +216,7 @@ export function AlertsScreen() {
   const toastTranslateY = useRef(new Animated.Value(80)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const screenScrollRef = useRef<ScrollView | null>(null);
+  const [createFormsTopY, setCreateFormsTopY] = useState(0);
 
   const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
   const [lostDescription, setLostDescription] = useState(
@@ -556,6 +557,13 @@ export function AlertsScreen() {
         (sightingAlert.sightings?.some((sighting) => sighting.isMine) ?? false)),
   );
 
+  const scrollToCreateForms = () => {
+    screenScrollRef.current?.scrollTo({
+      y: Math.max(createFormsTopY - 16, 0),
+      animated: true,
+    });
+  };
+
   return (
     <View style={styles.screenShell}>
       <Screen scrollRef={screenScrollRef}>
@@ -603,6 +611,14 @@ export function AlertsScreen() {
         <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo 🐶 prima di creare un alert smarrimento.</Text>
       ) : null}
 
+      <Pressable
+        accessibilityRole="button"
+        onPress={scrollToCreateForms}
+        style={({ pressed }) => [styles.sosScrollButton, pressed && styles.choiceChipPressed]}
+      >
+        <Text style={styles.sosScrollText}>🆘 Vorrei aprire una segnalazione! 🆘</Text>
+      </Pressable>
+
       <View style={styles.sectionBlock}>
         <Text style={styles.eyebrow}>SAFETY RADAR</Text>
         <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
@@ -632,6 +648,7 @@ export function AlertsScreen() {
         )}
       </View>
 
+      <View onLayout={(event) => setCreateFormsTopY(event.nativeEvent.layout.y)}>
       <AppCard>
         <View style={styles.cardHeader}>
           <Image source={dangerIconForType(displayDangerType ?? "other")} style={styles.cardIcon} />
@@ -642,24 +659,21 @@ export function AlertsScreen() {
           </View>
         </View>
 
-        {myActiveDangerAlert ? (
-          <>
-            <ReadonlyWarning message="Hai una segnalazione pericolo attiva." />
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setDangerDraftExpanded((value) => !value)}
-              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
-            >
-              <Text style={styles.collapsibleTitle}>
-                {dangerDraftExpanded ? "Nascondi dettagli segnalazione" : "Mostra dettagli segnalazione"}
-              </Text>
-              <Text style={styles.collapsibleIcon}>{dangerDraftExpanded ? "−" : "+"}</Text>
-            </Pressable>
-          </>
-        ) : null}
+        {myActiveDangerAlert ? <ReadonlyWarning message="Hai una segnalazione pericolo attiva." /> : null}
 
-        {myActiveDangerAlert && !dangerDraftExpanded ? null : (
-          <View style={myActiveDangerAlert ? styles.collapsibleContent : undefined}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setDangerDraftExpanded((value) => !value)}
+          style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
+        >
+          <Text style={styles.collapsibleTitle}>
+            {dangerDraftExpanded ? "Chiudi modulo segnalazione" : "Apri modulo segnalazione"}
+          </Text>
+          <Text style={styles.collapsibleIcon}>{dangerDraftExpanded ? "−" : "+"}</Text>
+        </Pressable>
+
+        {dangerDraftExpanded ? (
+          <View style={styles.collapsibleContent}>
             <View style={styles.formGroup}>
               <Text style={styles.label}>Tipo pericolo</Text>
               <View style={styles.chipRow}>
@@ -751,7 +765,7 @@ export function AlertsScreen() {
               </View>
             ) : null}
           </View>
-        )}
+        ) : null}
       </AppCard>
 
       <AppCard tone="danger">
@@ -764,25 +778,23 @@ export function AlertsScreen() {
           </View>
         </View>
 
-        {myActiveLostAlert ? (
-          <>
-            <ReadonlyWarning message="Hai un alert smarrimento attivo." />
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setLostDraftExpanded((value) => !value)}
-              style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
-            >
-              <Text style={styles.collapsibleTitle}>
-                {lostDraftExpanded ? "Nascondi dettagli smarrimento" : "Mostra dettagli smarrimento"}
-              </Text>
-              <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
-            </Pressable>
-          </>
-        ) : null}
+        {myActiveLostAlert ? <ReadonlyWarning message="Hai un alert smarrimento attivo." /> : null}
 
-        {myActiveLostAlert && !lostDraftExpanded ? null : (
-          <View style={myActiveLostAlert ? styles.collapsibleContent : undefined}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setLostDraftExpanded((value) => !value)}
+          style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
+        >
+          <Text style={styles.collapsibleTitle}>
+            {lostDraftExpanded ? "Chiudi modulo smarrimento" : "Apri modulo smarrimento"}
+          </Text>
+          <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
+        </Pressable>
+
+        {lostDraftExpanded ? (
+          <View style={styles.collapsibleContent}>
             <View style={styles.formGroup}>
+              <Text style={styles.label}>Nome cane</Text>
               <View style={styles.chipRow}>
                 {auth.dogs.length ? (
                   auth.dogs.map((dog) => (
@@ -876,8 +888,10 @@ export function AlertsScreen() {
               </View>
             ) : null}
           </View>
-        )}
-      </AppCard>      </Screen>
+        ) : null}
+      </AppCard>
+      </View>
+      </Screen>
       <SightingBottomSheet
         alert={sightingAlert}
         draft={sightingLocation}
@@ -1660,6 +1674,24 @@ const styles = StyleSheet.create({
   alertActionRight: {
     flex: 1,
     alignItems: "flex-end",
+  },
+  sosScrollButton: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.orangeSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sosScrollText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: "900",
+    textAlign: "center",
   },
   sectionBlock: {
     gap: spacing.xs,
