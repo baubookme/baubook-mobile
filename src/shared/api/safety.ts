@@ -211,6 +211,20 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+function publicProfileName(value: string | null | undefined, fallback = 'Profilo ⁉️'): string {
+  const raw = value?.trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  if (raw.includes('@')) {
+    const localPart = raw.split('@')[0]?.trim();
+    return localPart && localPart.length >= 2 ? localPart : fallback;
+  }
+
+  return raw;
+}
+
 function formatExpiry(iso: string): string {
   const expiresAt = new Date(iso);
   const deltaMs = expiresAt.getTime() - Date.now();
@@ -273,7 +287,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
     ownerId: row.owner_id,
     reporterId: null,
     dogId: row.dog_id,
-    dogName, dogAvatarUrl: dog?.avatar_url ?? null, ownerName: profile?.display_name ?? 'Umano BauBook',
+    dogName, dogAvatarUrl: dog?.avatar_url ?? null, ownerName: publicProfileName(profile?.display_name),
     reporterName: '',
     placeId: row.source_place_id,
     placeName,
@@ -311,7 +325,7 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     reporterId: row.reporter_id,
     dogId: null,
     dogName: null, dogAvatarUrl: null, ownerName: '',
-    reporterName: profile?.display_name ?? 'Umano BauBook',
+    reporterName: publicProfileName(profile?.display_name),
     placeId: row.source_place_id,
     placeName,
     severity: row.severity,
@@ -378,7 +392,7 @@ function remoteSightingToModel(row: RemoteLostDogSightingRow): LostDogSightingMo
     alertId: row.alert_id,
     sightingId: row.sighting_id,
     reporterId: row.reporter_id,
-    reporterName: row.reporter_name?.trim() || 'Umano BauBook',
+    reporterName: publicProfileName(row.reporter_name),
     sightingType: normalizeSightingType(row.sighting_type),
     note: row.note?.trim() || null,
     sightingAtIso: sightingAt,
@@ -426,6 +440,7 @@ async function fetchMyReportKeys(
 async function fetchSightingsByAlert(
   client: NonNullable<ReturnType<typeof getSupabaseClient>>,
   alertIds: string[],
+  currentProfileId?: string | null,
 ): Promise<Map<string, LostDogSightingModel[]>> {
   const sightingsByAlert = new Map<string, LostDogSightingModel[]>();
   if (!alertIds.length) {
@@ -441,7 +456,10 @@ async function fetchSightingsByAlert(
   }
 
   ((data ?? []) as RemoteLostDogSightingRow[]).forEach((row) => {
-    const sighting = remoteSightingToModel(row);
+    const sighting = {
+      ...remoteSightingToModel(row),
+      isMine: Boolean(row.is_mine || (currentProfileId && row.reporter_id === currentProfileId)),
+    };
     const current = sightingsByAlert.get(sighting.alertId) ?? [];
     current.push(sighting);
     sightingsByAlert.set(sighting.alertId, current);
@@ -518,7 +536,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
 
     const [reportKeys, sightingsByAlert] = await Promise.all([
       fetchMyReportKeys(client, currentProfileId, baseAlerts),
-      fetchSightingsByAlert(client, baseLost.map((alert) => alert.id)),
+      fetchSightingsByAlert(client, baseLost.map((alert) => alert.id), currentProfileId),
     ]);
 
     const lost = baseLost.map((alert) => ({

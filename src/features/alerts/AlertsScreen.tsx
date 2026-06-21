@@ -245,6 +245,7 @@ export function AlertsScreen() {
   const [sightingNote, setSightingNote] = useState("");
   const [sightingAccepted, setSightingAccepted] = useState(false);
   const [sightingSubmitting, setSightingSubmitting] = useState(false);
+  const [locallySightedAlertIds, setLocallySightedAlertIds] = useState<Set<string>>(() => new Set());
 
   const scrollToSafetyNotice = () => {
     requestAnimationFrame(() => {
@@ -528,12 +529,18 @@ export function AlertsScreen() {
 
     setSightingSubmitting(true);
     try {
+      const submittedAlertId = sightingAlert.id;
       await safetyBoard.createSighting({
         alertId: sightingAlert.id,
         sightingType: "seen",
         note: sightingNote.trim(),
         disclaimerAccepted: sightingAccepted,
         ...locationPayload,
+      });
+      setLocallySightedAlertIds((current) => {
+        const next = new Set(current);
+        next.add(submittedAlertId);
+        return next;
       });
       setSightingAlert(null);
       setSightingNote("");
@@ -542,6 +549,12 @@ export function AlertsScreen() {
       setSightingSubmitting(false);
     }
   };
+
+  const selectedHasMySighting = Boolean(
+    sightingAlert &&
+      (locallySightedAlertIds.has(sightingAlert.id) ||
+        (sightingAlert.sightings?.some((sighting) => sighting.isMine) ?? false)),
+  );
 
   return (
     <View style={styles.screenShell}>
@@ -871,6 +884,7 @@ export function AlertsScreen() {
         note={sightingNote}
         accepted={sightingAccepted}
         submitting={sightingSubmitting}
+        hasMySighting={selectedHasMySighting}
         canSubmit={Boolean(sightingAlert && sightingAccepted && sightingLocation.locationReady && !sightingSubmitting)}
         onChangeNote={setSightingNote}
         onToggleAccepted={() => setSightingAccepted((value) => !value)}
@@ -919,17 +933,19 @@ function LocationInputPanel({
   disabled,
   title,
   readOnlyLocationLabel,
+  compact = false,
 }: {
   draft: SafetyLocationDraft;
   disabled: boolean;
   title: string;
   readOnlyLocationLabel?: string | null;
+  compact?: boolean;
 }) {
   const readonlySummary = readOnlyLocationLabel?.trim() || draft.resolvedLocationLabel;
 
   if (disabled) {
     return (
-      <View style={styles.formGroup}>
+      <View style={[styles.formGroup, compact && styles.sheetFormGroup]}>
         <Text style={styles.label}>{title}</Text>
         <Text style={styles.locationSummary}>Posizione: {readonlySummary}</Text>
       </View>
@@ -937,9 +953,9 @@ function LocationInputPanel({
   }
 
   return (
-    <View style={styles.formGroup}>
+    <View style={[styles.formGroup, compact && styles.sheetFormGroup]}>
       <Text style={styles.label}>{title}</Text>
-      <View style={styles.locationModeRow}>
+      <View style={[styles.locationModeRow, compact && styles.sightingLocationModeRow]}>
         <ChoiceChip
           label="Posizione attuale"
           selected={draft.locationMode === "current"}
@@ -1024,15 +1040,17 @@ function DisclaimerBox({
   accepted,
   disabled,
   onToggle,
+  compact = false,
 }: {
   title: string;
   items: string[];
   accepted: boolean;
   disabled: boolean;
   onToggle: () => void;
+  compact?: boolean;
 }) {
   return (
-    <View style={styles.disclaimerBox}>
+    <View style={[styles.disclaimerBox, compact && styles.sightingDisclaimerBox]}>
       <Text style={styles.disclaimerTitle}>{title}</Text>
       {items.map((item) => (
         <View key={item} style={styles.disclaimerItem}>
@@ -1157,6 +1175,7 @@ function SightingBottomSheet({
   note,
   accepted,
   submitting,
+  hasMySighting,
   canSubmit,
   onChangeNote,
   onToggleAccepted,
@@ -1168,6 +1187,7 @@ function SightingBottomSheet({
   note: string;
   accepted: boolean;
   submitting: boolean;
+  hasMySighting: boolean;
   canSubmit: boolean;
   onChangeNote: (value: string) => void;
   onToggleAccepted: () => void;
@@ -1177,6 +1197,7 @@ function SightingBottomSheet({
   if (!alert) {
     return null;
   }
+
 
   return (
     <Modal transparent visible animationType="slide" presentationStyle="overFullScreen" onRequestClose={onClose}>
@@ -1209,9 +1230,9 @@ function SightingBottomSheet({
               </View>
             </View>
 
-            <LocationInputPanel draft={draft} disabled={false} title="Dove lo hai visto" />
+            <LocationInputPanel draft={draft} disabled={false} title="Dove lo hai visto" compact />
 
-            <View style={styles.formGroup}>
+            <View style={[styles.formGroup, styles.sheetFormGroup, styles.sightingNoteGroup]}>
               <Text style={styles.label}>Nota facoltativa</Text>
               <TextInput
                 value={note}
@@ -1234,13 +1255,14 @@ function SightingBottomSheet({
               accepted={accepted}
               disabled={submitting}
               onToggle={onToggleAccepted}
+              compact
             />
           </RNScrollView>
 
           <View style={styles.sheetActionsRow}>
             <AppButton label="Annulla" variant="ghost" disabled={submitting} onPress={onClose} />
             <AppButton
-              label={submitting ? "Invio..." : "Registra"}
+              label={submitting ? "Invio..." : hasMySighting ? "Aggiorna" : "Registra"}
               variant="danger"
               disabled={!canSubmit}
               onPress={onSubmit}
@@ -1473,6 +1495,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.lg,
   },
+  sheetFormGroup: {
+    marginTop: spacing.sm,
+  },
+  sightingNoteGroup: {
+    marginTop: spacing.xs,
+  },
   label: {
     color: colors.ink,
     fontSize: typography.small,
@@ -1502,6 +1530,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.xs,
   },
+  sightingLocationModeRow: {
+    justifyContent: "space-between",
+  },
   manualAddressBlock: {
     gap: spacing.xs,
   },
@@ -1526,6 +1557,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
     gap: spacing.xs,
+  },
+  sightingDisclaimerBox: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
   },
   disclaimerTitle: {
     color: colors.ink,
@@ -1886,7 +1921,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   sightingSheetContent: {
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingTop: spacing.xs,
     paddingBottom: spacing.md,
   },
