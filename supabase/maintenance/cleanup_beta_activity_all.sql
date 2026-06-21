@@ -101,12 +101,13 @@ where target_type in (
 -- ============================================================
 -- 5) Tabelle principali da azzerare.
 -- ============================================================
+delete from public.lost_dog_sightings;
 delete from public.danger_reports;
 delete from public.lost_dog_alerts;
 
 delete from public.walk_plans;
 delete from public.presence_sessions;
-
+delete from public.account_deletion_requests;
 commit;
 
 -- ============================================================

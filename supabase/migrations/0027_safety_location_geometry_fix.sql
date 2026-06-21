@@ -16,6 +16,9 @@ alter table public.danger_reports
   drop constraint if exists danger_has_geometry;
 
 alter table public.danger_reports
+  drop constraint if exists danger_has_context;
+
+alter table public.danger_reports
   add constraint danger_has_context
   check (
     location is not null
@@ -555,3 +558,4 @@ grant execute on function public.create_danger_report(
 grant execute on function public.report_safety_content(text, uuid, text, text) to authenticated;
 
 commit;
+
