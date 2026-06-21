@@ -558,11 +558,20 @@ export function AlertsScreen() {
   );
 
   const scrollToCreateForms = () => {
-    screenScrollRef.current?.scrollTo({
-      y: Math.max(createFormsTopY - 16, 0),
-      animated: true,
-    });
-  };
+  requestAnimationFrame(() => {
+    const targetY = Number.isFinite(createFormsTopY) ? createFormsTopY : 0;
+
+    if (targetY > 420) {
+      screenScrollRef.current?.scrollTo({
+        y: Math.max(targetY - 24, 0),
+        animated: true,
+      });
+      return;
+    }
+
+    screenScrollRef.current?.scrollToEnd({ animated: true });
+  });
+};
 
   return (
     <View style={styles.screenShell}>
@@ -648,7 +657,7 @@ export function AlertsScreen() {
         )}
       </View>
 
-      <View onLayout={(event) => setCreateFormsTopY(event.nativeEvent.layout.y)}>
+      <View onLayout={(event) => setCreateFormsTopY(event.nativeEvent.layout.y)} style={styles.createFormsBlock}>
       <AppCard>
         <View style={styles.cardHeader}>
           <Image source={dangerIconForType(displayDangerType ?? "other")} style={styles.cardIcon} />
@@ -667,7 +676,7 @@ export function AlertsScreen() {
           style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
         >
           <Text style={styles.collapsibleTitle}>
-            {dangerDraftExpanded ? "Chiudi modulo segnalazione" : "Apri modulo segnalazione"}
+            {myActiveDangerAlert ? (dangerDraftExpanded ? "Nascondi dettagli segnalazione" : "Mostra dettagli segnalazione") : (dangerDraftExpanded ? "Chiudi modulo segnalazione" : "Apri modulo segnalazione")}
           </Text>
           <Text style={styles.collapsibleIcon}>{dangerDraftExpanded ? "−" : "+"}</Text>
         </Pressable>
@@ -772,7 +781,7 @@ export function AlertsScreen() {
         <View style={styles.cardHeader}>
           <Image source={baubookImages.safetyCircles.lostHelp} style={styles.cardIcon} />
           <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>MI SONO PERSO</Text>
+            <Text style={styles.eyebrow}>MI SONO PERSO!</Text>
             <Text style={styles.cardTitle}>Alert smarrimento</Text>
             <Text style={styles.bodyText}>La posizione viene rilevata o va inserita manualmente.</Text>
           </View>
@@ -786,7 +795,7 @@ export function AlertsScreen() {
           style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.choiceChipPressed]}
         >
           <Text style={styles.collapsibleTitle}>
-            {lostDraftExpanded ? "Chiudi modulo smarrimento" : "Apri modulo smarrimento"}
+            {myActiveLostAlert ? (lostDraftExpanded ? "Nascondi dettagli smarrimento" : "Mostra dettagli smarrimento") : (lostDraftExpanded ? "Chiudi modulo smarrimento" : "Apri modulo smarrimento")}
           </Text>
           <Text style={styles.collapsibleIcon}>{lostDraftExpanded ? "−" : "+"}</Text>
         </Pressable>
@@ -794,7 +803,6 @@ export function AlertsScreen() {
         {lostDraftExpanded ? (
           <View style={styles.collapsibleContent}>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Nome cane</Text>
               <View style={styles.chipRow}>
                 {auth.dogs.length ? (
                   auth.dogs.map((dog) => (
@@ -1676,8 +1684,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   sosScrollButton: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    marginTop: 0,
+    marginBottom: 0,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.primaryDark,
@@ -1695,7 +1703,10 @@ const styles = StyleSheet.create({
   },
   sectionBlock: {
     gap: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  createFormsBlock: {
+    gap: spacing.md,
   },
   collapsibleHeader: {
     marginTop: spacing.sm,
