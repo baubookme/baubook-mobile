@@ -13,8 +13,8 @@ export const firstSteps: FirstStep[] = [
   {
     key: 'dogProfile',
     id: 'dogProfile',
-    title: 'Completa il profilo cane',
-    description: 'Aggiungi o controlla i dati principali del tuo cane per rendere BauBook più utile.',
+    title: 'Completa il profilo 🐾',
+    description: 'Aggiungi o controlla i dati principali del tuo 🐾 per rendere BauBook più utile.',
     actionLabel: 'Ho completato il profilo',
     doneLabel: 'Profilo visto'
   },

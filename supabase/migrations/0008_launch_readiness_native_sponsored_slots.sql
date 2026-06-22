@@ -110,7 +110,7 @@ values
     'privacy_beta',
     '0.1',
     'Privacy beta BauBook',
-    'BauBook raccoglie email, profilo umano, profilo cane, contenuti safety e presenza temporanea per far funzionare la community locale. Nessun live tracking continuo predefinito.',
+    'BauBook raccoglie email, profilo umano, profilo 🐾, contenuti safety e presenza temporanea per far funzionare la community locale. Nessun live tracking continuo predefinito.',
     'published',
     jsonb_build_object('scope', 'beta')
   ),

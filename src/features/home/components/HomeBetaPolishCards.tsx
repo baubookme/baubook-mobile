@@ -89,7 +89,7 @@ export function HomeBetaPolishCards() {
           </Text>
 
           <View style={styles.quickActionsRow}>
-            <Text style={styles.quickAction}>Completa profilo cane</Text>
+            <Text style={styles.quickAction}>Completa profilo 🐾</Text>
             <Text style={styles.quickAction}>Vai alla mappa</Text>
             <Text style={styles.quickAction}>Scopri Safety</Text>
           </View>

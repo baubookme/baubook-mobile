@@ -117,7 +117,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
 
   const handleAdd = useCallback(async (candidate: DogFriendSearchResult) => {
     if (!auth.profile || !selectedDog) {
-      setErrorMessage('Prima completa profilo umano e profilo cane.');
+      setErrorMessage('Prima completa profilo utente e profilo 🐾.');
       return;
     }
 

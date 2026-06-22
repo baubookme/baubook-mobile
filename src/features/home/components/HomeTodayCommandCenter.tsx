@@ -145,7 +145,7 @@ export function HomeTodayCommandCenter({ dogName, placesCount, activeAlertsCount
           <Text style={styles.secondaryButtonText}>Apri mappa</Text>
         </Pressable>
         <Pressable onPress={() => onNavigate('dog')} style={({ pressed }) => [styles.ghostButton, pressed && styles.pressed]}>
-          <Text style={styles.ghostButtonText}>Profilo cane</Text>
+          <Text style={styles.ghostButtonText}>Profilo 🐾</Text>
         </Pressable>
       </View>
     </View>
