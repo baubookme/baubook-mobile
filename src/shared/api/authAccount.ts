@@ -95,10 +95,16 @@ export function normalizeError(error: unknown): string {
     }
 
     if (typeof error === 'string') {
+        if (error.includes('profiles_display_name_unique_normalized_idx')) {
+            return 'Nome già in uso. Scegline un altro. ⚠️';
+        }
         return error;
     }
 
     if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        if (error.message.includes('profiles_display_name_unique_normalized_idx')) {
+            return 'Nome già in uso. Scegline un altro. ⚠️';
+        }
         return error.message;
     }
 
