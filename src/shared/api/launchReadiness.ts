@@ -110,6 +110,11 @@ export async function requestAccountDeletion(input: AccountDeletionRequestInput)
     throw new Error('Utente non disponibile: effettua il login prima di richiedere la cancellazione account.');
   }
 
+  const existingRequest = await fetchPendingAccountDeletionRequest(input.userId);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
   const { data, error } = await client
     .from('account_deletion_requests')
     .insert({
@@ -117,15 +122,24 @@ export async function requestAccountDeletion(input: AccountDeletionRequestInput)
       profile_id: input.profileId ?? null,
       email: input.email ?? null,
       reason: input.reason?.trim() || null,
+      status: 'requested',
       metadata: {
         source: 'app',
-        requested_from: 'setup_launch_readiness',
+        requested_from: 'setup_account',
       },
     })
     .select('id, status, requested_at')
     .single();
 
   if (error) {
+    const errorCode = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+    if (errorCode === '23505') {
+      const pendingRequest = await fetchPendingAccountDeletionRequest(input.userId);
+      if (pendingRequest) {
+        return pendingRequest;
+      }
+    }
+
     throw new Error(normalizeError(error));
   }
 
@@ -151,7 +165,7 @@ export async function fetchPendingAccountDeletionRequest(userId: string): Promis
     .from('account_deletion_requests')
     .select('id, status, requested_at')
     .eq('user_id', userId)
-    .eq('status', 'pending')
+    .eq('status', 'requested')
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();

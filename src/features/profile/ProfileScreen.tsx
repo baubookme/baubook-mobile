@@ -39,6 +39,7 @@ export function ProfileScreen() {
   const [deletionReason, setDeletionReason] = useState('');
   const [deletionMessage, setDeletionMessage] = useState('');
   const [deletionError, setDeletionError] = useState('');
+  const [isRequestingDeletion, setIsRequestingDeletion] = useState(false);
   const [deletionPendingRequest, setDeletionPendingRequest] = useState<{ id: string; status: string; requestedAt: string } | null>(null);
 
   useEffect(() => {
@@ -132,6 +133,12 @@ export function ProfileScreen() {
   };
 
   const handleDeletionRequest = async () => {
+    if (deletionRequestPending || isRequestingDeletion) {
+      setDeletionMessage('Richiesta cancellazione già inviata e in attesa di gestione.');
+      return;
+    }
+
+    setIsRequestingDeletion(true);
     setDeletionMessage('');
     setDeletionError('');
     try {
@@ -266,7 +273,7 @@ export function ProfileScreen() {
               <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome" placeholderTextColor={colors.muted} style={styles.input} />
             </View>
             <View style={styles.actionsRow}>
-              <AppButton label="Salva profilo" disabled={auth.isBusy} onPress={() => void auth.saveProfile(displayName)} />
+              <AppButton label={auth.profile ? "Aggiorna profilo" : "Salva profilo"} disabled={auth.isBusy} onPress={() => void auth.saveProfile(displayName)} />
               <AppButton label="Logout" variant="ghost" disabled={auth.isBusy} onPress={() => void auth.signOut()} />
             </View>
           </View>
@@ -301,7 +308,7 @@ export function ProfileScreen() {
           <AppButton
             label={deletionRequestPending ? 'Richiesta già inviata' : 'Richiedi cancellazione account'}
             variant="danger"
-            disabled={!auth.isSignedIn || auth.isBusy || deletionRequestPending}
+            disabled={!auth.isSignedIn || auth.isBusy || deletionRequestPending || isRequestingDeletion}
             onPress={() => void handleDeletionRequest()}
           />
           {!auth.isSignedIn ? <Text style={styles.helperText}>Effettua il login per inviare una richiesta.</Text> : null}
