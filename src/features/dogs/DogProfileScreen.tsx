@@ -323,7 +323,7 @@ export function DogProfileScreen() {
                         <Text style={styles.eyebrow}>
                             {firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo da creare'}
                         </Text>
-                        <Text style={styles.name}>{firstDog ? dogName || 'Il mio amico' : 'Crea il profilo del tuo cane'}</Text>
+                        <Text style={styles.name}>{firstDog ? dogName || 'Il mio amico' : 'Crea il profilo a 4 zampe'}</Text>
                         <Text style={styles.visibility}>
                             {firstDog && auth.isSignedIn
                                 ? 'Visibilità: pubblico · moderazione: approved ✔️'
@@ -337,7 +337,7 @@ export function DogProfileScreen() {
                 <Text style={styles.quote}>
                     “{firstDog
                         ? headline || 'Scrivi la mia carta d’identità.'
-                        : 'Aggiungi nome, foto e note utili del tuo amico. Poi potrai aggiungere dei tag.'}”
+                        : 'Aggiungi nome, foto e note utili del tuo amico. Poi potrai aggiungere dei tag 🐾'}”
                 </Text>
 
                 <View style={styles.statusRow}>
@@ -345,7 +345,7 @@ export function DogProfileScreen() {
                          tone={auth.isSignedIn ? 'green' : 'orange'}/>
                     <Tag label={firstDog ? 'Profilo salvato' : 'Profilo non salvato'}
                          tone={firstDog ? 'green' : 'orange'}/>
-                    <Tag label={`🐾 ${auth.dogs.length}`} tone="teal"/>
+
                 </View>
 
                 <View style={styles.profileActionsRow}>
