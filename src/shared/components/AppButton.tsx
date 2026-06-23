@@ -9,17 +9,18 @@ interface AppButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   icon?: ImageSourcePropType;
   disabled?: boolean;
+  size?: 'regular' | 'compact';
 }
 
-export function AppButton({ label, onPress, variant = 'primary', icon, disabled = false }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', icon, disabled = false, size = 'regular' }: AppButtonProps) {
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, variants[variant], disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+      style={({ pressed }) => [styles.button, buttonSizes[size], variants[variant], disabled && styles.disabled, pressed && !disabled && styles.pressed]}
     >
       {icon ? <Image source={icon} style={styles.icon} /> : null}
-      <Text style={[styles.label, labelVariants[variant], disabled && styles.disabledLabel]}>{label}</Text>
+      <Text style={[styles.label, labelSizes[size], labelVariants[variant], disabled && styles.disabledLabel]}>{label}</Text>
     </Pressable>
   );
 }
@@ -27,6 +28,7 @@ export function AppButton({ label, onPress, variant = 'primary', icon, disabled 
 const styles = StyleSheet.create({
   button: {
     minHeight: 46,
+    flexShrink: 1,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -45,6 +47,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.body,
     fontWeight: '800',
+    textAlign: 'center',
   },
   disabledLabel: {
     opacity: 0.9,
@@ -53,6 +56,24 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     resizeMode: 'contain',
+  },
+});
+
+
+const buttonSizes = StyleSheet.create({
+  regular: {},
+  compact: {
+    minHeight: 42,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    gap: 4,
+  },
+});
+
+const labelSizes = StyleSheet.create({
+  regular: {},
+  compact: {
+    fontSize: typography.small,
   },
 });
 

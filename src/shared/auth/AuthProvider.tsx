@@ -8,10 +8,14 @@ import {
     fetchAccountSnapshot,
     normalizeError,
     saveDog,
+    requestEmailOtp,
     sendEmailLogin,
+    signInWithPassword as signInWithPasswordSupabase,
     signOut as signOutSupabase,
+    signUpWithPassword as signUpWithPasswordSupabase,
     verifyEmailOtp,
     type DogDraftInput,
+    type SignUpWithPasswordInput,
     type UserDogModel,
     type UserProfileModel,
 } from '../api/authAccount';
@@ -31,6 +35,9 @@ interface AuthContextValue {
     isConfigured: boolean;
     isSignedIn: boolean;
     isBusy: boolean;
+    signInWithPassword: (email: string, password: string) => Promise<void>;
+    signUpWithPassword: (input: SignUpWithPasswordInput) => Promise<void>;
+    requestOtpCode: (email: string) => Promise<void>;
     sendLoginEmail: (email: string) => Promise<void>;
     verifyOtpCode: (email: string, token: string) => Promise<void>;
     refreshAccount: () => Promise<void>;
@@ -189,6 +196,54 @@ export function AuthProvider({children}: PropsWithChildren) {
         return undefined;
     }, [refreshAccount]);
 
+    const signInWithPassword = useCallback(async (email: string, password: string) => {
+        try {
+            setStatus('loading');
+            await signInWithPasswordSupabase(email, password);
+            await refreshAccount();
+            setMessage('Accesso completato: sessione BauBook attiva.');
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Accesso con password non riuscito.');
+            setErrorMessage(normalizeError(error));
+        }
+    }, [refreshAccount]);
+
+    const signUpWithPassword = useCallback(async (input: SignUpWithPasswordInput) => {
+        try {
+            setStatus('loading');
+            const result = await signUpWithPasswordSupabase(input);
+
+            if (result.session) {
+                await refreshAccount();
+            } else {
+                setStatus('signed_out');
+            }
+
+            setMessage(result.message);
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Registrazione non riuscita.');
+            setErrorMessage(normalizeError(error));
+        }
+    }, [refreshAccount]);
+
+    const requestOtpCode = useCallback(async (email: string) => {
+        try {
+            setStatus('loading');
+            const nextMessage = await requestEmailOtp(email);
+            setStatus(session ? 'signed_in' : 'signed_out');
+            setMessage(nextMessage);
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Invio codice email non riuscito.');
+            setErrorMessage(normalizeError(error));
+        }
+    }, [session]);
+
     const sendLoginEmail = useCallback(async (email: string) => {
         try {
             setStatus('loading');
@@ -287,13 +342,16 @@ export function AuthProvider({children}: PropsWithChildren) {
         isConfigured: hasSupabaseConfig,
         isSignedIn: Boolean(user),
         isBusy: status === 'loading',
+        signInWithPassword,
+        signUpWithPassword,
+        requestOtpCode,
         sendLoginEmail,
         verifyOtpCode,
         refreshAccount,
         saveProfile,
         saveDogProfile,
         signOut,
-    }), [dogs, errorMessage, message, profile, refreshAccount, saveDogProfile, saveProfile, sendLoginEmail, session, signOut, status, user, verifyOtpCode]);
+    }), [dogs, errorMessage, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithPassword, signOut, signUpWithPassword, status, user, verifyOtpCode]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

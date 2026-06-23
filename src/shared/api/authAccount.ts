@@ -89,23 +89,62 @@ export interface DogDraftInput {
     avatarUrl?: string | null;
 }
 
+export interface SignUpWithPasswordInput {
+    email: string;
+    password: string;
+    displayName?: string | null;
+}
+
+export interface PasswordAuthResult {
+    session: Session | null;
+    message: string;
+}
+
+function normalizeAuthErrorMessage(message: string): string {
+    const lower = message.toLowerCase();
+
+    if (message.includes('profiles_display_name_unique_normalized_idx')) {
+        return 'Nome già in uso. Scegline un altro. ⚠️';
+    }
+
+    if (lower.includes('invalid login credentials')) {
+        return 'Email o password non corretti.';
+    }
+
+    if (lower.includes('email not confirmed')) {
+        return 'Email non ancora confermata. Controlla la casella email e poi riprova.';
+    }
+
+    if (lower.includes('password') && (lower.includes('weak') || lower.includes('short') || lower.includes('at least'))) {
+        return 'Password troppo debole: usa almeno 8 caratteri.';
+    }
+
+    if (lower.includes('user already registered') || lower.includes('already registered')) {
+        return 'Email già registrata. Accedi con password oppure usa il codice email.';
+    }
+
+    if (lower.includes('signups not allowed for otp') || lower.includes('signup not allowed for otp') || lower.includes('user not found')) {
+        return 'Email non ancora registrata. Crea prima un account BauBook.';
+    }
+
+    if (lower.includes('otp') || lower.includes('token')) {
+        return 'Codice non valido o scaduto. Richiedine uno nuovo e riprova.';
+    }
+
+    return message;
+}
+
 export function normalizeError(error: unknown): string {
     if (!error) {
         return 'Errore sconosciuto';
     }
 
     if (typeof error === 'string') {
-        if (error.includes('profiles_display_name_unique_normalized_idx')) {
-            return 'Nome già in uso. Scegline un altro. ⚠️';
-        }
-        return error;
+        return normalizeAuthErrorMessage(error);
     }
 
     if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-        if (error.message.includes('profiles_display_name_unique_normalized_idx')) {
-            return 'Nome già in uso. Scegline un altro. ⚠️';
-        }
-        return error.message;
+        return normalizeAuthErrorMessage(error.message);
     }
 
     return JSON.stringify(error);
@@ -117,6 +156,59 @@ function assertSupabaseClient() {
         throw new Error('Supabase non configurato: controlla .env e supabase-doctor.');
     }
     return client;
+}
+
+
+function cleanEmailAddress(email: string): string {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+        throw new Error('Inserisci una email valida.');
+    }
+    return cleanEmail;
+}
+
+function cleanPassword(password: string): string {
+    const cleanValue = password.trim();
+    if (cleanValue.length < 8) {
+        throw new Error('Password troppo breve: usa almeno 8 caratteri.');
+    }
+    return cleanValue;
+}
+
+function cleanDisplayName(displayName?: string | null): string | undefined {
+    const value = displayName?.trim();
+    return value && value.length >= 2 ? value : undefined;
+}
+
+const duplicateDisplayNameMessage = 'Nome già in uso. Scegline un altro. ⚠️';
+
+function normalizeDisplayNameKey(displayName: string): string {
+    return displayName.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+async function assertDisplayNameAvailable(client: ReturnType<typeof assertSupabaseClient>, displayName?: string): Promise<void> {
+    const cleanName = cleanDisplayName(displayName);
+
+    if (!cleanName) {
+        return;
+    }
+
+    const {data, error} = await client
+        .from('profiles')
+        .select('id, display_name')
+        .ilike('display_name', cleanName)
+        .limit(10);
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+
+    const wantedKey = normalizeDisplayNameKey(cleanName);
+    const alreadyUsed = ((data ?? []) as Array<{display_name?: string | null}>).some((row) => (row.display_name ? normalizeDisplayNameKey(row.display_name) === wantedKey : false));
+
+    if (alreadyUsed) {
+        throw new Error(duplicateDisplayNameMessage);
+    }
 }
 
 function normalizeTagArray(tags: string[]) {
@@ -181,17 +273,65 @@ export async function getCurrentSession(): Promise<Session | null> {
     return data.session;
 }
 
-export async function sendEmailLogin(email: string): Promise<string> {
+export async function signUpWithPassword(input: SignUpWithPasswordInput): Promise<PasswordAuthResult> {
     const client = assertSupabaseClient();
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-        throw new Error('Inserisci una email valida.');
+    const email = cleanEmailAddress(input.email);
+    const password = cleanPassword(input.password);
+    const displayName = cleanDisplayName(input.displayName);
+
+    await assertDisplayNameAvailable(client, displayName);
+
+    const {data, error} = await client.auth.signUp({
+        email,
+        password,
+        options: {
+            emailRedirectTo: getAuthRedirectUrl(),
+            data: displayName ? {display_name: displayName} : undefined,
+        },
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
     }
+
+    if (data.session) {
+        return {
+            session: data.session,
+            message: 'Registrazione completata: sessione BauBook attiva.',
+        };
+    }
+
+    return {
+        session: null,
+        message: `Registrazione avviata per ${email}. Se Supabase richiede conferma email, completa la verifica e poi accedi con password o codice.`,
+    };
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<Session | null> {
+    const client = assertSupabaseClient();
+    const cleanEmail = cleanEmailAddress(email);
+    const cleanValue = cleanPassword(password);
+
+    const {data, error} = await client.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanValue,
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+
+    return data.session;
+}
+
+export async function requestEmailOtp(email: string): Promise<string> {
+    const client = assertSupabaseClient();
+    const cleanEmail = cleanEmailAddress(email);
 
     const {error} = await client.auth.signInWithOtp({
         email: cleanEmail,
         options: {
-            shouldCreateUser: true,
+            shouldCreateUser: false,
             emailRedirectTo: getAuthRedirectUrl(),
         },
     });
@@ -200,17 +340,17 @@ export async function sendEmailLogin(email: string): Promise<string> {
         throw new Error(normalizeError(error));
     }
 
-    return `Email inviata a ${cleanEmail}. Usa il 'link magico' o inserisci il codice OTP se l'email lo mostra.`;
+    return `Codice email inviato a ${cleanEmail}. Inseriscilo qui senza aprire il link.`;
+}
+
+export async function sendEmailLogin(email: string): Promise<string> {
+    return requestEmailOtp(email);
 }
 
 export async function verifyEmailOtp(email: string, token: string): Promise<Session | null> {
     const client = assertSupabaseClient();
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = cleanEmailAddress(email);
     const cleanToken = token.trim().replace(/\s+/g, '');
-
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-        throw new Error('Inserisci la stessa email usata per richiedere il codice.');
-    }
 
     if (cleanToken.length < 4) {
         throw new Error('Inserisci il codice OTP ricevuto via email.');
@@ -303,7 +443,7 @@ export async function saveDog(profileId: string, dog: DogDraftInput): Promise<Us
     const client = assertSupabaseClient();
     const cleanName = dog.name.trim();
     if (!cleanName) {
-        throw new Error('Il nome del cane e obbligatorio.');
+        throw new Error('Il nome del cane è obbligatorio.');
     }
 
     const payload: Record<string, unknown> = {
