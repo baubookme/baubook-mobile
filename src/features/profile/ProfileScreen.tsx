@@ -456,8 +456,7 @@ export function ProfileScreen() {
                                     onPress={() => void handlePasswordSignup()}
                                 />
                                 {signupRequestSent ? (
-                                    <Text style={styles.successBox}>Richiesta di registrazione inviata. Il nome visibile
-                                        viene salvato nel profilo BauBook: controlla la casella email oppure usa il
+                                    <Text style={styles.successBox}>Richiesta di registrazione inviata: controlla la casella email oppure usa il
                                         codice richiesto.</Text>
                                 ) : null}
 

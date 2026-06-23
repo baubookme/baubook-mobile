@@ -128,3 +128,16 @@ from public.walk_plans
 union all
 select 'presence_sessions' as table_name, count(*) as rows_left
 from public.presence_sessions;
+
+
+--utenti
+begin;
+
+-- Cancella dati applicativi utente.
+-- CASCADE dovrebbe pulire dogs, friends, diary, walks, presenze e dati legati ai profili.
+truncate table public.profiles cascade;
+
+-- Cancella utenti Supabase Auth.
+delete from auth.users;
+
+commit;

@@ -303,7 +303,7 @@ export async function signUpWithPassword(input: SignUpWithPasswordInput): Promis
 
     return {
         session: null,
-        message: `Registrazione avviata per ${email}. Se Supabase richiede conferma email, completa la verifica e poi accedi con password o codice.`,
+        message: `Registrazione avviata per ${email}. Se viene richiesta una conferma 📩 completa la verifica, altrimenti benvenuto nel branco!.`,
     };
 }
 
