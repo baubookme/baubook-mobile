@@ -246,15 +246,25 @@ export function ProfileScreen() {
             return;
         }
 
-        await runAuthAction(async () => {
-            await auth.signUpWithPassword({
-                email: normalizedEmail,
-                password,
-                displayName: registerDisplayName,
+        let signupCompleted = false;
+
+        try {
+            await runAuthAction(async () => {
+                await auth.signUpWithPassword({
+                    email: normalizedEmail,
+                    password,
+                    displayName: registerDisplayName,
+                });
+                signupCompleted = true;
             });
+        } catch {
+            return;
+        }
+
+        if (signupCompleted) {
             setLastSubmittedSignupKey(signupKey);
             setSignupRequestSent(true);
-        });
+        }
     };
 
     const handleRequestOtp = async () => {

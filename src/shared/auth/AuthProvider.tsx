@@ -224,9 +224,11 @@ export function AuthProvider({children}: PropsWithChildren) {
             setMessage(result.message);
             setErrorMessage(undefined);
         } catch (error) {
+            const nextErrorMessage = normalizeError(error);
             setStatus('error');
             setMessage('Registrazione non riuscita.');
-            setErrorMessage(normalizeError(error));
+            setErrorMessage(nextErrorMessage);
+            throw new Error(nextErrorMessage);
         }
     }, [refreshAccount]);
 
