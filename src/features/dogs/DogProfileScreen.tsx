@@ -353,7 +353,12 @@ export function DogProfileScreen() {
                         label={isEditing ? 'Chiudi modifica' : firstDog ? 'Modifica' : 'Crea profilo'}
                         variant={isEditing ? 'ghost' : 'primary'}
                         icon={isEditing ? baubookImages.icons.profileGear : baubookImages.icons.profileGearLight}
+                        disabled={auth.isDemoMode}
                         onPress={() => {
+                            if (auth.isDemoMode) {
+                                return;
+                            }
+
                             if (isEditing) {
                                 handleCancelEdit();
                                 return;

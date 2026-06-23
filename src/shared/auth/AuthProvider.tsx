@@ -225,7 +225,7 @@ export function AuthProvider({children}: PropsWithChildren) {
     }, []);
 
     const exitDemoMode = useCallback(() => {
-        resetToSignedOut('Demo chiusa. Registrati o accedi per salvare il profilo e usare BauBook in modo completo.');
+        resetToSignedOut('Demo chiusa. Accedi o registrati per salvare il profilo e usare BauBook in modo completo.');
     }, [resetToSignedOut]);
 
     const signInWithPassword = useCallback(async (email: string, password: string) => {
