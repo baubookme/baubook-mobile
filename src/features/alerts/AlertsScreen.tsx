@@ -588,7 +588,7 @@ export function AlertsScreen() {
         <View style={styles.heroTitleRow}>
           <Text style={styles.eyebrow}>AIUTO PER LA COMMUNITY</Text>
           <Tag
-            label={userAuthVerified ? "✓ utente verificato" : "* utente non verificato"}
+            label={userAuthVerified ? "✓ utente verificato" : "❗utente non verificato"}
             tone={userAuthVerified ? "green" : "red"}
           />
         </View>
@@ -612,8 +612,8 @@ export function AlertsScreen() {
         <Text style={styles.errorBox}>{safetyBoard.errorMessage}</Text>
       ) : null}
 
-      {!auth.isSignedIn ? (
-        <Text style={styles.warningBox}>Vai in Setup e accedi: le funzioni di aiuto richiedono un utente valido.</Text>
+      {userAuthVerified && !auth.isSignedIn ? (
+        <Text style={styles.warningBox}>Vai in Setup e accedi: le funzioni di aiuto richiedono un utente registrato.</Text>
       ) : null}
 
       {auth.isSignedIn && !auth.dogs.length ? (

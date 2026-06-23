@@ -367,8 +367,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         </View>
 
         <View style={styles.checkList}>
-          <ChecklistRow title="Account 👤" description={profileReady ? 'Profilo attivo.' : 'Accedi in Setup per scrivere dati reali.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
-          <ChecklistRow title="Attore protagonista 🐾" description={dogReady ? `${selectedDog?.name ?? '🐾'} pronto.` : 'Crea il tuo 🐾 in Io sono.'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
+          <ChecklistRow title="Account 👤" description={profileReady ? 'Profilo attivo.' : 'Accedi in \"Setup\" per registrare il profilo.'} ok={profileReady} action="Setup" onPress={onNavigate ? () => onNavigate('profile') : undefined} />
+          <ChecklistRow title="Attore protagonista 🐾" description={dogReady ? `${selectedDog?.name ?? '🐾'} pronto.` : 'Crea il tuo 🐾 in \"Io sono\".'} ok={dogReady} action="Io sono" onPress={onNavigate ? () => onNavigate('dog') : undefined} />
           <ChecklistRow title="Posizione 📍" description={locationReady ? resolvedLocationLabel : 'Usa la posizione attuale o inserisci un indirizzo.'} ok={locationReady} />
         </View>
 
@@ -640,7 +640,7 @@ function GateMessages({
 
   return (
     <View style={styles.gateBox}>
-      {!authSignedIn ? <Text style={styles.gateText}>Accedi in Setup per creare passeggiate reali.</Text> : null}
+      {!authSignedIn ? <Text style={styles.gateText}>E' necessario un profilo registrato per questa funzionalità.</Text> : null}
       {authSignedIn && !hasDog ? <Text style={styles.gateText}>Salva il primo 🐶 in “Io sono” per sbloccare la passeggiata.</Text> : null}
       {!locationReady ? <Text style={styles.gateText}>Scegli la posizione attuale o inserisci un indirizzo manuale di almeno 10 caratteri.</Text> : null}
 

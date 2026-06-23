@@ -182,7 +182,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             <IconBubble source={baubookImages.icons.dogProfile} tone="warm" />
             <View style={styles.flexOne}>
               <Text style={styles.cardTitle}>Manca qualcosa!</Text>
-              <Text style={styles.bodyText}>Per trovare amici BauBook serve un account attivo e almeno un profilo 🐶.</Text>
+              <Text style={styles.bodyText}>Per trovare amici BauBook serve un account registrato e almeno un profilo 🐶.</Text>
             </View>
           </View>
           <View style={styles.quickActions}>

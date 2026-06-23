@@ -61,11 +61,13 @@ type StartupAuthPromptProps = {
 
  onRegister: () => void;
 
+ onDemo: () => void;
+
 };
 
-function StartupAuthPrompt({ onRegister }: StartupAuthPromptProps) {
+function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
 
- const { status, isSignedIn } = useAuthAccount();
+ const { status, isSignedIn, isDemoMode, startDemoMode } = useAuthAccount();
 
  const [visible, setVisible] = useState(false);
 
@@ -73,7 +75,7 @@ function StartupAuthPrompt({ onRegister }: StartupAuthPromptProps) {
 
  useEffect(() => {
 
-  if (isSignedIn) {
+  if (isSignedIn || isDemoMode) {
 
    setVisible(false);
 
@@ -89,13 +91,23 @@ function StartupAuthPrompt({ onRegister }: StartupAuthPromptProps) {
 
   }
 
- }, [isSignedIn, status]);
+ }, [isDemoMode, isSignedIn, status]);
 
  const handleRegisterPress = () => {
 
   setVisible(false);
 
   onRegister();
+
+ };
+
+ const handleDemoPress = () => {
+
+  setVisible(false);
+
+  startDemoMode();
+
+  onDemo();
 
  };
 
@@ -113,25 +125,45 @@ function StartupAuthPrompt({ onRegister }: StartupAuthPromptProps) {
 
      <Text style={styles.authModalText}>
 
-      Registrati o accedi per salvare il profilo, il tuo amico 🐾 e usare BauBook in modo completo.
+      Accedi o registrati per salvare il profilo, il tuo amico 🐾 e usare BauBook in modo completo. Oppure dai prima un’occhiata in modalità demo.
 
      </Text>
 
-     <Pressable
+     <View style={styles.authModalActions}>
 
-      onPress={handleRegisterPress}
+      <Pressable
 
-      accessibilityRole="button"
+       onPress={handleRegisterPress}
 
-      accessibilityLabel="Vai alla registrazione"
+       accessibilityRole="button"
 
-      style={({ pressed }) => [styles.authModalButton, pressed && styles.authModalButtonPressed]}
+       accessibilityLabel="Registrati o accedi"
 
-     >
+       style={({ pressed }) => [styles.authModalButton, pressed && styles.authModalButtonPressed]}
 
-      <Text style={styles.authModalButtonText}>Vai alla registrazione</Text>
+      >
 
-     </Pressable>
+       <Text style={styles.authModalButtonText}>Registrati / Accedi</Text>
+
+      </Pressable>
+
+      <Pressable
+
+       onPress={handleDemoPress}
+
+       accessibilityRole="button"
+
+       accessibilityLabel="Vorrei dare un'occhiata"
+
+       style={({ pressed }) => [styles.authModalButton, styles.authModalSecondaryButton, pressed && styles.authModalButtonPressed]}
+
+      >
+
+       <Text style={[styles.authModalButtonText, styles.authModalSecondaryButtonText]}>Vorrei dare un’occhiata</Text>
+
+      </Pressable>
+
+     </View>
 
     </View>
 
@@ -145,11 +177,11 @@ function StartupAuthPrompt({ onRegister }: StartupAuthPromptProps) {
 
 function BauBookShell() {
 
- const { status, isSignedIn } = useAuthAccount();
+ const { status, isSignedIn, isDemoMode } = useAuthAccount();
 
  const [activeTab, setActiveTab] = useState<TabKey>('home');
 
- const registrationLocked = status === 'signed_out' && !isSignedIn;
+ const registrationLocked = status === 'signed_out' && !isSignedIn && !isDemoMode;
 
  useEffect(() => {
 
@@ -176,6 +208,12 @@ function BauBookShell() {
  const handleRegister = useCallback(() => {
 
   setActiveTab('profile');
+
+ }, []);
+
+ const handleDemo = useCallback(() => {
+
+  setActiveTab('home');
 
  }, []);
 
@@ -221,7 +259,7 @@ function BauBookShell() {
  return (
 
  <>
- <StartupAuthPrompt onRegister={handleRegister} />
+ <StartupAuthPrompt onRegister={handleRegister} onDemo={handleDemo} />
 
  <View style={styles.appRoot}>
  <View style={styles.deviceShell}>
@@ -538,6 +576,12 @@ const styles = StyleSheet.create({
 
  },
 
+ authModalActions: {
+
+  gap: spacing.sm,
+
+ },
+
  authModalButton: {
 
  minHeight: 52,
@@ -562,6 +606,16 @@ const styles = StyleSheet.create({
 
  },
 
+ authModalSecondaryButton: {
+
+ backgroundColor: colors.surface,
+
+ borderWidth: 1,
+
+ borderColor: colors.border,
+
+ },
+
  authModalButtonText: {
 
  color: colors.navSurface,
@@ -569,6 +623,12 @@ const styles = StyleSheet.create({
  fontSize: 16,
 
  fontWeight: '900',
+
+ },
+
+ authModalSecondaryButtonText: {
+
+ color: colors.primaryDark,
 
  },
 

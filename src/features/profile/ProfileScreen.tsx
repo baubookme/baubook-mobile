@@ -358,7 +358,7 @@ export function ProfileScreen() {
                     <View style={styles.formStack}>
                         <Text style={styles.helperText}>
                             Per la beta puoi entrare direttamente con email e password. Il codice email resta
-                            disponibile se preferisci non salvare una password.
+                            disponibile se preferisci utilizzare un OTP.
                         </Text>
 
                         <View style={styles.authModeRow}>

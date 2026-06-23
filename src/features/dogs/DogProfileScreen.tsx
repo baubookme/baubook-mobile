@@ -328,8 +328,8 @@ export function DogProfileScreen() {
                             {firstDog && auth.isSignedIn
                                 ? 'Visibilità: pubblico · moderazione: approved ✔️'
                                 : auth.isSignedIn
-                                    ? 'Salva il primo profilo per usare Branco, Passeggiate e Presenze.'
-                                    : 'Accedi nel tab Setup per salvare davvero'}
+                                    ? 'Salva il tuo profilo per usare Branco, Passeggiate e Presenze.'
+                                    : 'Vai alla pagina "\Setup\" per registrarti.'}
                         </Text>
                     </View>
                 </View>

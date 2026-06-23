@@ -23,7 +23,7 @@ import {
 import {hasSupabaseConfig} from '../lib/env';
 import {getSupabaseClient} from '../lib/supabase';
 
-type AuthStatus = 'idle' | 'loading' | 'signed_out' | 'signed_in' | 'error';
+type AuthStatus = 'idle' | 'loading' | 'signed_out' | 'signed_in' | 'demo' | 'error';
 
 interface AuthContextValue {
     status: AuthStatus;
@@ -35,7 +35,10 @@ interface AuthContextValue {
     errorMessage?: string;
     isConfigured: boolean;
     isSignedIn: boolean;
+    isDemoMode: boolean;
     isBusy: boolean;
+    startDemoMode: () => void;
+    exitDemoMode: () => void;
     signInWithPassword: (email: string, password: string) => Promise<void>;
     signUpWithPassword: (input: SignUpWithPasswordInput) => Promise<void>;
     requestOtpCode: (email: string) => Promise<void>;
@@ -211,6 +214,20 @@ export function AuthProvider({children}: PropsWithChildren) {
         return undefined;
     }, [refreshAccount]);
 
+    const startDemoMode = useCallback(() => {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setDogs([]);
+        setStatus('demo');
+        setMessage('Modalità demo attiva: puoi dare un’occhiata a BauBook per curiosare.🦴');
+        setErrorMessage(undefined);
+    }, []);
+
+    const exitDemoMode = useCallback(() => {
+        resetToSignedOut('Demo chiusa. Registrati o accedi per salvare il profilo e usare BauBook in modo completo.');
+    }, [resetToSignedOut]);
+
     const signInWithPassword = useCallback(async (email: string, password: string) => {
         try {
             setStatus('loading');
@@ -368,7 +385,10 @@ export function AuthProvider({children}: PropsWithChildren) {
         errorMessage,
         isConfigured: hasSupabaseConfig,
         isSignedIn: Boolean(user),
+        isDemoMode: status === 'demo',
         isBusy: status === 'loading',
+        startDemoMode,
+        exitDemoMode,
         signInWithPassword,
         signUpWithPassword,
         requestOtpCode,
@@ -378,7 +398,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         saveProfile,
         saveDogProfile,
         signOut,
-    }), [dogs, errorMessage, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithPassword, signOut, signUpWithPassword, status, user, verifyOtpCode]);
+    }), [dogs, errorMessage, exitDemoMode, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
