@@ -375,7 +375,7 @@ export function DogProfileScreen() {
                                    style={styles.editAvatar}/>
                         </View>
                         <View style={styles.formHeaderCopy}>
-                            <Text style={styles.cardTitle}>Modifica profilo</Text>
+                            <Text style={styles.cardTitle}>{firstDog ? 'Modifica profilo' : 'Creazione profilo'}</Text>
                             <Text style={styles.bodyText}>
                                 Identità utile per incontri, passeggiate e alert. Foto, descrizione e tag aiutano gli
                                 altri utenti a capire meglio il tuo 🐶.
