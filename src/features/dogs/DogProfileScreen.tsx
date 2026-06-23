@@ -11,8 +11,6 @@ import {SectionHeader} from '../../shared/components/SectionHeader';
 import {Tag} from '../../shared/components/Tag';
 import {colors, radius, spacing, typography} from '../../shared/theme/theme';
 
-const defaultProfileTags = ['curioso', 'buffo', 'gentile', 'calmo', 'ama l’ombra'];
-
 const profileTagOptions = [
     'calmo',
     'curioso',
@@ -165,9 +163,9 @@ export function DogProfileScreen() {
     const [headline, setHeadline] = useState(firstDog?.notesPublic ?? '');
     const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
     const [avatarUri, setAvatarUri] = useState<string | null>(readDogAvatarUri(firstDog));
-    const [selectedTags, setSelectedTags] = useState<string[]>(savedTags.length ? savedTags : defaultProfileTags);
+    const [selectedTags, setSelectedTags] = useState<string[]>(savedTags);
 
-    const displayedTags = selectedTags.length ? selectedTags : defaultProfileTags;
+    const displayedTags = selectedTags;
     const canSave = auth.isSignedIn && !auth.isBusy && dogName.trim().length > 0;
     const canEditTags = auth.isSignedIn && Boolean(firstDog) && !auth.isBusy && !isSavingTags;
     const visiblePrivateNotes = privateNotes.split('\n').map((note) => note.trim()).filter(Boolean);
@@ -183,7 +181,7 @@ export function DogProfileScreen() {
             setHeadline(firstDog.notesPublic ?? '');
             setPrivateNotes(firstDog.notesPrivate ?? '');
             setAvatarUri(readDogAvatarUri(firstDog));
-            setSelectedTags(nextTags.length ? nextTags : defaultProfileTags);
+            setSelectedTags(nextTags);
             return;
         }
 
@@ -191,7 +189,7 @@ export function DogProfileScreen() {
         setHeadline('');
         setPrivateNotes('');
         setAvatarUri(null);
-        setSelectedTags(defaultProfileTags);
+        setSelectedTags([]);
         setIsTagEditorOpen(false);
     }, [firstDog?.id]);
 
@@ -206,7 +204,7 @@ export function DogProfileScreen() {
             ...(firstDog?.socialityTags ?? []),
         ]);
 
-        setSelectedTags(nextTags.length ? nextTags : defaultProfileTags);
+        setSelectedTags(nextTags);
         setIsEditing(false);
     };
 
@@ -258,7 +256,7 @@ export function DogProfileScreen() {
             });
 
             if (!savedDog) {
-                setSelectedTags(previousTags.length ? previousTags : defaultProfileTags);
+                setSelectedTags(previousTags);
             }
         } finally {
             setIsSavingTags(false);
@@ -495,9 +493,11 @@ export function DogProfileScreen() {
                 {!isTagEditorOpen ? (
                     <Text style={styles.helperText}>
                         {firstDog && auth.isSignedIn
-                            ? 'Tocca il lucchetto per modificare i tag. Le modifiche saranno salvate subito.'
+                            ? selectedTags.length > 0
+                                ? 'Tocca il lucchetto per modificare i tag. Le modifiche saranno salvate subito.'
+                                : 'Nessun tag selezionato. Tocca il lucchetto per aggiungere solo quelli giusti per il tuo 🐶.'
                             : isEditing
-                                ? 'Scegli qualche tag prima di salvare il profilo 🐶.'
+                                ? 'I tag sono facoltativi: puoi salvarli vuoti o scegliere solo quelli davvero adatti al tuo 🐶.'
                                 : 'Crea e salva il primo profilo 🐶 per sbloccare tag, Passeggiate e Branco.'}
                     </Text>
                 ) : null}
