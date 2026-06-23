@@ -6,6 +6,7 @@ import type {Session, User} from '@supabase/supabase-js';
 import {
     ensureCurrentProfile,
     fetchAccountSnapshot,
+    isStaleAuthSessionError,
     normalizeError,
     saveDog,
     requestEmailOtp,
@@ -102,16 +103,25 @@ export function AuthProvider({children}: PropsWithChildren) {
     const [message, setMessage] = useState('Auth non ancora verificata.');
     const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
+    const resetToSignedOut = useCallback((nextMessage: string, nextErrorMessage?: string) => {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setDogs([]);
+        setStatus('signed_out');
+        setMessage(nextMessage);
+        setErrorMessage(nextErrorMessage);
+    }, []);
+
+    const handleStaleAuthSession = useCallback(async () => {
+        await signOutSupabase().catch(() => undefined);
+        resetToSignedOut('Sessione BauBook scaduta o account non più disponibile. Accedi di nuovo.');
+    }, [resetToSignedOut]);
+
     const applySnapshot = useCallback((snapshot: Awaited<ReturnType<typeof fetchAccountSnapshot>>) => {
         if (snapshot.profile?.accountStatus === 'inactive') {
             void signOutSupabase().catch(() => undefined);
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setDogs([]);
-            setStatus('signed_out');
-            setMessage('Account BauBook disattivato.');
-            setErrorMessage('Questo account è stato disattivato dopo una richiesta di cancellazione.');
+            resetToSignedOut('Account BauBook disattivato.', 'Questo account è stato disattivato dopo una richiesta di cancellazione.');
             return;
         }
 
@@ -122,7 +132,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         setStatus(snapshot.user ? 'signed_in' : 'signed_out');
         setMessage(snapshot.user ? 'Sessione attiva: profilo BauBook caricato.' : 'Nessuna sessione attiva.');
         setErrorMessage(undefined);
-    }, []);
+    }, [resetToSignedOut]);
 
     const refreshAccount = useCallback(async () => {
         if (!hasSupabaseConfig) {
@@ -137,11 +147,16 @@ export function AuthProvider({children}: PropsWithChildren) {
             const snapshot = await fetchAccountSnapshot();
             applySnapshot(snapshot);
         } catch (error) {
+            if (isStaleAuthSessionError(error)) {
+                await handleStaleAuthSession();
+                return;
+            }
+
             setStatus('error');
             setErrorMessage(normalizeError(error));
             setMessage('Errore durante il caricamento account.');
         }
-    }, [applySnapshot]);
+    }, [applySnapshot, handleStaleAuthSession]);
 
     useEffect(() => {
         void refreshAccount();
@@ -282,11 +297,16 @@ export function AuthProvider({children}: PropsWithChildren) {
             setMessage('Profilo utente salvato su BauBook 💾');
             setErrorMessage(undefined);
         } catch (error) {
+            if (isStaleAuthSessionError(error)) {
+                await handleStaleAuthSession();
+                return;
+            }
+
             setStatus('error');
             setMessage('Salvataggio profilo non riuscito.');
             setErrorMessage(normalizeError(error));
         }
-    }, []);
+    }, [handleStaleAuthSession]);
 
     const saveDogProfile = useCallback(async (dog: DogDraftInput): Promise<UserDogModel | null> => {
         if (!profile) {
@@ -308,12 +328,17 @@ export function AuthProvider({children}: PropsWithChildren) {
             setErrorMessage(undefined);
             return savedDog;
         } catch (error) {
+            if (isStaleAuthSessionError(error)) {
+                await handleStaleAuthSession();
+                return null;
+            }
+
             setStatus('error');
             setMessage('Salvataggio non riuscito.');
             setErrorMessage(normalizeError(error));
             return null;
         }
-    }, [profile]);
+    }, [handleStaleAuthSession, profile]);
 
     const signOut = useCallback(async () => {
         try {

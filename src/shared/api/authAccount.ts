@@ -108,6 +108,10 @@ interface WelcomeEmailResult {
 function normalizeAuthErrorMessage(message: string): string {
     const lower = message.toLowerCase();
 
+    if (isStaleAuthSessionError(message)) {
+        return staleAuthSessionMessage;
+    }
+
     if (message.includes('profiles_display_name_unique_normalized_idx')) {
         return 'Nome già in uso. Scegline un altro. ⚠️';
     }
@@ -161,6 +165,52 @@ function assertSupabaseClient() {
         throw new Error('Supabase non configurato: controlla .env e supabase-doctor.');
     }
     return client;
+}
+
+const staleAuthSessionMessage = 'Sessione BauBook non più valida. Effettua di nuovo l\'accesso.';
+
+function errorText(error: unknown): string {
+    if (!error) {
+        return '';
+    }
+
+    if (typeof error === 'string') {
+        return error;
+    }
+
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    if (typeof error === 'object') {
+        const candidate = error as {message?: unknown; details?: unknown; hint?: unknown; code?: unknown};
+        return [candidate.message, candidate.details, candidate.hint, candidate.code]
+            .filter((value): value is string => typeof value === 'string')
+            .join(' ');
+    }
+
+    return String(error);
+}
+
+export function isStaleAuthSessionError(error: unknown): boolean {
+    const lower = errorText(error).toLowerCase();
+
+    return (
+        lower.includes('profiles_user_id_fkey') ||
+        (lower.includes('foreign key constraint') && lower.includes('profiles') && lower.includes('user')) ||
+        lower.includes('user from sub claim') ||
+        lower.includes('invalid jwt') ||
+        lower.includes('jwt expired') ||
+        lower.includes('refresh token not found') ||
+        lower.includes('refresh_token_not_found') ||
+        lower.includes('session_not_found') ||
+        lower.includes('auth session missing') ||
+        lower.includes(staleAuthSessionMessage.toLowerCase())
+    );
+}
+
+async function clearInvalidLocalSession(client: ReturnType<typeof assertSupabaseClient>): Promise<void> {
+    await client.auth.signOut().catch(() => undefined);
 }
 
 
@@ -269,13 +319,42 @@ function remoteDogToModel(row: RemoteDogRow): UserDogModel {
 
 const dogSelectFields = 'id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, avatar_url, created_at, updated_at';
 
-export async function getCurrentSession(): Promise<Session | null> {
+async function getCurrentAuthState(): Promise<{session: Session | null; user: User | null}> {
     const client = assertSupabaseClient();
-    const {data, error} = await client.auth.getSession();
-    if (error) {
-        throw new Error(normalizeError(error));
+    const {data: sessionData, error: sessionError} = await client.auth.getSession();
+
+    if (sessionError) {
+        if (isStaleAuthSessionError(sessionError)) {
+            await clearInvalidLocalSession(client);
+            return {session: null, user: null};
+        }
+
+        throw new Error(normalizeError(sessionError));
     }
-    return data.session;
+
+    const session = sessionData.session;
+
+    if (!session) {
+        return {session: null, user: null};
+    }
+
+    const {data: userData, error: userError} = await client.auth.getUser();
+
+    if (userError || !userData.user) {
+        if (!userError || isStaleAuthSessionError(userError)) {
+            await clearInvalidLocalSession(client);
+            return {session: null, user: null};
+        }
+
+        throw new Error(normalizeError(userError));
+    }
+
+    return {session, user: userData.user};
+}
+
+export async function getCurrentSession(): Promise<Session | null> {
+    const {session} = await getCurrentAuthState();
+    return session;
 }
 
 async function sendWelcomeEmail(displayName?: string): Promise<WelcomeEmailResult | null> {
@@ -417,6 +496,10 @@ export async function ensureCurrentProfile(displayName?: string): Promise<UserPr
     });
 
     if (error) {
+        if (isStaleAuthSessionError(error)) {
+            await clearInvalidLocalSession(client);
+        }
+
         throw new Error(normalizeError(error));
     }
 
@@ -458,17 +541,26 @@ export async function fetchMyDogs(profileId: string): Promise<UserDogModel[]> {
 }
 
 export async function fetchAccountSnapshot(): Promise<AuthAccountSnapshot> {
-    const session = await getCurrentSession();
-    const user = session?.user ?? null;
+    const {session, user} = await getCurrentAuthState();
 
-    if (!user) {
+    if (!session || !user) {
         return {session: null, user: null, profile: null, dogs: []};
     }
 
-    const profile = (await fetchMyProfile(user.id)) ?? (await ensureCurrentProfile());
-    const dogs = await fetchMyDogs(profile.id);
+    try {
+        const profile = (await fetchMyProfile(user.id)) ?? (await ensureCurrentProfile());
+        const dogs = await fetchMyDogs(profile.id);
 
-    return {session, user, profile, dogs};
+        return {session, user, profile, dogs};
+    } catch (error) {
+        if (isStaleAuthSessionError(error)) {
+            const client = assertSupabaseClient();
+            await clearInvalidLocalSession(client);
+            return {session: null, user: null, profile: null, dogs: []};
+        }
+
+        throw error;
+    }
 }
 
 export async function saveDog(profileId: string, dog: DogDraftInput): Promise<UserDogModel> {

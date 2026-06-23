@@ -9,7 +9,6 @@ import {AppCard} from '../../shared/components/AppCard';
 import {Screen} from '../../shared/components/Screen';
 import {SectionHeader} from '../../shared/components/SectionHeader';
 import {Tag} from '../../shared/components/Tag';
-import {demoDog} from '../../shared/data/mockData';
 import {colors, radius, spacing, typography} from '../../shared/theme/theme';
 
 const defaultProfileTags = ['curioso', 'buffo', 'gentile', 'calmo', 'ama l’ombra'];
@@ -162,8 +161,8 @@ export function DogProfileScreen() {
     const [isEditing, setIsEditing] = useState(false);
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
     const [isSavingTags, setIsSavingTags] = useState(false);
-    const [dogName, setDogName] = useState(firstDog?.name ?? demoDog.name);
-    const [headline, setHeadline] = useState(firstDog?.notesPublic ?? demoDog.headline);
+    const [dogName, setDogName] = useState(firstDog?.name ?? '');
+    const [headline, setHeadline] = useState(firstDog?.notesPublic ?? '');
     const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
     const [avatarUri, setAvatarUri] = useState<string | null>(readDogAvatarUri(firstDog));
     const [selectedTags, setSelectedTags] = useState<string[]>(savedTags.length ? savedTags : defaultProfileTags);
@@ -171,6 +170,7 @@ export function DogProfileScreen() {
     const displayedTags = selectedTags.length ? selectedTags : defaultProfileTags;
     const canSave = auth.isSignedIn && !auth.isBusy && dogName.trim().length > 0;
     const canEditTags = auth.isSignedIn && Boolean(firstDog) && !auth.isBusy && !isSavingTags;
+    const visiblePrivateNotes = privateNotes.split('\n').map((note) => note.trim()).filter(Boolean);
 
     useEffect(() => {
         if (firstDog) {
@@ -180,16 +180,24 @@ export function DogProfileScreen() {
             ]);
 
             setDogName(firstDog.name);
-            setHeadline(firstDog.notesPublic ?? demoDog.headline);
+            setHeadline(firstDog.notesPublic ?? '');
             setPrivateNotes(firstDog.notesPrivate ?? '');
             setAvatarUri(readDogAvatarUri(firstDog));
             setSelectedTags(nextTags.length ? nextTags : defaultProfileTags);
+            return;
         }
+
+        setDogName('');
+        setHeadline('');
+        setPrivateNotes('');
+        setAvatarUri(null);
+        setSelectedTags(defaultProfileTags);
+        setIsTagEditorOpen(false);
     }, [firstDog?.id]);
 
     const handleCancelEdit = () => {
-        setDogName(firstDog?.name ?? demoDog.name);
-        setHeadline(firstDog?.notesPublic ?? demoDog.headline);
+        setDogName(firstDog?.name ?? '');
+        setHeadline(firstDog?.notesPublic ?? '');
         setPrivateNotes(firstDog?.notesPrivate ?? '');
         setAvatarUri(readDogAvatarUri(firstDog));
 
@@ -315,16 +323,24 @@ export function DogProfileScreen() {
 
                     <View style={styles.profileCopy}>
                         <Text style={styles.eyebrow}>
-                            {firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo demo'}
+                            {firstDog ? 'Profilo peloso 🐾' : auth.isSignedIn ? 'Nuovo peloso 🐾' : 'Profilo da creare'}
                         </Text>
-                        <Text style={styles.name}>{dogName || 'Il mio amico'}</Text>
+                        <Text style={styles.name}>{firstDog ? dogName || 'Il mio amico' : 'Crea il profilo del tuo cane'}</Text>
                         <Text style={styles.visibility}>
-                            {auth.isSignedIn ? 'Visibilità: pubblico · moderazione: approved ✔️' : 'Accedi nel tab Setup per salvare davvero'}
+                            {firstDog && auth.isSignedIn
+                                ? 'Visibilità: pubblico · moderazione: approved ✔️'
+                                : auth.isSignedIn
+                                    ? 'Salva il primo profilo per usare Branco, Passeggiate e Presenze.'
+                                    : 'Accedi nel tab Setup per salvare davvero'}
                         </Text>
                     </View>
                 </View>
 
-                <Text style={styles.quote}>“{headline || 'Scrivi la mia carta d’identità.'}”</Text>
+                <Text style={styles.quote}>
+                    “{firstDog
+                        ? headline || 'Scrivi la mia carta d’identità.'
+                        : 'Aggiungi nome, foto e note utili del tuo amico. Poi potrai aggiungere dei tag.'}”
+                </Text>
 
                 <View style={styles.statusRow}>
                     <Tag label={auth.isSignedIn ? 'Account attivo' : 'Servizio non disponibile'}
@@ -336,7 +352,7 @@ export function DogProfileScreen() {
 
                 <View style={styles.profileActionsRow}>
                     <AppButton
-                        label={isEditing ? 'Chiudi modifica' : 'Modifica'}
+                        label={isEditing ? 'Chiudi modifica' : firstDog ? 'Modifica' : 'Crea profilo'}
                         variant={isEditing ? 'ghost' : 'primary'}
                         icon={isEditing ? baubookImages.icons.profileGear : baubookImages.icons.profileGearLight}
                         onPress={() => {
@@ -458,27 +474,31 @@ export function DogProfileScreen() {
                     </Pressable>
                 </View>
 
-                <View style={styles.hashtagRow}>
-                    {(isTagEditorOpen ? profileTagOptions : displayedTags).map((tag) => {
-                        const selected = selectedTags.some((item) => normalizeTag(item) === normalizeTag(tag));
+                {firstDog || isEditing ? (
+                    <View style={styles.hashtagRow}>
+                        {(isTagEditorOpen ? profileTagOptions : displayedTags).map((tag) => {
+                            const selected = selectedTags.some((item) => normalizeTag(item) === normalizeTag(tag));
 
-                        return (
-                            <HashtagChip
-                                key={normalizeTag(tag)}
-                                tag={tag}
-                                selected={selected}
-                                editable={isTagEditorOpen && canEditTags}
-                                onPress={() => handleToggleTag(tag)}
-                            />
-                        );
-                    })}
-                </View>
+                            return (
+                                <HashtagChip
+                                    key={normalizeTag(tag)}
+                                    tag={tag}
+                                    selected={selected}
+                                    editable={isTagEditorOpen && canEditTags}
+                                    onPress={() => handleToggleTag(tag)}
+                                />
+                            );
+                        })}
+                    </View>
+                ) : null}
 
                 {!isTagEditorOpen ? (
                     <Text style={styles.helperText}>
                         {firstDog && auth.isSignedIn
                             ? 'Tocca il lucchetto per modificare i tag. Le modifiche saranno salvate subito.'
-                            : 'Salva prima il profilo 🐶 per modificare i tag.'}
+                            : isEditing
+                                ? 'Scegli qualche tag prima di salvare il profilo 🐶.'
+                                : 'Crea e salva il primo profilo 🐶 per sbloccare tag, Passeggiate e Branco.'}
                     </Text>
                 ) : null}
 
@@ -493,14 +513,22 @@ export function DogProfileScreen() {
 
             <AppCard tone="pink">
                 <Text style={styles.cardTitle}>Consigli utili, zero giudizi 📒</Text>
-                <View style={styles.notesList}>
-                    {(privateNotes ? privateNotes.split('\n').filter(Boolean) : demoDog.notes).map((note) => (
-                        <View key={note} style={styles.noteItem}>
-                            <Text style={styles.noteBullet}>•</Text>
-                            <Text style={styles.noteText}>{note}</Text>
-                        </View>
-                    ))}
-                </View>
+                {visiblePrivateNotes.length ? (
+                    <View style={styles.notesList}>
+                        {visiblePrivateNotes.map((note) => (
+                            <View key={note} style={styles.noteItem}>
+                                <Text style={styles.noteBullet}>•</Text>
+                                <Text style={styles.noteText}>{note}</Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : (
+                    <Text style={styles.helperText}>
+                        {firstDog
+                            ? 'Aggiungi eventuali consigli utili dalla modifica profilo.'
+                            : 'Quando salvi il profilo, qui compariranno solo le note che decidi tu.'}
+                    </Text>
+                )}
             </AppCard>
         </Screen>
     );

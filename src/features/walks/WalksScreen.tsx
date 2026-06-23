@@ -50,6 +50,7 @@ interface PresenceOption {
 
 const walkHubIntroImage = require('../../../assets/baubook/walks/walk_hub_intro.png') as ImageSourcePropType;
 const homeReturnIcon = require('../../../assets/baubook/walks/home_return_icon.png') as ImageSourcePropType;
+const PRESENCE_DURATION_MINUTES = 60;
 
 const startOptions: StartOption[] = [
   { label: 'Tra 30 min', minutes: 30 },
@@ -296,7 +297,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       placeId: selectedPlace.id,
       status: presenceStatus,
       message: presenceMessage,
-      expiresMinutes: 90,
+      expiresMinutes: PRESENCE_DURATION_MINUTES,
       ...locationPayload,
     });
   };
@@ -336,7 +337,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       placeId: selectedPlace.id,
       status: presenceStatus,
       message: presenceMessage,
-      expiresMinutes: 90,
+      expiresMinutes: PRESENCE_DURATION_MINUTES,
       ...locationPayload,
     });
   };
@@ -488,7 +489,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           <IconBubble source={baubookImages.icons.checkin} tone="teal" />
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Presenza temporanea</Text>
-            <Text style={styles.bodyText}>“Sono qui per un po'” senza tracking live continuo. Scade dopo 90 minuti.</Text>
+            <Text style={styles.bodyText}>“Sono qui per un po'” senza tracking live continuo. Scade dopo 60 minuti.</Text>
           </View>
         </View>
 
