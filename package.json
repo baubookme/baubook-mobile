@@ -51,9 +51,9 @@
     },
     "baubook": {
         "baseline": "2.3.0",
-        "releaseName": "BauBook 0.7.1 Beta Auth Email Password OTP",
-        "releaseTag": "baubook-0.7.1-beta-auth-email-password-otp",
-        "releaseDate": "2026-06-22",
-        "label": "Beta Auth Email Password OTP"
+        "releaseName": "BauBook 0.7.1 Welcome Email After Signup",
+        "releaseTag": "baubook-0.7.1-welcome-email-after-signup",
+        "releaseDate": "2026-06-23",
+        "label": "Welcome Email After Signup"
     }
 }

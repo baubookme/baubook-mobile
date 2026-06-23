@@ -100,6 +100,11 @@ export interface PasswordAuthResult {
     message: string;
 }
 
+interface WelcomeEmailResult {
+    emailed?: boolean;
+    emailStatus?: string;
+}
+
 function normalizeAuthErrorMessage(message: string): string {
     const lower = message.toLowerCase();
 
@@ -273,6 +278,22 @@ export async function getCurrentSession(): Promise<Session | null> {
     return data.session;
 }
 
+async function sendWelcomeEmail(displayName?: string): Promise<WelcomeEmailResult | null> {
+    const client = assertSupabaseClient();
+
+    const {data, error} = await client.functions.invoke('welcome-email', {
+        body: {
+            displayName: displayName ?? null,
+        },
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+
+    return (data ?? null) as WelcomeEmailResult | null;
+}
+
 export async function signUpWithPassword(input: SignUpWithPasswordInput): Promise<PasswordAuthResult> {
     const client = assertSupabaseClient();
     const email = cleanEmailAddress(input.email);
@@ -295,15 +316,26 @@ export async function signUpWithPassword(input: SignUpWithPasswordInput): Promis
     }
 
     if (data.session) {
+        let welcomeStatus = 'not_attempted';
+
+        try {
+            const welcomeResult = await sendWelcomeEmail(displayName);
+            welcomeStatus = welcomeResult?.emailStatus ?? (welcomeResult?.emailed ? 'sent' : 'not_sent');
+        } catch (_error) {
+            welcomeStatus = 'welcome_email_failed';
+        }
+
         return {
             session: data.session,
-            message: 'Registrazione completata: sessione BauBook attiva.',
+            message: welcomeStatus === 'sent'
+                ? 'Account BauBook creato. Ti abbiamo inviato una mail di benvenuto 🐾'
+                : 'Account BauBook creato. Benvenuto nel branco 🐾',
         };
     }
 
     return {
         session: null,
-        message: `Registrazione avviata per ${email}. Se viene richiesta una conferma 📩 completa la verifica, altrimenti benvenuto nel branco!.`,
+        message: `Registrazione avviata per ${email}. Controlla la casella email e poi accedi con password o codice email.`,
     };
 }
 

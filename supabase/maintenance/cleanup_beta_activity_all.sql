@@ -141,3 +141,18 @@ truncate table public.profiles cascade;
 delete from auth.users;
 
 commit;
+
+begin;
+
+-- Dati di supporto/contatto beta, se vuoi ripartire davvero pulito.
+truncate table public.contact_requests restart identity cascade;
+truncate table public.account_deletion_requests restart identity cascade;
+
+-- Dati applicativi utente.
+-- Il cascade dovrebbe pulire cani, diary, walks, presenze, amici, ecc.
+truncate table public.profiles restart identity cascade;
+
+-- Utenti Supabase Auth.
+delete from auth.users;
+
+commit;

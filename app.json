@@ -39,25 +39,26 @@
             "baseline": "2.3.0",
             "launchReadiness": "beta-experience-cartoon-toolbar",
             "sponsoredLiteDefault": false,
-            "releaseName": "BauBook 0.7.1 Beta Auth Email Password OTP",
+            "releaseName": "BauBook 0.7.1 Welcome Email After Signup",
             "cartoonToolbar": true,
             "sponsoredLiteDefaultEnabled": false,
             "baubookBaseline": "2.3.0",
-            "baubookReleaseName": "BauBook 0.7.1 Beta Auth Email Password OTP",
+            "baubookReleaseName": "BauBook 0.7.1 Welcome Email After Signup",
             "nativeMapViewMarkers": true,
             "mapProvider": "react-native-maps",
-            "baubookLaunchMode": "store-beta-auth-email-password-otp",
+            "baubookLaunchMode": "store-beta-auth-email-password-otp-welcome-email",
             "eas": {
                 "projectId": "bd85b195-0fc3-4b4c-8b4c-af8f119f51ca"
             },
             "baubook": {
                 "baseline": "2.3.0",
-                "label": "Beta Auth Email Password OTP"
+                "label": "Welcome Email After Signup"
             },
             "mapCareCommandCenter": true,
             "productionBackendCutover": true,
             "productizedHome": true,
-            "betaAuthEmailPasswordOtp": true
+            "betaAuthEmailPasswordOtp": true,
+            "welcomeEmailAfterSignup": true
         }
     }
 }
