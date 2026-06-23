@@ -588,7 +588,7 @@ export function AlertsScreen() {
         <View style={styles.heroTitleRow}>
           <Text style={styles.eyebrow}>AIUTO PER LA COMMUNITY</Text>
           <Tag
-            label={userAuthVerified ? "✓ utente verificato" : "❗utente non verificato"}
+            label={userAuthVerified ? "✓ utente registrato" : "❗utente non registrato"}
             tone={userAuthVerified ? "green" : "red"}
           />
         </View>
@@ -603,7 +603,7 @@ export function AlertsScreen() {
         <AppCard tone="danger">
           <Text style={styles.cardTitle}>Sezione in sola lettura</Text>
           <Text style={styles.bodyText}>
-            Per aprire segnalazioni serve un utente verificato via email o OTP. Puoi leggere gli avvisi, ma non puoi crearli o modificarli.
+            Per aprire segnalazioni serve un account BauBook registrato e attivo. Puoi leggere gli avvisi, ma non puoi crearli o modificarli.
           </Text>
         </AppCard>
       ) : null}

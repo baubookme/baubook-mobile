@@ -2,6 +2,14 @@
 -- Coordinate e luoghi sono placeholder da verificare prima della beta pubblica.
 -- Non usare come dataset ufficiale senza controllo fonti/licenze.
 
+insert into public.admin_users (profile_id, role)
+select id, 'owner'
+from public.profiles
+where display_name = 'admin'
+    on conflict (profile_id) do update
+                                    set role = excluded.role,
+                                    active = true;
+
 insert into public.cities (slug, name, country_code, region, status, center, timezone, metadata)
 values (
   'venezia-mestre',

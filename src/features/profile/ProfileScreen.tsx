@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import {StyleSheet, Text, TextInput, View} from 'react-native';
 import {baubookImages} from '../../shared/assets/images';
 import {requestAccountDeletion, fetchPendingAccountDeletionRequest} from '../../shared/api/launchReadiness';
+import {AdminModerationScreen} from '../admin/AdminModerationScreen';
 import {useAuthAccount} from '../../shared/auth/AuthProvider';
 import {AppButton} from '../../shared/components/AppButton';
 import {AppCard} from '../../shared/components/AppCard';
@@ -12,7 +13,7 @@ import {hasSupabaseConfig} from '../../shared/lib/env';
 import {getSupabaseClient} from '../../shared/lib/supabase';
 import {colors, radius, spacing, typography} from '../../shared/theme/theme';
 
-const APP_VERSION = '0.7.1';
+const APP_VERSION = '0.7.2';
 
 type AuthMode = 'password_login' | 'password_signup' | 'email_code';
 
@@ -516,6 +517,8 @@ export function ProfileScreen() {
                     </View>
                 )}
             </AppCard>
+
+            {auth.isSignedIn ? <AdminModerationScreen /> : null}
 
             <AppCard tone="pink">
                 <SectionHeader

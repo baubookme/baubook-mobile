@@ -446,7 +446,7 @@ export function DogProfileScreen() {
 
                     {!auth.isSignedIn ? (
                         <Text style={styles.helperText}>
-                            Per salvare il 🐾: vai in Setup, invia email OTP/magic link e crea il profilo.
+                            Per salvare il 🐾: vai in \"Setup\", accedi o registrati e crea il profilo.
                         </Text>
                     ) : null}
                 </AppCard>
