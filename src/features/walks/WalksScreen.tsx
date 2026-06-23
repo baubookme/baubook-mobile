@@ -425,7 +425,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
                 <ChoiceChip key={dog.id} label={dog.name} selected={selectedDog?.id === dog.id} onPress={() => setSelectedDogId(dog.id)} />
               ))
             ) : (
-              <Text style={styles.helperText}>Nessun cane ancora salvato.</Text>
+              <Text style={styles.helperText}>Nessun 🐶 ancora salvato.</Text>
             )}
           </View>
         </View>
@@ -640,9 +640,9 @@ function GateMessages({
   return (
     <View style={styles.gateBox}>
       {!authSignedIn ? <Text style={styles.gateText}>Accedi in Setup per creare passeggiate reali.</Text> : null}
-      {authSignedIn && !hasDog ? <Text style={styles.gateText}>Salva il primo cane in “Io sono” per sbloccare la passeggiata.</Text> : null}
+      {authSignedIn && !hasDog ? <Text style={styles.gateText}>Salva il primo 🐶 in “Io sono” per sbloccare la passeggiata.</Text> : null}
       {!locationReady ? <Text style={styles.gateText}>Scegli la posizione attuale o inserisci un indirizzo manuale di almeno 10 caratteri.</Text> : null}
-      {!placesLive ? <Text style={styles.gateText}>Scrittura disabilitata finché i luoghi non arrivano da Supabase live.</Text> : null}
+
       {placesLive && !hasWritePlace ? <Text style={styles.gateText}>Serve almeno un luogo live disponibile per registrare la passeggiata.</Text> : null}
     </View>
   );

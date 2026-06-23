@@ -617,7 +617,7 @@ export function AlertsScreen() {
       ) : null}
 
       {auth.isSignedIn && !auth.dogs.length ? (
-        <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo 🐶 prima di creare un alert smarrimento.</Text>
+        <Text style={styles.warningBox}>Vai in “Io sono...” e salva il primo 🐶 se devi creare un alert smarrimento.</Text>
       ) : null}
 
       <Pressable

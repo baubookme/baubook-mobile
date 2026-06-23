@@ -181,7 +181,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
           <View style={styles.sectionTitleRow}>
             <IconBubble source={baubookImages.icons.dogProfile} tone="warm" />
             <View style={styles.flexOne}>
-              <Text style={styles.cardTitle}>Prima crea il profilo</Text>
+              <Text style={styles.cardTitle}>Manca qualcosa!</Text>
               <Text style={styles.bodyText}>Per usare BauBook friends serve un account BauBook attivo e almeno un profilo 🐶.</Text>
             </View>
           </View>
