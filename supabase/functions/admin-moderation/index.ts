@@ -17,6 +17,7 @@ type AdminContext = {
 };
 
 const OPEN_REPORT_STATUSES = ['open', 'reviewing'];
+const CLOSED_REPORT_STATUSES = ['actioned', 'resolved', 'dismissed'];
 const ALLOWED_REPORT_STATUSES = ['open', 'reviewing', 'actioned', 'resolved', 'dismissed'];
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -415,6 +416,15 @@ async function setReportStatus(admin: AdminContext, payload: Record<string, unkn
 
   if (!report) {
     return jsonResponse({ ok: false, error: 'Report not found' }, 404);
+  }
+
+  const currentStatus = sanitize(report.status);
+  if (CLOSED_REPORT_STATUSES.includes(currentStatus)) {
+    return jsonResponse({
+      ok: true,
+      alreadyClosed: true,
+      report,
+    });
   }
 
   const updatedAt = new Date().toISOString();

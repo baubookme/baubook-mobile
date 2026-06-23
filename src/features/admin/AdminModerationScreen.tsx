@@ -50,6 +50,44 @@ function statusLabel(status: string | null | undefined): string {
   }
 }
 
+function contentStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'active':
+      return 'contenuto visibile';
+    case 'closed':
+      return 'contenuto chiuso';
+    case 'resolved':
+      return 'contenuto risolto';
+    case 'expired':
+      return 'contenuto scaduto';
+    case 'removed':
+      return 'contenuto rimosso';
+    default:
+      return status ? `contenuto ${status}` : '';
+  }
+}
+
+function contentModerationStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'pending':
+      return 'moderazione contenuto in attesa';
+    case 'approved':
+      return 'moderazione contenuto approvata';
+    case 'rejected':
+      return 'moderazione contenuto respinta';
+    case 'hidden':
+      return 'contenuto nascosto';
+    case 'removed':
+      return 'contenuto rimosso';
+    default:
+      return status ? `moderazione contenuto ${status}` : '';
+  }
+}
+
+function isClosedReportStatus(status: string | null | undefined): boolean {
+  return status === 'actioned' || status === 'resolved' || status === 'dismissed';
+}
+
 function reasonLabel(reason: string | null | undefined): string {
   switch (reason) {
     case 'false_alert':
@@ -95,11 +133,12 @@ interface ReportCardProps {
 }
 
 function ReportCard({ report, busy, onAction }: ReportCardProps) {
-  const targetMeta = [
-    report.targetStatus ? `stato ${report.targetStatus}` : null,
-    report.targetModerationStatus ? `moderazione ${report.targetModerationStatus}` : null,
-    report.targetLocationLabel,
+  const isClosed = isClosedReportStatus(report.status);
+  const targetStateMeta = [
+    contentStatusLabel(report.targetStatus),
+    contentModerationStatusLabel(report.targetModerationStatus),
   ].filter(Boolean).join(' · ');
+  const targetLocationMeta = report.targetLocationLabel ? `Luogo: ${report.targetLocationLabel}` : '';
 
   return (
     <View style={styles.reportCard}>
@@ -114,32 +153,37 @@ function ReportCard({ report, busy, onAction }: ReportCardProps) {
       </View>
 
       <Text style={styles.reportText}>Segnalato da {report.reporterName}</Text>
-      {targetMeta ? <Text style={styles.reportMeta}>{targetMeta}</Text> : null}
+      {targetLocationMeta ? <Text style={styles.reportMeta}>{targetLocationMeta}</Text> : null}
+      {!isClosed && targetStateMeta ? <Text style={styles.reportMeta}>Contenuto segnalato: {targetStateMeta}</Text> : null}
       {report.description ? <Text style={styles.reportText}>Nota abuso: {report.description}</Text> : null}
       {report.targetDescription ? <Text style={styles.targetText}>Contenuto: {report.targetDescription}</Text> : null}
 
-      <View style={styles.reportActionsRow}>
-        <AppButton
-          label="Prendi in carico"
-          size="compact"
-          variant="secondary"
-          disabled={busy || report.status === 'reviewing'}
-          onPress={() => onAction(report.id, 'reviewing')}
-        />
-        <AppButton
-          label="Risolvi"
-          size="compact"
-          disabled={busy}
-          onPress={() => onAction(report.id, 'resolved')}
-        />
-        <AppButton
-          label="Ignora"
-          size="compact"
-          variant="ghost"
-          disabled={busy}
-          onPress={() => onAction(report.id, 'dismissed')}
-        />
-      </View>
+      {isClosed ? (
+        <Text style={styles.closedNotice}>Segnalazione chiusa. Lo stato del contenuto segnalato resta separato dal report.</Text>
+      ) : (
+        <View style={styles.reportActionsRow}>
+          <AppButton
+            label="Prendi in carico"
+            size="compact"
+            variant="secondary"
+            disabled={busy || report.status === 'reviewing'}
+            onPress={() => onAction(report.id, 'reviewing')}
+          />
+          <AppButton
+            label="Risolvi"
+            size="compact"
+            disabled={busy}
+            onPress={() => onAction(report.id, 'resolved')}
+          />
+          <AppButton
+            label="Ignora"
+            size="compact"
+            variant="ghost"
+            disabled={busy}
+            onPress={() => onAction(report.id, 'dismissed')}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -235,24 +279,28 @@ export function AdminModerationScreen() {
         <IconBubble source={baubookImages.icons.settings} tone="teal" />
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>Admin BauBook</Text>
-          <Text style={styles.cardTitle}>Moderazione</Text>
-          <Text style={styles.bodyText}>Accesso: {roleLabel(role)}. Coda basata sulle segnalazioni abuso rilevate.</Text>
+          <Text style={styles.cardTitle}>Moderazione beta</Text>
+          <Text style={styles.bodyText}>Accesso: {roleLabel(role)}. Coda basata sulle segnalazioni abuso già presenti.</Text>
         </View>
       </View>
 
       <View style={styles.controlsRow}>
-        <AppButton label="Aggiorna" size="compact" variant="secondary" disabled={isBusy} onPress={() => void loadReports(includeClosed)} />
-        <AppButton
-          label={includeClosed ? 'Solo aperte' : 'Anche chiuse'}
-          size="compact"
-          variant="ghost"
-          disabled={isBusy}
-          onPress={handleToggleClosed}
-        />
+        <View style={styles.controlsButtonStart}>
+          <AppButton label="Aggiorna" size="compact" variant="secondary" disabled={isBusy} onPress={() => void loadReports(includeClosed)} />
+        </View>
+        <View style={styles.controlsButtonEnd}>
+          <AppButton
+            label={includeClosed ? 'Solo aperte' : 'Anche chiuse'}
+            size="compact"
+            variant="ghost"
+            disabled={isBusy}
+            onPress={handleToggleClosed}
+          />
+        </View>
       </View>
 
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Nota admin facoltativa</Text>
+        <Text style={styles.label}>Nota moderazione facoltativa</Text>
         <TextInput
           value={note}
           onChangeText={setNote}
@@ -303,10 +351,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   controlsRow: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  controlsButtonStart: {
+    alignItems: 'flex-start',
+  },
+  controlsButtonEnd: {
+    alignItems: 'flex-end',
+    marginLeft: 'auto',
   },
   formGroup: {
     gap: spacing.xs,
@@ -406,5 +463,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginTop: spacing.xs,
+  },
+  closedNotice: {
+    marginTop: spacing.xs,
+    color: colors.muted,
+    fontSize: typography.small,
+    fontWeight: '800',
   },
 });
