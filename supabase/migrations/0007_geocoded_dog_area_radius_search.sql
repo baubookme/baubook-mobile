@@ -19,7 +19,7 @@ with dog_area_points(slug, lat, lng, precision, note) as (
     ('dog-area-carpenedo-bissuola-via-pertini', 45.5038, 12.2608, 'address_or_park_centroid', 'Carpenedo-Bissuola, Via E. Pertini'),
     ('dog-area-mestre-centro-parco-sabbioni', 45.4906, 12.2402, 'address_or_park_centroid', 'Mestre Centro, Via Baldassarre Galuppi / Parco Sabbioni'),
     ('dog-area-mestre-centro-via-terraglio-borgo-pezzana', 45.4985, 12.2446, 'address_or_park_centroid', 'Mestre Centro, Via Terraglio / Borgo Pezzana'),
-    ('dog-area-carpenedo-bissuola-viale-don-sturzo', 45.5066, 12.2536, 'address_or_park_centroid', 'Carpenedo-Bissuola, Viale Don Luigi Sturzo'),
+    ('dog-area-carpenedo-bissuola-viale-don-sturzo', 45.5066, 12.2536, 'address_or_park_centroid', 'Carpenedo-Bissuola, Viale Don Luigi Sturzo / Parco Kennedy'),
     ('dog-area-mestre-centro-parco-villa-querini', 45.4914, 12.2429, 'park_centroid', 'Mestre Centro, Parco Villa Querini'),
     ('dog-area-carpenedo-bissuola-parco-bissuola-parco-albanese', 45.5097, 12.2605, 'park_centroid', 'Carpenedo-Bissuola, Parco Bissuola / Parco Albanese'),
     ('dog-area-mestre-centro-parco-san-giuliano', 45.4706, 12.2820, 'park_centroid', 'Mestre Centro, Parco San Giuliano'),
