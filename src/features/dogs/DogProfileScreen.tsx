@@ -451,9 +451,7 @@ export function DogProfileScreen() {
                 <View style={styles.tagCardHeader}>
                     <View style={styles.tagCardCopy}>
                         <Text style={styles.cardTitle}>Carattere e socialità</Text>
-                        <Text style={styles.bodyText}>
-                            Tag veloci per raccontare com’è il tuo amico 🐶.
-                        </Text>
+
                     </View>
 
                     <Pressable
