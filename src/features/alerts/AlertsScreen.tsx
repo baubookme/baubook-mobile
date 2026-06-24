@@ -1823,7 +1823,7 @@ const styles = StyleSheet.create({
     fontSize: typography.tiny,
     lineHeight: 16,
     opacity: 1,
-    fontWeight: "700",
+    fontWeight: "900",
   },
   blockedEventNoticeName: {
     color: colors.ink,
