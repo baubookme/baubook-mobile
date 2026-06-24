@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { baubookImages } from '../../shared/assets/images';
 import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { addDogFriend, fetchDogFriends, MAX_DOG_FRIENDS, removeDogFriend, searchDogFriendCandidates, type DogFriendModel, type DogFriendSearchResult } from '../../shared/api/dogFriends';
+import { blockProfile, reportBauBookContent, unblockProfile } from '../../shared/api/userSafety';
 import { AppButton } from '../../shared/components/AppButton';
 import { AppCard } from '../../shared/components/AppCard';
 import { IconBubble } from '../../shared/components/IconBubble';
@@ -161,6 +162,88 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
     }
   }, []);
 
+  const handleReportFriend = useCallback(async (friend: DogFriendModel) => {
+    try {
+      setStatus('loading');
+      const result = await reportBauBookContent(
+        'dog_profile',
+        friend.friendDogId,
+        'abuse',
+        `Segnalazione abuso sul profilo 🐾 ${friend.friendDogName}.`,
+      );
+      setFriends((current) => current.map((item) => item.friendDogId === friend.friendDogId ? { ...item, hasReportedByMe: true } : item));
+      setResults((current) => current.map((item) => item.dogId === friend.friendDogId ? { ...item, hasReportedByMe: true } : item));
+      setMessage(result.alreadyReported ? 'Avevi già segnalato questo profilo.' : 'Segnalazione inviata alla moderazione.');
+      setErrorMessage(undefined);
+      setStatus('ready');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Segnalazione profilo non riuscita.');
+    }
+  }, []);
+
+  const handleBlockFriend = useCallback(async (friend: DogFriendModel) => {
+    try {
+      setStatus('loading');
+      await blockProfile(friend.friendOwnerId);
+      setFriends((current) => current.map((item) => item.friendOwnerId === friend.friendOwnerId ? { ...item, isBlockedByMe: true } : item));
+      setResults((current) => current.map((item) => item.ownerId === friend.friendOwnerId ? { ...item, isBlockedByMe: true } : item));
+      setMessage(`${friend.friendDogName} è bloccato. Resta visibile nel Branco e puoi sbloccarlo quando vuoi.`);
+      setErrorMessage(undefined);
+      setStatus('ready');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Blocco profilo non riuscito.');
+    }
+  }, []);
+
+  const handleUnblockFriend = useCallback(async (friend: DogFriendModel) => {
+    try {
+      setStatus('loading');
+      await unblockProfile(friend.friendOwnerId);
+      setFriends((current) => current.map((item) => item.friendOwnerId === friend.friendOwnerId ? { ...item, isBlockedByMe: false } : item));
+      setResults((current) => current.map((item) => item.ownerId === friend.friendOwnerId ? { ...item, isBlockedByMe: false } : item));
+      setMessage(`${friend.friendDogName} sbloccato.`);
+      setErrorMessage(undefined);
+      setStatus('ready');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Sblocco profilo non riuscito.');
+    }
+  }, []);
+
+
+  const handleBlockCandidate = useCallback(async (candidate: DogFriendSearchResult) => {
+    try {
+      setSearchStatus('loading');
+      await blockProfile(candidate.ownerId);
+      setResults((current) => current.map((item) => item.ownerId === candidate.ownerId ? { ...item, isBlockedByMe: true } : item));
+      setFriends((current) => current.map((item) => item.friendOwnerId === candidate.ownerId ? { ...item, isBlockedByMe: true } : item));
+      setMessage(`${candidate.dogName} è bloccato. Resta visibile nella ricerca e puoi sbloccarlo quando vuoi.`);
+      setErrorMessage(undefined);
+      setSearchStatus('ready');
+    } catch (error) {
+      setSearchStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Blocco profilo non riuscito.');
+    }
+  }, []);
+
+  const handleUnblockCandidate = useCallback(async (candidate: DogFriendSearchResult) => {
+    try {
+      setSearchStatus('loading');
+      await unblockProfile(candidate.ownerId);
+      setResults((current) => current.map((item) => item.ownerId === candidate.ownerId ? { ...item, isBlockedByMe: false } : item));
+      setFriends((current) => current.map((item) => item.friendOwnerId === candidate.ownerId ? { ...item, isBlockedByMe: false } : item));
+      setMessage(`${candidate.dogName} sbloccato.`);
+      setErrorMessage(undefined);
+      setSearchStatus('ready');
+    } catch (error) {
+      setSearchStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Sblocco profilo non riuscito.');
+    }
+  }, []);
+
+
   return (
     <Screen>
       <AppCard tone="teal">
@@ -174,6 +257,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             <Text style={styles.bodyText}>Aggiungi fino a {MAX_DOG_FRIENDS} amici BauBook cercando per nome utente o 🐕.</Text>
           </View>
         </View>
+        <Text style={styles.heroSafetyText}>Puoi segnalare un comportamento inappropriato o bloccare un utente non gradito.</Text>
       </AppCard>
 
       {!profileReady || !dogReady ? (
@@ -243,33 +327,65 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                 return (
                   <View key={result.dogId} style={styles.friendCard}>
                     <View style={styles.friendHeaderLine}>
-                      <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {result.dogName}</Text>
-                      {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                      <View style={styles.friendHeaderLeft}>
+                        <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {result.dogName}</Text>
+                        {result.isBlockedByMe ? (
+                          <Pressable
+                            onPress={() => void handleUnblockCandidate(result)}
+                            disabled={searchStatus === 'loading'}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Sblocca ${result.dogName}`}
+                            style={({ pressed }) => [styles.blockedInlineAction, searchStatus === 'loading' ? styles.friendIconActionDisabled : null, pressed ? styles.pressed : null]}
+                          >
+                            <Text style={styles.blockedInlineActionText}>Sblocca utente 🔓</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      <View style={styles.friendHeaderRight}>
+                        {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                      </View>
                     </View>
+                    {result.isBlockedByMe ? (
+                      <View style={styles.blockedNotice}>
+                        <Text style={styles.blockedNoticeText}>⛔ Utente bloccato: resta visibile nella ricerca e puoi sbloccarlo quando vuoi.</Text>
+                      </View>
+                    ) : null}
                     <View style={styles.friendBodyRow}>
-                      <Image source={avatarSource(result.avatarUrl)} style={styles.friendAvatar} />
+                      <Image source={avatarSource(result.avatarUrl)} style={[styles.friendAvatar, result.isBlockedByMe ? styles.friendAvatarBlocked : null]} />
                       <View style={styles.friendCopy}>
+                        <Text style={styles.friendOwnerLabel} numberOfLines={1}>👤 {result.ownerDisplayName}</Text>
                         {result.tags.length ? (
                           <View style={styles.tagsRow}>
-                            {result.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                            {result.tags.slice(0, 3).map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
                           </View>
-                        ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
+                        ) : null}
                       </View>
                       <Pressable
                         onPress={() => void handleAdd(result)}
-                        disabled={friendLimitReached || searchStatus === 'loading'}
+                        disabled={friendLimitReached || searchStatus === 'loading' || result.isBlockedByMe}
                         accessibilityRole="button"
-                        accessibilityLabel={`Aggiungi ${result.dogName}`}
+                        accessibilityLabel={result.isBlockedByMe ? `${result.dogName} è bloccato` : `Aggiungi ${result.dogName}`}
                         style={({ pressed }) => [
                           styles.friendIconAction,
                           styles.friendAddAction,
-                          (friendLimitReached || searchStatus === 'loading') ? styles.friendIconActionDisabled : null,
+                          (friendLimitReached || searchStatus === 'loading' || result.isBlockedByMe) ? styles.friendIconActionDisabled : null,
                           pressed ? styles.pressed : null,
                         ]}
                       >
                         <Text style={[styles.friendIconActionText, styles.friendAddActionText]}>+</Text>
                       </Pressable>
                     </View>
+                    {!result.isBlockedByMe ? (
+                      <View style={[styles.safetyActionRow, styles.safetyActionRowCenter]}>
+                        <AppButton
+                          label="Blocca utente"
+                          size="compact"
+                          variant="secondary"
+                          disabled={searchStatus === 'loading'}
+                          onPress={() => void handleBlockCandidate(result)}
+                        />
+                      </View>
+                    ) : null}
                   </View>
                 );
               })}
@@ -292,19 +408,40 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             {friends.map((friend) => {
               const cityLabel = compactLocation(friend.friendCityLabel);
               return (
-                <View key={friend.id} style={styles.friendCard}>
+                <View key={friend.id} style={[styles.friendCard, friend.isBlockedByMe ? styles.friendCardBlocked : null]}>
                   <View style={styles.friendHeaderLine}>
-                    <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {friend.friendDogName}</Text>
-                    {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                    <View style={styles.friendHeaderLeft}>
+                      <Text style={styles.friendHeaderName} numberOfLines={1}>🐾 {friend.friendDogName}</Text>
+                      {friend.isBlockedByMe ? (
+                        <Pressable
+                          onPress={() => void handleUnblockFriend(friend)}
+                          disabled={status === 'loading'}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Sblocca ${friend.friendDogName}`}
+                          style={({ pressed }) => [styles.blockedInlineAction, status === 'loading' ? styles.friendIconActionDisabled : null, pressed ? styles.pressed : null]}
+                        >
+                          <Text style={styles.blockedInlineActionText}>Sblocca utente 🔓</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <View style={styles.friendHeaderRight}>
+                      {cityLabel ? <Text style={styles.friendHeaderLocation} numberOfLines={1}>📍 {cityLabel}</Text> : null}
+                    </View>
                   </View>
+                  {friend.isBlockedByMe ? (
+                    <View style={styles.blockedNotice}>
+                      <Text style={styles.blockedNoticeText}>⛔ Utente bloccato: resta nel Branco, puoi sbloccarlo o rimuoverlo.</Text>
+                    </View>
+                  ) : null}
                   <View style={styles.friendBodyRow}>
-                    <Image source={avatarSource(friend.friendDogAvatarUrl)} style={styles.friendAvatar} />
+                    <Image source={avatarSource(friend.friendDogAvatarUrl)} style={[styles.friendAvatar, friend.isBlockedByMe ? styles.friendAvatarBlocked : null]} />
                     <View style={styles.friendCopy}>
+                      <Text style={styles.friendOwnerLabel} numberOfLines={1}>👤 {friend.friendOwnerDisplayName}</Text>
                       {friend.friendTags.length ? (
                         <View style={styles.tagsRow}>
-                          {friend.friendTags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                          {friend.friendTags.slice(0, 3).map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
                         </View>
-                      ) : <Text style={styles.friendEmptyMeta}>Profilo BauBook friend</Text>}
+                      ) : null}
                     </View>
                     <Pressable
                       onPress={() => void handleRemove(friend)}
@@ -321,6 +458,24 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                       <Text style={[styles.friendIconActionText, styles.friendRemoveActionText]}>−</Text>
                     </Pressable>
                   </View>
+                  {!friend.isBlockedByMe ? (
+                    <View style={styles.safetyActionRow}>
+                      <AppButton
+                        label={friend.hasReportedByMe ? 'Segnalato🚩' : 'Segnala🚨'}
+                        size="compact"
+                        variant="ghost"
+                        disabled={status === 'loading' || friend.hasReportedByMe}
+                        onPress={() => void handleReportFriend(friend)}
+                      />
+                      <AppButton
+                        label="Blocca utente"
+                        size="compact"
+                        variant="secondary"
+                        disabled={status === 'loading'}
+                        onPress={() => void handleBlockFriend(friend)}
+                      />
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
@@ -376,6 +531,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  bodyTextStrong: {
+    color: colors.primaryDark,
+    fontWeight: '900',
+  },
+  heroSafetyText: {
+    marginTop: spacing.sm,
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '900',
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -465,18 +631,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.76)',
     padding: spacing.md,
   },
+  friendCardBlocked: {
+    borderColor: colors.warning,
+    backgroundColor: colors.orangeSoft,
+  },
   friendHeaderLine: {
     width: '100%',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  friendHeaderName: {
+  friendHeaderLeft: {
     flex: 1,
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+  },
+  friendHeaderName: {
+    width: '100%',
     color: colors.ink,
     fontSize: typography.h3,
     fontWeight: '900',
+  },
+  friendHeaderRight: {
+    maxWidth: '48%',
+    alignItems: 'flex-end',
+    gap: spacing.xs,
   },
   friendHeaderLocation: {
     flex: 1,
@@ -497,9 +677,18 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     resizeMode: 'cover',
   },
+  friendAvatarBlocked: {
+    opacity: 0.56,
+  },
   friendCopy: {
     flex: 1,
     gap: 3,
+  },
+  friendOwnerLabel: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
   },
   friendIconAction: {
     width: 58,
@@ -545,6 +734,45 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 18,
     fontWeight: '800',
+  },
+  blockedInlineAction: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.orangeSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  blockedInlineActionText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  blockedNotice: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  blockedNoticeText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  safetyActionRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  safetyActionRowCenter: {
+    justifyContent: 'center',
   },
   tagsRow: {
     flexDirection: 'row',

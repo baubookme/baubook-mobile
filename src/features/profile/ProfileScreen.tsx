@@ -284,8 +284,8 @@ export function ProfileScreen() {
                 <View style={styles.headerRow}>
                     <IconBubble source={baubookImages.icons.messages} tone="teal"/>
                     <View style={styles.headerCopy}>
-                        <Text style={styles.eyebrow}>Beta BauBook</Text>
-                        <Text style={styles.cardTitle}>Invia feedback beta!</Text>
+                        <Text style={styles.eyebrow}>Feedback BauBook</Text>
+                        <Text style={styles.cardTitle}>Invia feedback!</Text>
                     </View>
                 </View>
                 <Text style={styles.bodyText}>Raccontaci cosa funziona, cosa non è chiaro o cosa ti piacerebbe trovare
@@ -358,7 +358,7 @@ export function ProfileScreen() {
                 {!auth.isSignedIn ? (
                     <View style={styles.formStack}>
                         <Text style={styles.helperText}>
-                            Per la beta puoi entrare direttamente con email e password. Il codice email resta
+                            Puoi entrare direttamente con email e password. Il codice email resta
                             disponibile se preferisci utilizzare un OTP.
                         </Text>
 
@@ -530,6 +530,10 @@ export function ProfileScreen() {
                                 body="Usiamo email, profilo utente, profilo 🐾, contenuti e presenze temporanee solo per far funzionare la community locale."/>
                     <LegalBlock title="Localizzazione"
                                 body="La posizione viene usata solo quando scegli funzioni di prossimità, come passeggiate, presenze, mappa o segnalazioni."/>
+                    <LegalBlock title="Linee guida community"
+                                body="Segnala contenuti offensivi o falsi alert e blocca gli utenti non graditi nelle aree community. Le segnalazioni vengono gestite dalla moderazione BauBook."/>
+                    <LegalBlock title="Supporto e contatto"
+                                body="Per richieste, problemi o contenuti da verificare puoi usare il feedback in app e i canali pubblici BauBook indicati nella scheda store."/>
                     <LegalBlock title="Cancellazione account"
                                 body="Puoi richiedere la cancellazione account direttamente dall'app. La richiesta resta tracciata per poterla gestire correttamente."/>
                 </View>

@@ -1,6 +1,6 @@
 {
     "name": "baubook",
-    "version": "0.7.2",
+    "version": "0.7.3",
     "private": true,
     "main": "index.ts",
     "scripts": {
@@ -51,9 +51,9 @@
     },
     "baubook": {
         "baseline": "2.3.0",
-        "releaseName": "BauBook 0.7.2",
-        "releaseTag": "baubook-0.7.2",
+        "releaseName": "BauBook 0.7.3 Store Safety Moderation Readiness",
+        "releaseTag": "baubook-0.7.3-store-safety-moderation-readiness",
         "releaseDate": "2026-06-23",
-        "label": "Admin Moderation Foundation"
+        "label": "Store Safety Moderation Readiness"
     }
 }

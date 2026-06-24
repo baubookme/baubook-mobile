@@ -156,3 +156,9 @@ truncate table public.profiles restart identity cascade;
 delete from auth.users;
 
 commit;
+
+delete from public.blocks b
+    using public.profiles blocker
+where b.blocker_id = blocker.id
+  and blocker.display_name in ('admin', 'info_user');
+commit;

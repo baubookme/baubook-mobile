@@ -3,6 +3,7 @@ import { demoAlerts } from '../data/mockData';
 import { getSupabaseClient } from '../lib/supabase';
 import type { AlertModel, AlertStatus } from '../types/domain';
 import { normalizeError } from './authAccount';
+import { fetchBlockedProfileIds } from './userSafety';
 
 export type SafetyBoardSource = 'supabase' | 'fallback';
 export type DangerType = 'suspected_poison' | 'loose_dog' | 'unsafe_area' | 'traffic' | 'broken_fence' | 'other';
@@ -23,6 +24,7 @@ export interface LostDogSightingModel {
   locationLongitude: number | null;
   manualAddress: string | null;
   isMine: boolean;
+  isBlockedByMe: boolean;
 }
 
 export interface SafetyAlertModel extends AlertModel {
@@ -40,6 +42,7 @@ export interface SafetyAlertModel extends AlertModel {
   expiresAtIso: string;
   createdAtIso: string;
   isMine: boolean;
+  isBlockedByMe: boolean;
   hasMyAbuseReport: boolean;
   moderationStatus: string;
   radiusLabel: string;
@@ -296,6 +299,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
     expiresAtIso: row.expires_at,
     createdAtIso: row.created_at,
     isMine: Boolean(currentProfileId && row.owner_id === currentProfileId),
+    isBlockedByMe: false,
     hasMyAbuseReport: false,
     moderationStatus: row.moderation_status,
     radiusLabel: `${row.radius_m ?? 350} m indicativi`,
@@ -333,6 +337,7 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     expiresAtIso: row.expires_at,
     createdAtIso: row.created_at,
     isMine: Boolean(currentProfileId && row.reporter_id === currentProfileId),
+    isBlockedByMe: false,
     hasMyAbuseReport: false,
     moderationStatus: row.moderation_status,
     radiusLabel: `${row.radius_m ?? 250} m indicativi`,
@@ -359,6 +364,7 @@ function demoToSafety(alert: AlertModel): SafetyAlertModel {
     expiresAtIso: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
     createdAtIso: new Date().toISOString(),
     isMine: false,
+    isBlockedByMe: false,
     hasMyAbuseReport: false,
     moderationStatus: 'approved',
     radiusLabel: 'area demo',
@@ -403,6 +409,7 @@ function remoteSightingToModel(row: RemoteLostDogSightingRow): LostDogSightingMo
     locationLongitude: row.location_longitude,
     manualAddress: row.manual_address?.trim() || null,
     isMine: Boolean(row.is_mine),
+    isBlockedByMe: false,
   };
 }
 
@@ -441,6 +448,7 @@ async function fetchSightingsByAlert(
   client: NonNullable<ReturnType<typeof getSupabaseClient>>,
   alertIds: string[],
   currentProfileId?: string | null,
+  blockedProfileIds: Set<string> = new Set(),
 ): Promise<Map<string, LostDogSightingModel[]>> {
   const sightingsByAlert = new Map<string, LostDogSightingModel[]>();
   if (!alertIds.length) {
@@ -455,10 +463,12 @@ async function fetchSightingsByAlert(
     return sightingsByAlert;
   }
 
-  ((data ?? []) as RemoteLostDogSightingRow[]).forEach((row) => {
+  ((data ?? []) as RemoteLostDogSightingRow[])
+    .forEach((row) => {
     const sighting = {
       ...remoteSightingToModel(row),
       isMine: Boolean(row.is_mine || (currentProfileId && row.reporter_id === currentProfileId)),
+      isBlockedByMe: Boolean(row.reporter_id && blockedProfileIds.has(row.reporter_id)),
     };
     const current = sightingsByAlert.get(sighting.alertId) ?? [];
     current.push(sighting);
@@ -498,6 +508,7 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
   try {
     await expireStaleAlerts();
     const nowIso = new Date().toISOString();
+    const blockedProfileIds = await fetchBlockedProfileIds(currentProfileId);
 
     const [lostResult, dangerResult] = await Promise.all([
       client
@@ -530,13 +541,19 @@ export async function fetchSafetyBoard(currentProfileId?: string | null): Promis
     const rawLost = (lostResult.data ?? []) as RemoteLostAlertRow[];
     const rawDangers = (dangerResult.data ?? []) as RemoteDangerReportRow[];
 
-    const baseLost = rawLost.map((row) => remoteLostToModel(row, currentProfileId));
-    const baseDangers = rawDangers.map((row) => remoteDangerToModel(row, currentProfileId));
+    const baseLost = rawLost.map((row) => ({
+      ...remoteLostToModel(row, currentProfileId),
+      isBlockedByMe: Boolean(row.owner_id && blockedProfileIds.has(row.owner_id)),
+    }));
+    const baseDangers = rawDangers.map((row) => ({
+      ...remoteDangerToModel(row, currentProfileId),
+      isBlockedByMe: Boolean(row.reporter_id && blockedProfileIds.has(row.reporter_id)),
+    }));
     const baseAlerts = [...baseLost, ...baseDangers];
 
     const [reportKeys, sightingsByAlert] = await Promise.all([
       fetchMyReportKeys(client, currentProfileId, baseAlerts),
-      fetchSightingsByAlert(client, baseLost.map((alert) => alert.id), currentProfileId),
+      fetchSightingsByAlert(client, baseLost.map((alert) => alert.id), currentProfileId, blockedProfileIds),
     ]);
 
     const lost = baseLost.map((alert) => ({
@@ -704,7 +721,7 @@ export async function reportSafetyContent(
     target_type_input: targetType,
     target_id_input: targetId,
     reason_input: 'false_alert',
-    description_input: description ?? 'Segnalazione abuso/falso alert da app beta.',
+    description_input: description ?? 'Segnalazione abuso/falso alert da app BauBook.',
   });
 
   if (error) {

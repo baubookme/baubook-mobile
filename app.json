@@ -2,7 +2,7 @@
     "expo": {
         "name": "BauBook! Venezia-Mestre",
         "slug": "baubook",
-        "version": "0.7.2",
+        "version": "0.7.3",
         "orientation": "portrait",
         "icon": "./assets/icon.png",
         "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
         "ios": {
             "supportsTablet": true,
             "bundleIdentifier": "me.baubook.app",
-            "buildNumber": "32",
+            "buildNumber": "33",
             "infoPlist": {
                 "ITSAppUsesNonExemptEncryption": false
             }
@@ -24,7 +24,7 @@
                 "monochromeImage": "./assets/android-icon-monochrome.png"
             },
             "predictiveBackGestureEnabled": false,
-            "versionCode": 32
+            "versionCode": 33
         },
         "web": {
             "bundler": "metro",
@@ -39,27 +39,31 @@
             "baseline": "2.3.0",
             "launchReadiness": "beta-experience-cartoon-toolbar",
             "sponsoredLiteDefault": false,
-            "releaseName": "BauBook 0.7.2",
+            "releaseName": "BauBook 0.7.3 Store Safety Moderation Readiness",
             "cartoonToolbar": true,
             "sponsoredLiteDefaultEnabled": false,
             "baubookBaseline": "2.3.0",
-            "baubookReleaseName": "BauBook 0.7.2",
+            "baubookReleaseName": "BauBook 0.7.3 Store Safety Moderation Readiness",
             "nativeMapViewMarkers": true,
             "mapProvider": "react-native-maps",
-            "baubookLaunchMode": "store-beta-auth-email-password-otp-welcome-email-demo-admin-moderation",
+            "baubookLaunchMode": "store-safety-moderation-readiness",
             "eas": {
                 "projectId": "bd85b195-0fc3-4b4c-8b4c-af8f119f51ca"
             },
             "baubook": {
                 "baseline": "2.3.0",
-                "label": "Admin Moderation Foundation"
+                "label": "Store Safety Moderation Readiness"
             },
             "mapCareCommandCenter": true,
             "productionBackendCutover": true,
             "productizedHome": true,
             "betaAuthEmailPasswordOtp": true,
             "welcomeEmailAfterSignup": true,
-            "adminModerationFoundation": true
+            "adminModerationFoundation": true,
+            "storeSafetyModerationReadiness": true,
+            "adminModerationHideRestore": true,
+            "userBlocking": true,
+            "ugcReportAcrossCoreSurfaces": true
         }
     }
 }

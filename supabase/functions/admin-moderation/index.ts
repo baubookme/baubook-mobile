@@ -19,6 +19,7 @@ type AdminContext = {
 const OPEN_REPORT_STATUSES = ['open', 'reviewing'];
 const CLOSED_REPORT_STATUSES = ['actioned', 'resolved', 'dismissed'];
 const ALLOWED_REPORT_STATUSES = ['open', 'reviewing', 'actioned', 'resolved', 'dismissed'];
+const REPORT_CLOSURE_ACTIONS = ['report_resolved', 'report_dismissed', 'report_actioned', 'content_hidden', 'content_restored'];
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -217,7 +218,7 @@ async function requireAdmin(request: Request): Promise<AdminContext | Response> 
 
 function normalizeTargetType(value: unknown): string {
   const raw = sanitize(value);
-  if (['lost_dog_alert', 'danger_report', 'lost_dog_sighting'].includes(raw)) {
+  if (['lost_dog_alert', 'danger_report', 'lost_dog_sighting', 'walk_plan', 'presence_session', 'dog_profile'].includes(raw)) {
     return raw;
   }
   return raw || 'unknown';
@@ -231,6 +232,7 @@ function buildTargetSummary(targetType: string, row: Record<string, unknown> | u
       targetModerationStatus: null,
       targetLocationLabel: null,
       targetDescription: null,
+      targetOwnerId: null,
     };
   }
 
@@ -244,6 +246,7 @@ function buildTargetSummary(targetType: string, row: Record<string, unknown> | u
       targetModerationStatus: row.moderation_status ?? null,
       targetLocationLabel: locationLabel,
       targetDescription: description,
+      targetOwnerId: sanitize(row.owner_id) || null,
     };
   }
 
@@ -254,6 +257,7 @@ function buildTargetSummary(targetType: string, row: Record<string, unknown> | u
       targetModerationStatus: row.moderation_status ?? null,
       targetLocationLabel: locationLabel,
       targetDescription: description,
+      targetOwnerId: sanitize(row.reporter_id) || null,
     };
   }
 
@@ -264,6 +268,40 @@ function buildTargetSummary(targetType: string, row: Record<string, unknown> | u
       targetModerationStatus: row.moderation_status ?? null,
       targetLocationLabel: locationLabel,
       targetDescription: description,
+      targetOwnerId: sanitize(row.reporter_id) || null,
+    };
+  }
+
+  if (targetType === 'walk_plan') {
+    return {
+      targetLabel: 'Passeggiata live',
+      targetStatus: row.active === false ? 'inactive' : 'active',
+      targetModerationStatus: row.moderation_status ?? null,
+      targetLocationLabel: locationLabel,
+      targetDescription: description,
+      targetOwnerId: sanitize(row.owner_id) || null,
+    };
+  }
+
+  if (targetType === 'presence_session') {
+    return {
+      targetLabel: 'Presenza live',
+      targetStatus: row.active === false ? 'inactive' : 'active',
+      targetModerationStatus: row.moderation_status ?? null,
+      targetLocationLabel: locationLabel,
+      targetDescription: description,
+      targetOwnerId: sanitize(row.profile_id) || null,
+    };
+  }
+
+  if (targetType === 'dog_profile') {
+    return {
+      targetLabel: 'Profilo cane: ' + (sanitize(row.name) || 'BauBook dog'),
+      targetStatus: row.visibility ?? null,
+      targetModerationStatus: row.moderation_status ?? null,
+      targetLocationLabel: null,
+      targetDescription: null,
+      targetOwnerId: sanitize(row.owner_id) || null,
     };
   }
 
@@ -273,6 +311,7 @@ function buildTargetSummary(targetType: string, row: Record<string, unknown> | u
     targetModerationStatus: row.moderation_status ?? null,
     targetLocationLabel: locationLabel,
     targetDescription: description,
+    targetOwnerId: sanitize(row.owner_id) || sanitize(row.reporter_id) || sanitize(row.profile_id) || null,
   };
 }
 
@@ -288,13 +327,22 @@ async function readTargets(targetType: string, targetIds: string[]): Promise<Map
 
   if (targetType === 'lost_dog_alert') {
     table = 'lost_dog_alerts';
-    select = 'id,description,status,moderation_status,location_label,manual_address,created_at,expires_at';
+    select = 'id,description,status,moderation_status,owner_id,location_label,manual_address,created_at,expires_at';
   } else if (targetType === 'danger_report') {
     table = 'danger_reports';
-    select = 'id,danger_type,description,severity,status,moderation_status,location_label,manual_address,created_at,expires_at';
+    select = 'id,danger_type,description,severity,status,moderation_status,reporter_id,location_label,manual_address,created_at,expires_at';
   } else if (targetType === 'lost_dog_sighting') {
     table = 'lost_dog_sightings';
-    select = 'id,note,status,moderation_status,location_label,manual_address,created_at,updated_at';
+    select = 'id,note,status,moderation_status,reporter_id,location_label,manual_address,created_at,updated_at';
+  } else if (targetType === 'walk_plan') {
+    table = 'walk_plans';
+    select = 'id,message,active,moderation_status,owner_id,location_label,manual_address,created_at,updated_at';
+  } else if (targetType === 'presence_session') {
+    table = 'presence_sessions';
+    select = 'id,message,status,active,moderation_status,profile_id,location_label,manual_address,created_at,updated_at';
+  } else if (targetType === 'dog_profile') {
+    table = 'dogs';
+    select = 'id,name,owner_id,visibility,moderation_status,created_at,updated_at';
   } else {
     return result;
   }
@@ -361,12 +409,59 @@ async function listReports(payload: Record<string, unknown>) {
     targetMaps.set(type, await readTargets(type, ids));
   }
 
+  const targetOwnerIds = new Set<string>();
+  rows.forEach((row) => {
+    const targetType = normalizeTargetType(row.target_type);
+    const targetId = sanitize(row.target_id);
+    const target = targetMaps.get(targetType)?.get(targetId);
+    const ownerId = sanitize((buildTargetSummary(targetType, target) as Record<string, unknown>).targetOwnerId);
+    if (ownerId) {
+      targetOwnerIds.add(ownerId);
+    }
+  });
+
+  const targetOwnerNames = new Map<string, string>();
+  if (targetOwnerIds.size) {
+    const profiles = await restGet('profiles', {
+      select: 'id,display_name',
+      id: inFilter([...targetOwnerIds]),
+    });
+    profiles.forEach((profile) => {
+      const item = profile as Record<string, unknown>;
+      const id = sanitize(item.id);
+      if (id) {
+        targetOwnerNames.set(id, sanitize(item.display_name) || 'Profilo BauBook');
+      }
+    });
+  }
+
+  const reportIds = rows.map((row) => sanitize(row.id)).filter(Boolean);
+  const closureActions = new Map<string, Record<string, unknown>>();
+  if (reportIds.length) {
+    const actionRows = await restGet('moderation_actions', {
+      select: 'target_id,action,moderator_id,created_at',
+      target_type: 'eq.report',
+      target_id: inFilter(reportIds),
+      order: 'created_at.desc',
+    });
+    actionRows.forEach((actionRow) => {
+      const item = actionRow as Record<string, unknown>;
+      const targetId = sanitize(item.target_id);
+      const action = sanitize(item.action);
+      if (targetId && REPORT_CLOSURE_ACTIONS.includes(action) && !closureActions.has(targetId)) {
+        closureActions.set(targetId, item);
+      }
+    });
+  }
+
   const reports = rows.map((row) => {
     const targetType = normalizeTargetType(row.target_type);
     const targetId = sanitize(row.target_id);
     const target = targetMaps.get(targetType)?.get(targetId);
     const targetSummary = buildTargetSummary(targetType, target);
     const reporterId = sanitize(row.reporter_id);
+    const targetOwnerId = sanitize((targetSummary as Record<string, unknown>).targetOwnerId) || null;
+    const closureAction = closureActions.get(sanitize(row.id));
 
     return {
       id: row.id,
@@ -380,6 +475,10 @@ async function listReports(payload: Record<string, unknown>) {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       ...targetSummary,
+      targetOwnerId,
+      targetOwnerName: targetOwnerId ? (targetOwnerNames.get(targetOwnerId) ?? 'Profilo BauBook') : null,
+      closureAction: closureAction ? sanitize(closureAction.action) || null : null,
+      closureActionAt: closureAction ? sanitize(closureAction.created_at) || null : null,
     };
   });
 
@@ -470,6 +569,168 @@ async function setReportStatus(admin: AdminContext, payload: Record<string, unkn
   });
 }
 
+
+function targetUpdateConfig(targetType: string, mode: string): { table: string; body: Record<string, unknown> } | null {
+  const hide = mode === 'hide';
+  const now = new Date().toISOString();
+
+  if (targetType === 'lost_dog_alert') {
+    return {
+      table: 'lost_dog_alerts',
+      body: hide
+        ? { status: 'removed', moderation_status: 'removed', closed_at: now, closed_reason: 'Nascosto da moderazione BauBook', updated_at: now }
+        : { status: 'active', moderation_status: 'approved', closed_at: null, closed_reason: null, updated_at: now },
+    };
+  }
+
+  if (targetType === 'danger_report') {
+    return {
+      table: 'danger_reports',
+      body: hide
+        ? { status: 'removed', moderation_status: 'removed', closed_reason: 'Nascosto da moderazione BauBook', updated_at: now }
+        : { status: 'active', moderation_status: 'approved', closed_reason: null, updated_at: now },
+    };
+  }
+
+  if (targetType === 'lost_dog_sighting') {
+    return {
+      table: 'lost_dog_sightings',
+      body: hide
+        ? { status: 'removed', moderation_status: 'removed', closed_at: now, updated_at: now }
+        : { status: 'active', moderation_status: 'approved', closed_at: null, updated_at: now },
+    };
+  }
+
+  if (targetType === 'walk_plan') {
+    return {
+      table: 'walk_plans',
+      body: hide
+        ? { active: false, moderation_status: 'removed', updated_at: now }
+        : { active: true, moderation_status: 'approved', updated_at: now },
+    };
+  }
+
+  if (targetType === 'presence_session') {
+    return {
+      table: 'presence_sessions',
+      body: hide
+        ? { active: false, moderation_status: 'removed', updated_at: now }
+        : { active: true, moderation_status: 'approved', updated_at: now },
+    };
+  }
+
+  if (targetType === 'dog_profile') {
+    return {
+      table: 'dogs',
+      body: hide
+        ? { visibility: 'removed', moderation_status: 'removed', updated_at: now }
+        : { visibility: 'public', moderation_status: 'approved', updated_at: now },
+    };
+  }
+
+  return null;
+}
+
+async function setTargetVisibility(admin: AdminContext, payload: Record<string, unknown>) {
+  const reportId = sanitize(payload.reportId);
+  const mode = sanitize(payload.mode);
+  const note = sanitize(payload.note) || null;
+
+  if (!['hide', 'restore'].includes(mode)) {
+    return jsonResponse({ ok: false, error: 'Invalid target visibility mode' }, 400);
+  }
+
+  let report: Record<string, unknown> | null = null;
+  let targetType = normalizeTargetType(payload.targetType);
+  let targetId = sanitize(payload.targetId);
+
+  if (reportId) {
+    const rows = await restGet('reports', {
+      select: 'id,reporter_id,target_type,target_id,reason,description,status,created_at,updated_at',
+      id: 'eq.' + reportId,
+      limit: '1',
+    }) as Record<string, unknown>[];
+    report = rows[0] ?? null;
+
+    if (!report) {
+      return jsonResponse({ ok: false, error: 'Report not found' }, 404);
+    }
+
+    targetType = normalizeTargetType(report.target_type);
+    targetId = sanitize(report.target_id);
+  }
+
+  if (!targetType || !targetId) {
+    return jsonResponse({ ok: false, error: 'Missing target' }, 400);
+  }
+
+  const config = targetUpdateConfig(targetType, mode);
+  if (!config) {
+    return jsonResponse({ ok: false, error: 'Unsupported target type' }, 400);
+  }
+
+  await restPatchMinimal(config.table, { id: 'eq.' + targetId }, config.body);
+
+  const now = new Date().toISOString();
+  if (reportId) {
+    await restPatchMinimal('reports', { id: 'eq.' + reportId }, {
+      status: 'actioned',
+      updated_at: now,
+    });
+  }
+
+  if (mode === 'hide') {
+    try {
+      await restInsert('content_removals', {
+        moderator_id: admin.profileId,
+        target_type: targetType,
+        target_id: targetId,
+        reason: note || 'Contenuto nascosto da moderazione BauBook',
+      });
+    } catch (error) {
+      console.error('content_removals insert failed', error instanceof Error ? error.message : error);
+    }
+  }
+
+  await restInsert('moderation_actions', {
+    moderator_id: admin.profileId,
+    action: mode === 'hide' ? 'content_hidden' : 'content_restored',
+    target_type: targetType,
+    target_id: targetId,
+    reason: note,
+    metadata: {
+      report_id: reportId || null,
+      moderator_role: admin.role,
+      target_table: config.table,
+      visibility_mode: mode,
+    },
+  });
+
+  if (reportId) {
+    await restInsert('moderation_actions', {
+      moderator_id: admin.profileId,
+      action: mode === 'hide' ? 'content_hidden' : 'content_restored',
+      target_type: 'report',
+      target_id: reportId,
+      reason: note,
+      metadata: {
+        report_target_type: targetType,
+        report_target_id: targetId,
+        moderator_role: admin.role,
+        target_table: config.table,
+        visibility_mode: mode,
+      },
+    });
+  }
+
+  return jsonResponse({
+    ok: true,
+    targetType,
+    targetId,
+    mode,
+  });
+}
+
 serve(async (request: Request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -504,6 +765,10 @@ serve(async (request: Request) => {
 
     if (action === 'set_report_status') {
       return await setReportStatus(admin, payload);
+    }
+
+    if (action === 'set_target_visibility') {
+      return await setTargetVisibility(admin, payload);
     }
 
     return jsonResponse({ ok: false, error: 'Unknown action' }, 400);

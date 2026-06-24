@@ -5,6 +5,7 @@ import {
   fetchAdminModerationReports,
   fetchAdminModerationStatus,
   updateAdminModerationReportStatus,
+  updateAdminModerationTargetVisibility,
   type AdminModerationReport,
   type AdminModerationRole,
   type AdminReportStatus,
@@ -62,6 +63,8 @@ function contentStatusLabel(status: string | null | undefined): string {
       return 'contenuto scaduto';
     case 'removed':
       return 'contenuto rimosso';
+    case 'inactive':
+      return 'contenuto non attivo';
     default:
       return status ? `contenuto ${status}` : '';
   }
@@ -79,9 +82,35 @@ function contentModerationStatusLabel(status: string | null | undefined): string
       return 'contenuto nascosto';
     case 'removed':
       return 'contenuto rimosso';
+    case 'inactive':
+      return 'contenuto non attivo';
     default:
       return status ? `moderazione contenuto ${status}` : '';
   }
+}
+
+function closureActionLabel(action: string | null | undefined, targetHidden: boolean): string {
+  switch (action) {
+    case 'report_resolved':
+      return 'Chiudi report';
+    case 'report_dismissed':
+      return 'Ignora';
+    case 'content_hidden':
+      return 'Nascondi contenuto';
+    case 'content_restored':
+      return 'Ripristina contenuto';
+    case 'report_actioned':
+      return 'Report gestito';
+    default:
+      return targetHidden ? 'Nascondi contenuto' : 'Chiudi report';
+  }
+}
+
+function isTargetHidden(report: AdminModerationReport): boolean {
+  return report.targetStatus === 'removed' ||
+    report.targetModerationStatus === 'removed' ||
+    report.targetModerationStatus === 'hidden' ||
+    report.targetModerationStatus === 'rejected';
 }
 
 function isClosedReportStatus(status: string | null | undefined): boolean {
@@ -130,10 +159,12 @@ interface ReportCardProps {
   report: AdminModerationReport;
   busy: boolean;
   onAction: (reportId: string, status: AdminReportStatus) => void;
+  onTargetVisibility: (report: AdminModerationReport, mode: 'hide' | 'restore') => void;
 }
 
-function ReportCard({ report, busy, onAction }: ReportCardProps) {
+function ReportCard({ report, busy, onAction, onTargetVisibility }: ReportCardProps) {
   const isClosed = isClosedReportStatus(report.status);
+  const targetHidden = isTargetHidden(report);
   const targetStateMeta = [
     contentStatusLabel(report.targetStatus),
     contentModerationStatusLabel(report.targetModerationStatus),
@@ -152,36 +183,63 @@ function ReportCard({ report, busy, onAction }: ReportCardProps) {
         </View>
       </View>
 
-      <Text style={styles.reportText}>Segnalato da {report.reporterName}</Text>
+      <Text style={styles.reportText}>Segnalato da: {report.reporterName} 👤</Text>
       {targetLocationMeta ? <Text style={styles.reportMeta}>{targetLocationMeta}</Text> : null}
+      {!isClosed ? (
+        <Text style={styles.reportMeta}>Account segnalato: {report.targetOwnerName || 'profilo non disponibile'} 👤</Text>
+      ) : null}
       {!isClosed && targetStateMeta ? <Text style={styles.reportMeta}>Contenuto segnalato: {targetStateMeta}</Text> : null}
-      {report.description ? <Text style={styles.reportText}>Nota abuso: {report.description}</Text> : null}
-      {report.targetDescription ? <Text style={styles.targetText}>Contenuto: {report.targetDescription}</Text> : null}
+      {report.description ? <Text style={styles.reportText}>Nota segnalazione: {report.description}</Text> : null}
 
       {isClosed ? (
-        <Text style={styles.closedNotice}>Segnalazione chiusa. Lo stato del contenuto segnalato resta separato dal report.</Text>
+        <Text style={styles.closedNotice}>Azione di moderazione: {closureActionLabel(report.closureAction, targetHidden)}.</Text>
       ) : (
-        <View style={styles.reportActionsRow}>
-          <AppButton
-            label="Prendi in carico"
-            size="compact"
-            variant="secondary"
-            disabled={busy || report.status === 'reviewing'}
-            onPress={() => onAction(report.id, 'reviewing')}
-          />
-          <AppButton
-            label="Risolvi"
-            size="compact"
-            disabled={busy}
-            onPress={() => onAction(report.id, 'resolved')}
-          />
-          <AppButton
-            label="Ignora"
-            size="compact"
-            variant="ghost"
-            disabled={busy}
-            onPress={() => onAction(report.id, 'dismissed')}
-          />
+        <View style={styles.adminActionsGrid}>
+          <View style={[styles.adminActionsGridCell, styles.adminActionsGridCellStart]}>
+            <AppButton
+              label="Prendi in carico"
+              size="compact"
+              variant="secondary"
+              disabled={busy || report.status === 'reviewing'}
+              onPress={() => onAction(report.id, 'reviewing')}
+            />
+          </View>
+          <View style={[styles.adminActionsGridCell, styles.adminActionsGridCellEnd]}>
+            <AppButton
+              label="Chiudi report"
+              size="compact"
+              disabled={busy}
+              onPress={() => onAction(report.id, 'resolved')}
+            />
+          </View>
+          <View style={[styles.adminActionsGridCell, styles.adminActionsGridCellStart]}>
+            <AppButton
+              label="Ignora"
+              size="compact"
+              variant="ghost"
+              disabled={busy}
+              onPress={() => onAction(report.id, 'dismissed')}
+            />
+          </View>
+          <View style={[styles.adminActionsGridCell, styles.adminActionsGridCellEnd]}>
+            {targetHidden ? (
+              <AppButton
+                label="Ripristina contenuto"
+                size="compact"
+                variant="secondary"
+                disabled={busy}
+                onPress={() => onTargetVisibility(report, 'restore')}
+              />
+            ) : (
+              <AppButton
+                label="Nascondi contenuto"
+                size="compact"
+                variant="danger"
+                disabled={busy}
+                onPress={() => onTargetVisibility(report, 'hide')}
+              />
+            )}
+          </View>
         </View>
       )}
     </View>
@@ -269,6 +327,23 @@ export function AdminModerationScreen() {
     }
   };
 
+  const handleTargetVisibility = async (report: AdminModerationReport, mode: 'hide' | 'restore') => {
+    setIsBusy(true);
+    setErrorMessage('');
+    setMessage('');
+    try {
+      await updateAdminModerationTargetVisibility(report, mode, note);
+      setNote('');
+      setMessage(mode === 'hide' ? 'Contenuto nascosto e report gestito.' : 'Contenuto ripristinato.');
+      await loadReports(includeClosed);
+    } catch (error) {
+      const nextMessage = error instanceof Error ? error.message : 'Azione contenuto non riuscita.';
+      setErrorMessage(nextMessage);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   if (isChecking || !isAdmin) {
     return null;
   }
@@ -279,7 +354,7 @@ export function AdminModerationScreen() {
         <IconBubble source={baubookImages.icons.settings} tone="teal" />
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>Admin BauBook</Text>
-          <Text style={styles.cardTitle}>Moderazione beta</Text>
+          <Text style={styles.cardTitle}>Moderazione</Text>
           <Text style={styles.bodyText}>Accesso: {roleLabel(role)}. Coda basata sulle segnalazioni abuso già presenti.</Text>
         </View>
       </View>
@@ -316,7 +391,7 @@ export function AdminModerationScreen() {
 
       <View style={styles.reportsStack}>
         {reports.map((report) => (
-          <ReportCard key={report.id} report={report} busy={isBusy} onAction={handleAction} />
+          <ReportCard key={report.id} report={report} busy={isBusy} onAction={handleAction} onTargetVisibility={handleTargetVisibility} />
         ))}
       </View>
     </AppCard>
@@ -458,11 +533,23 @@ const styles = StyleSheet.create({
     fontSize: typography.tiny,
     fontWeight: '900',
   },
-  reportActionsRow: {
+  adminActionsGrid: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+    rowGap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  adminActionsGridCell: {
+    width: '50%',
+  },
+  adminActionsGridCellStart: {
+    alignItems: 'flex-start',
+    paddingRight: spacing.xs,
+  },
+  adminActionsGridCellEnd: {
+    alignItems: 'flex-end',
+    paddingLeft: spacing.xs,
   },
   closedNotice: {
     marginTop: spacing.xs,

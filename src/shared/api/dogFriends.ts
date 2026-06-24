@@ -10,9 +10,12 @@ export interface DogFriendModel {
   friendOwnerId: string;
   friendDogId: string;
   friendDogName: string;
+  friendOwnerDisplayName: string;
   friendDogAvatarUrl: string | null;
   friendCityLabel: string | null;
   friendTags: string[];
+  isBlockedByMe: boolean;
+  hasReportedByMe: boolean;
   createdAt: string;
 }
 
@@ -20,9 +23,12 @@ export interface DogFriendSearchResult {
   dogId: string;
   ownerId: string;
   dogName: string;
+  ownerDisplayName: string;
   avatarUrl: string | null;
   cityLabel: string | null;
   tags: string[];
+  isBlockedByMe: boolean;
+  hasReportedByMe: boolean;
 }
 
 interface RemoteDogFriendRow {
@@ -31,9 +37,12 @@ interface RemoteDogFriendRow {
   friend_owner_id: string;
   friend_dog_id: string;
   friend_dog_name: string;
+  friend_owner_display_name: string | null;
   friend_dog_avatar_url: string | null;
   friend_city_label: string | null;
   friend_tags: string[] | null;
+  is_blocked: boolean | null;
+  has_reported_by_me: boolean | null;
   created_at: string;
 }
 
@@ -41,9 +50,12 @@ interface RemoteDogFriendSearchRow {
   dog_id: string;
   owner_id: string;
   dog_name: string;
+  owner_display_name: string | null;
   avatar_url: string | null;
   city_label: string | null;
   tags: string[] | null;
+  is_blocked: boolean | null;
+  has_reported_by_me: boolean | null;
 }
 
 function assertSupabaseClient() {
@@ -58,7 +70,7 @@ function normalizeTags(tags: string[] | null | undefined): string[] {
   return (tags ?? [])
     .map((tag) => tag.trim())
     .filter(Boolean)
-    .slice(0, 4);
+    .slice(0, 3);
 }
 
 function remoteFriendToModel(row: RemoteDogFriendRow): DogFriendModel {
@@ -68,9 +80,12 @@ function remoteFriendToModel(row: RemoteDogFriendRow): DogFriendModel {
     friendOwnerId: row.friend_owner_id,
     friendDogId: row.friend_dog_id,
     friendDogName: row.friend_dog_name,
+    friendOwnerDisplayName: row.friend_owner_display_name?.trim() || 'Utente BauBook',
     friendDogAvatarUrl: row.friend_dog_avatar_url,
     friendCityLabel: row.friend_city_label,
     friendTags: normalizeTags(row.friend_tags),
+    isBlockedByMe: Boolean(row.is_blocked),
+    hasReportedByMe: Boolean(row.has_reported_by_me),
     createdAt: row.created_at,
   };
 }
@@ -80,9 +95,12 @@ function remoteSearchToModel(row: RemoteDogFriendSearchRow): DogFriendSearchResu
     dogId: row.dog_id,
     ownerId: row.owner_id,
     dogName: row.dog_name,
+    ownerDisplayName: row.owner_display_name?.trim() || 'Utente BauBook',
     avatarUrl: row.avatar_url,
     cityLabel: row.city_label,
     tags: normalizeTags(row.tags),
+    isBlockedByMe: Boolean(row.is_blocked),
+    hasReportedByMe: Boolean(row.has_reported_by_me),
   };
 }
 

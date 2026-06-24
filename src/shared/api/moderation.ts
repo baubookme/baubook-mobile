@@ -3,6 +3,7 @@ import { normalizeError } from './authAccount';
 
 export type AdminModerationRole = 'owner' | 'admin' | 'moderator';
 export type AdminReportStatus = 'open' | 'reviewing' | 'actioned' | 'resolved' | 'dismissed';
+export type AdminTargetVisibilityMode = 'hide' | 'restore';
 
 export interface AdminModerationStatus {
   isAdmin: boolean;
@@ -27,6 +28,10 @@ export interface AdminModerationReport {
   targetModerationStatus: string | null;
   targetLocationLabel: string | null;
   targetDescription: string | null;
+  targetOwnerId: string | null;
+  targetOwnerName: string | null;
+  closureAction: string | null;
+  closureActionAt: string | null;
 }
 
 interface AdminModerationResponse {
@@ -108,6 +113,21 @@ export async function updateAdminModerationReportStatus(
     action: 'set_report_status',
     reportId,
     status,
+    note: note?.trim() || null,
+  });
+}
+
+export async function updateAdminModerationTargetVisibility(
+  report: Pick<AdminModerationReport, 'id' | 'targetType' | 'targetId'>,
+  mode: AdminTargetVisibilityMode,
+  note?: string,
+): Promise<void> {
+  await invokeAdminModeration({
+    action: 'set_target_visibility',
+    reportId: report.id,
+    targetType: report.targetType,
+    targetId: report.targetId,
+    mode,
     note: note?.trim() || null,
   });
 }
