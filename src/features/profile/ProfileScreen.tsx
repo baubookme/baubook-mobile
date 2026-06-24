@@ -522,8 +522,8 @@ export function ProfileScreen() {
 
             <AppCard tone="pink">
                 <SectionHeader
-                    eyebrow="Privacy e condizioni"
-                    title="Come usiamo i dati"
+                    eyebrow="Privacy, condizioni e linee guida"
+                    title=""
                 />
                 <View style={styles.legalStack}>
                     <LegalBlock title="Dati in app"
