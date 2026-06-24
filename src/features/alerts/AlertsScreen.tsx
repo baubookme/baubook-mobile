@@ -1363,7 +1363,7 @@ function SafetyCard({
         </View>
         <View style={styles.alertActionRight}>
           <AppButton
-            label={alert.hasMyAbuseReport ? "Segnalato 🚨" : "Segnala abuso"}
+            label={alert.hasMyAbuseReport ? "Segnalato 🚨" : "Segnalazione sospetta🔍"}
             variant="ghost"
             disabled={!canReport}
             onPress={onReport}
