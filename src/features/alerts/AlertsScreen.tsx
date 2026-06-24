@@ -34,6 +34,17 @@ const dangerTtlOptions = [2, 6, 24, 72];
 const presumedMissingOptions = [15, 30, 60, 180];
 const severityOptions = [1, 2, 3, 4, 5];
 
+function BlockedEventNotice({ ownerName }: { ownerName?: string | null }) {
+  const safeOwnerName = ownerName?.trim() || "Utente BauBook";
+
+  return (
+    <Text style={styles.blockedEventNotice}>
+      ⛔️ Utente <Text style={styles.blockedEventNoticeName}>{safeOwnerName}</Text> bloccato, puoi modificare le impostazioni dalla pagina del "Branco".
+    </Text>
+  );
+}
+
+
 const LOST_DESCRIPTION_MIN_LENGTH = 15;
 const DANGER_DESCRIPTION_MIN_LENGTH = 15;
 
@@ -1314,13 +1325,14 @@ function SafetyCard({
   onReport: () => void;
 }) {
   const danger = alert.type === "danger";
-  const reportDisabled = isBusy || alert.isMine || alert.hasMyAbuseReport || !canInteract;
+  const isBlockedAuthor = !alert.isMine && alert.isBlockedByMe;
+  const reportDisabled = isBusy || alert.isMine || alert.hasMyAbuseReport || !canInteract || isBlockedAuthor;
   const canReport = !reportDisabled;
-  const canSighting = !danger && !alert.isMine && canInteract && !isBusy;
+  const canSighting = !danger && !alert.isMine && canInteract && !isBusy && !isBlockedAuthor;
 
   return (
     <AppCard tone={danger ? "default" : "danger"}>
-      <View style={styles.alertHeader}>
+      <View style={[styles.alertHeader, isBlockedAuthor && styles.blockedEventContent]}>
         <View style={styles.alertIconColumn}>
           {danger ? (
             <Image source={dangerIconForType(alert.dangerType ?? "other")} style={styles.alertCircleIcon} />
@@ -1346,10 +1358,11 @@ function SafetyCard({
           <Text style={styles.timestampText}>
             Creato: {formatSafetyCreatedAt(alert.createdAtIso)} · da {danger ? alert.reporterName : alert.ownerName}
           </Text>
+          {isBlockedAuthor ? <BlockedEventNotice ownerName={danger ? alert.reporterName : alert.ownerName} /> : null}
         </View>
       </View>
 
-      <View style={styles.alertActionsRow}>
+      {!isBlockedAuthor ? <View style={styles.alertActionsRow}>
         <View style={styles.alertActionLeft}>
           {!danger && alert.isMine ? (
             <AppButton label="Disattiva 🛑" variant="secondary" disabled={isBusy} onPress={onCloseLost} />
@@ -1369,7 +1382,7 @@ function SafetyCard({
             onPress={onReport}
           />
         </View>
-      </View>
+      </View> : null}
 
       {!danger ? <SightingsPreview alert={alert} /> : null}
     </AppCard>
@@ -1800,6 +1813,21 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.tiny,
     fontWeight: "800",
+  },
+  blockedEventContent: {
+    opacity: 0.72,
+  },
+  blockedEventNotice: {
+    marginTop: spacing.xs,
+    color: colors.muted,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    opacity: 1,
+    fontWeight: "700",
+  },
+  blockedEventNoticeName: {
+    color: colors.ink,
+    fontWeight: "900",
   },
   readonlyWarning: {
     marginTop: spacing.md,

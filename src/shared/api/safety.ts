@@ -274,7 +274,7 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
   const dog = firstRelation(row.dogs);
   const profile = firstRelation(row.profiles);
   const place = firstRelation(row.places);
-  const dogName = dog?.name ?? 'Cane BauBook';
+  const dogName = dog?.name ?? '';
   const placeName = row.location_label?.trim() || place?.name || 'zona indicativa';
 
   return {

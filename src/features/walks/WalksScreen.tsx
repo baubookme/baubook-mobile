@@ -52,6 +52,7 @@ const walkHubIntroImage = require('../../../assets/baubook/walks/walk_hub_intro.
 const homeReturnIcon = require('../../../assets/baubook/walks/home_return_icon.png') as ImageSourcePropType;
 const PRESENCE_DURATION_MINUTES = 60;
 
+
 const startOptions: StartOption[] = [
   { label: 'Tra 30 min', minutes: 30 },
   { label: 'Tra 1 ora', minutes: 60 },
@@ -64,6 +65,16 @@ const presenceOptions: PresenceOption[] = [
   { label: 'Sto giocando', status: 'playing', helper: 'Sono in zona e ho voglia di socializzare.' },
   { label: 'Sono in area cani', status: 'dog_area', helper: 'Chi si fa una corsetta?' },
 ];
+
+function BlockedEventNotice({ ownerName }: { ownerName?: string | null }) {
+  const safeOwnerName = ownerName?.trim() || 'Utente BauBook';
+
+  return (
+    <Text style={styles.blockedEventNotice}>
+      ⛔️ Utente <Text style={styles.blockedEventNoticeName}>{safeOwnerName}</Text> bloccato, puoi modificare le impostazioni dalla pagina del "Branco".
+    </Text>
+  );
+}
 
 function formatStartPreview(minutes: number): string {
   const value = new Date(Date.now() + minutes * 60000);
@@ -537,27 +548,32 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.walkList}>
           {walksBoard.walks.length ? (
-            walksBoard.walks.map((plan) => (
-              <View key={plan.id} style={styles.walkItem}>
-                <View style={styles.walkHeader}>
-                  <WalkDogAvatar avatarUrl={plan.dogAvatarUrl} />
-                  <View style={styles.flexOne}>
-                    <Text style={styles.walkTime}>{plan.startsAtLabel}</Text>
-                    <Text style={styles.walkTitle}>{plan.dogName} parte da {plan.placeName}</Text>
-                    <Text style={styles.walkMessage}>“{plan.message}”</Text>
-                    <LiveMapLink target={plan} />
-                    <View style={styles.tagsRow}>
-                      {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+            walksBoard.walks.map((plan) => {
+              const isBlockedAuthor = !plan.isMine && plan.isBlockedByMe;
+
+              return (
+                <View key={plan.id} style={[styles.walkItem, isBlockedAuthor && styles.blockedEventCard]}>
+                  <View style={styles.walkHeader}>
+                    <WalkDogAvatar avatarUrl={plan.dogAvatarUrl} />
+                    <View style={styles.flexOne}>
+                      <Text style={styles.walkTime}>{plan.startsAtLabel}</Text>
+                      <Text style={styles.walkTitle}>{plan.dogName} parte da {plan.placeName}</Text>
+                      <Text style={styles.walkMessage}>“{plan.message}”</Text>
+                      {!isBlockedAuthor ? <LiveMapLink target={plan} /> : null}
+                      <View style={styles.tagsRow}>
+                        {plan.tags.map((tag) => <Tag key={tag} label={tag} tone="teal" />)}
+                      </View>
+                      {isBlockedAuthor ? <BlockedEventNotice ownerName={plan.ownerName} /> : null}
                     </View>
                   </View>
+                  {plan.isMine ? (
+                    <View style={styles.centerButtonWrap}>
+                      <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endWalkPlan(plan.id)} disabled={actionDisabled} />
+                    </View>
+                  ) : null}
                 </View>
-                {plan.isMine ? (
-                  <View style={styles.centerButtonWrap}>
-                    <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endWalkPlan(plan.id)} disabled={actionDisabled} />
-                  </View>
-                ) : null}
-              </View>
-            ))
+              );
+            })
           ) : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>Nessuna passeggiata live per ora</Text>
@@ -577,24 +593,29 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
         <View style={styles.presenceList}>
           {walksBoard.presences.length ? (
-            walksBoard.presences.map((presence) => (
-              <View key={presence.id} style={styles.presenceItem}>
-                <View style={styles.walkHeader}>
-                  <WalkDogAvatar avatarUrl={presence.dogAvatarUrl} />
-                  <View style={styles.flexOne}>
-                    <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
-                    <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
-                    <LiveMapLink target={presence} />
-                    <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
+            walksBoard.presences.map((presence) => {
+              const isBlockedAuthor = !presence.isMine && presence.isBlockedByMe;
+
+              return (
+                <View key={presence.id} style={[styles.presenceItem, isBlockedAuthor && styles.blockedEventCard]}>
+                  <View style={styles.walkHeader}>
+                    <WalkDogAvatar avatarUrl={presence.dogAvatarUrl} />
+                    <View style={styles.flexOne}>
+                      <Text style={styles.walkTitle}>{presence.dogName} · {presence.statusLabel}</Text>
+                      <Text style={styles.walkTime}>{presence.placeName} · {presence.expiresAtLabel}</Text>
+                      {!isBlockedAuthor ? <LiveMapLink target={presence} /> : null}
+                      <View style={styles.tagsRow}>{presence.tags.map((tag) => <Tag key={tag} label={tag} tone="green" />)}</View>
+                      {isBlockedAuthor ? <BlockedEventNotice ownerName={presence.ownerName} /> : null}
+                    </View>
                   </View>
+                  {presence.isMine ? (
+                    <View style={styles.centerButtonWrap}>
+                      <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endPresence()} disabled={actionDisabled} />
+                    </View>
+                  ) : null}
                 </View>
-                {presence.isMine ? (
-                  <View style={styles.centerButtonWrap}>
-                    <AppButton label="Tornato a casa" variant="ghost" icon={homeReturnIcon} onPress={() => void walksBoard.endPresence()} disabled={actionDisabled} />
-                  </View>
-                ) : null}
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={styles.helperText}>Nessuna presenza attiva. Bene per la privacy, male per la scodinzolata.</Text>
           )}
@@ -1154,6 +1175,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceWarm,
     padding: spacing.md,
     gap: spacing.xs,
+  },
+  blockedEventCard: {
+    opacity: 0.72,
+  },
+  blockedEventNotice: {
+    marginTop: spacing.sm,
+    color: colors.muted,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  blockedEventNoticeName: {
+    color: colors.ink,
+    fontWeight: '900',
   },
   pressed: {
     opacity: 0.84,

@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../lib/supabase';
 import type { WalkPlanModel } from '../types/domain';
 import { normalizeError } from './authAccount';
+import { fetchBlockedProfileIds } from './userSafety';
 
 type LocationMode = 'current' | 'manual';
 
@@ -17,6 +18,7 @@ export interface LiveWalkPlanModel extends WalkPlanModel {
   locationLongitude: number | null;
   manualAddress: string | null;
   isMine: boolean;
+  isBlockedByMe: boolean;
   source: 'supabase' | 'fallback';
 }
 
@@ -39,6 +41,7 @@ export interface LivePresenceModel {
   locationLongitude: number | null;
   manualAddress: string | null;
   isMine: boolean;
+  isBlockedByMe: boolean;
 }
 
 export interface WalksBoardResult {
@@ -183,7 +186,7 @@ function cleanLiveMessage(message: string | null, fallback: string): string {
   return (message ?? fallback).replace(/\n\n📍[\s\S]*$/u, '').trim();
 }
 
-function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | null): LiveWalkPlanModel {
+function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | null, blockedProfileIds: Set<string> = new Set()): LiveWalkPlanModel {
   const dog = firstRelation(row.dogs);
   const place = firstRelation(row.places);
   const profile = firstRelation(row.profiles);
@@ -192,14 +195,14 @@ function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | n
 
   return {
     id: row.id,
-    dogName: dog?.name ?? 'Un bau amico',
+    dogName: dog?.name ?? 'Un 🐾 BauBook',
     placeName: locationLabel ?? place?.name ?? 'luogo BauBook',
     startsAtLabel: formatWalkStartLabel(row.starts_at),
     startsAtIso: row.starts_at,
     message: cleanLiveMessage(row.message, 'Passeggiata BauBook senza messaggio. Misterioso ma scodinzolante.'),
     acceptsCompany: row.accepts_company,
     tags,
-    ownerName: profile?.display_name ?? 'Umano BauBook',
+    ownerName: profile?.display_name ?? 'Profilo BauBook',
     placeId: row.place_id,
     dogId: row.dog_id,
     ownerId: row.owner_id,
@@ -210,11 +213,12 @@ function remoteWalkToModel(row: RemoteWalkPlanRow, currentProfileId?: string | n
     locationLongitude: row.location_longitude ?? null,
     manualAddress: row.manual_address ?? null,
     isMine: Boolean(currentProfileId && row.owner_id === currentProfileId),
+    isBlockedByMe: Boolean(row.owner_id && blockedProfileIds.has(row.owner_id)),
     source: 'supabase',
   };
 }
 
-function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string | null): LivePresenceModel {
+function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string | null, blockedProfileIds: Set<string> = new Set()): LivePresenceModel {
   const dog = firstRelation(row.dogs);
   const place = firstRelation(row.places);
   const profile = firstRelation(row.profiles);
@@ -224,9 +228,9 @@ function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string
 
   return {
     id: row.id,
-    dogName: dog?.name ?? 'Un bau vicino',
+    dogName: dog?.name ?? 'Un 🐾 BauBook',
     placeName: locationLabel ?? place?.name ?? 'luogo BauBook',
-    ownerName: profile?.display_name ?? 'Umano BauBook',
+    ownerName: profile?.display_name ?? 'Profilo BauBook',
     dogAvatarUrl: dog?.avatar_url ?? null,
     statusLabel,
     message: cleanLiveMessage(row.message, 'Presenza temporanea attiva.'),
@@ -241,6 +245,7 @@ function remotePresenceToModel(row: RemotePresenceRow, currentProfileId?: string
     locationLongitude: row.location_longitude ?? null,
     manualAddress: row.manual_address ?? null,
     isMine: Boolean(currentProfileId && row.profile_id === currentProfileId),
+    isBlockedByMe: Boolean(row.profile_id && blockedProfileIds.has(row.profile_id)),
   };
 }
 
@@ -262,6 +267,8 @@ export async function fetchWalksBoard(currentProfileId?: string | null): Promise
     if (cleanupResult.error) {
       console.warn('BauBook walks stale cleanup failed', cleanupResult.error);
     }
+
+    const blockedProfileIds = await fetchBlockedProfileIds(currentProfileId);
 
     const [walksResult, presencesResult] = await Promise.all([
       client
@@ -292,15 +299,15 @@ export async function fetchWalksBoard(currentProfileId?: string | null): Promise
     if (presencesResult.error) {
       return {
         source: 'supabase',
-        walks: ((walksResult.data ?? []) as RemoteWalkPlanRow[]).map((row) => remoteWalkToModel(row, currentProfileId)),
+        walks: ((walksResult.data ?? []) as RemoteWalkPlanRow[]).map((row) => remoteWalkToModel(row, currentProfileId, blockedProfileIds)),
         presences: [],
         message: 'Passeggiate caricate; presenza temporanea da verificare.',
         errorMessage: normalizeError(presencesResult.error),
       };
     }
 
-    const walks = ((walksResult.data ?? []) as RemoteWalkPlanRow[]).map((row) => remoteWalkToModel(row, currentProfileId));
-    const presences = ((presencesResult.data ?? []) as RemotePresenceRow[]).map((row) => remotePresenceToModel(row, currentProfileId));
+    const walks = ((walksResult.data ?? []) as RemoteWalkPlanRow[]).map((row) => remoteWalkToModel(row, currentProfileId, blockedProfileIds));
+    const presences = ((presencesResult.data ?? []) as RemotePresenceRow[]).map((row) => remotePresenceToModel(row, currentProfileId, blockedProfileIds));
 
     return {
       source: 'supabase',
