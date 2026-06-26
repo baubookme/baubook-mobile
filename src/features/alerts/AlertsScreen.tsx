@@ -19,6 +19,7 @@ import { useSafetyBoard } from "../../shared/hooks/useSafetyBoard";
 import {
   isTargetWithinPageVisibilityRadius,
   savePageVisibilityLocation,
+  type PageVisibilityLocation,
   usePageVisibilitySettings,
 } from "../../shared/hooks/usePageVisibilitySettings";
 import { getSupabaseClient } from "../../shared/lib/supabase";
@@ -133,7 +134,7 @@ async function resolveReadableLocationLabel(latitude: number, longitude: number)
   }
 }
 
-function useSafetyLocationDraft(initialLabel: string) {
+function useSafetyLocationDraft(initialLabel: string, savedPageLocation: PageVisibilityLocation | null) {
   const [locationMode, setLocationMode] = useState<LocationMode>("current");
   const [manualAddress, setManualAddress] = useState("");
   const [currentLocationPayload, setCurrentLocationPayload] = useState<SafetyLocationPayload | null>(null);
@@ -148,6 +149,30 @@ function useSafetyLocationDraft(initialLabel: string) {
     locationMode === "current"
       ? currentLocationPayload?.locationLabel ?? "Posizione attuale da rilevare"
       : manualAddressValue || "Indirizzo manuale da inserire";
+
+  useEffect(() => {
+    if (locationMode !== "current" || !savedPageLocation) {
+      return;
+    }
+
+    const alreadyUsingSavedLocation =
+      currentLocationPayload?.locationLatitude === savedPageLocation.latitude &&
+      currentLocationPayload?.locationLongitude === savedPageLocation.longitude &&
+      currentLocationPayload?.locationLabel === savedPageLocation.label;
+
+    if (alreadyUsingSavedLocation) {
+      return;
+    }
+
+    setCurrentLocationPayload({
+      locationMode: "current",
+      locationLabel: savedPageLocation.label,
+      locationLatitude: savedPageLocation.latitude,
+      locationLongitude: savedPageLocation.longitude,
+      manualAddress: null,
+    });
+    setLocationStatusMessage(`Posizione recente: ${savedPageLocation.label}`);
+  }, [currentLocationPayload, locationMode, savedPageLocation]);
 
   const resolveCurrentLocationPayload = async (): Promise<SafetyLocationPayload | null> => {
     setLocationResolving(true);
@@ -180,7 +205,7 @@ function useSafetyLocationDraft(initialLabel: string) {
       }).catch(() => undefined);
 
       setCurrentLocationPayload(payload);
-      setLocationStatusMessage(`Posizione rilevata: ${label}`);
+      setLocationStatusMessage(`Posizione: ${label}`);
       return payload;
     } catch {
       setLocationStatusMessage("Non riesco a leggere la posizione. Prova un indirizzo manuale.");
@@ -264,9 +289,10 @@ export function AlertsScreen() {
   const [dangerDraftExpanded, setDangerDraftExpanded] = useState(false);
   const [lostDraftExpanded, setLostDraftExpanded] = useState(false);
 
-  const lostLocation = useSafetyLocationDraft("Rileva la posizione dello smarrimento o usa un indirizzo manuale.");
-  const dangerLocation = useSafetyLocationDraft("Rileva la posizione del pericolo o usa un indirizzo manuale.");
-  const sightingLocation = useSafetyLocationDraft("Rileva la posizione dell’avvistamento o usa un indirizzo manuale.");
+  const savedPageLocation = pageVisibility.location;
+  const lostLocation = useSafetyLocationDraft("Rileva la posizione dello smarrimento o usa un indirizzo manuale.", savedPageLocation);
+  const dangerLocation = useSafetyLocationDraft("Rileva la posizione del pericolo o usa un indirizzo manuale.", savedPageLocation);
+  const sightingLocation = useSafetyLocationDraft("Rileva la posizione dell’avvistamento o usa un indirizzo manuale.", savedPageLocation);
   const [sightingAlert, setSightingAlert] = useState<SafetyAlertModel | null>(null);
   const [sightingNote, setSightingNote] = useState("");
   const [sightingAccepted, setSightingAccepted] = useState(false);
@@ -539,8 +565,8 @@ export function AlertsScreen() {
   );
   const hiddenAlertsByRadius = Math.max(safetyBoard.alerts.length - visibleAlerts.length, 0);
   const pageVisibilityCopy = pageVisibilityFilterActive
-    ? `Segnalazioni entro ${pageVisibility.radiusLabel} dalla posizione salvata. Puoi modificare il raggio in \"Setup\".`
-    : "Rileva la posizione in \"Setup\" e definisci un raggio di ricerca per limitare o aumentare le segnalazioni.";
+    ? `Puoi cambiare il raggio di ricerca in \"Setup\".`
+    : "Rileva la posizione in Setup per limitare le segnalazioni al tuo raggio.";
 
 
   const openSightingSheet = (alert: SafetyAlertModel) => {
@@ -672,11 +698,11 @@ export function AlertsScreen() {
       </Pressable>
 
       <View style={styles.sectionBlock}>
-        <Text style={styles.eyebrow}>SAFETY RADAR</Text>
+        <Text style={styles.eyebrow}>SAFETY RADAR - RAGGIO RICERCA BAUBOOK {pageVisibility.radiusLabel}</Text>
         <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
         <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
         {hiddenAlertsByRadius > 0 ? (
-          <Text style={styles.filterHiddenText}>{hiddenAlertsByRadius === 1 ? "1 segnalazione nascosta." : `${hiddenAlertsByRadius} segnalazioni nascoste.`}</Text>
+          <Text style={styles.filterHiddenText}>{hiddenAlertsByRadius === 1 ? "1 segnalazione fuori raggio nascosta." : `${hiddenAlertsByRadius} segnalazioni fuori raggio nascoste.`}</Text>
         ) : null}
 
       </View>
@@ -701,7 +727,7 @@ export function AlertsScreen() {
           <AppCard>
             <Text style={styles.bodyText}>
               {pageVisibilityFilterActive && safetyBoard.alerts.length
-                ? "Nessuna segnalazione nel tuo raggio di ricerca. Puoi aumentarlo in \"Setup\"."
+                ? "Nessuna segnalazione nel tuo raggio. Puoi aumentarlo in Setup."
                 : "Nessuna segnalazione attiva."}
             </Text>
           </AppCard>

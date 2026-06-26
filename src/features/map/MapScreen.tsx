@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fetchNearbyDogAreas, type NearbyDogAreaModel } from '../../shared/api/supabaseContent';
@@ -9,6 +9,7 @@ import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { SectionHeader } from '../../shared/components/SectionHeader';
 import { Tag } from '../../shared/components/Tag';
+import { savePageVisibilityLocation, usePageVisibilitySettings } from '../../shared/hooks/usePageVisibilitySettings';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { getSupabaseClient } from '../../shared/lib/supabase';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
@@ -223,6 +224,8 @@ function openDogAreaNavigation(area: NearbyDogAreaModel): void {
 
 export function MapScreen() {
   const { source, reload, realtimeStatus } = useSupabasePlaces();
+  const pageVisibility = usePageVisibilitySettings();
+  const savedLocationSearchKeyRef = useRef<string | null>(null);
 
   const [radiusKm, setRadiusKm] = useState(3);
   const [manualRadius, setManualRadius] = useState('3');
@@ -273,11 +276,67 @@ export function MapScreen() {
     });
   };
 
+
+  useEffect(() => {
+    if (!pageVisibility.loaded) {
+      return;
+    }
+
+    setRadiusKm(pageVisibility.radiusKm);
+    setManualRadius(String(pageVisibility.radiusKm));
+  }, [pageVisibility.loaded, pageVisibility.radiusKm]);
+
+  useEffect(() => {
+    if (!pageVisibility.loaded || !pageVisibility.location) {
+      return;
+    }
+
+    const savedLocation = pageVisibility.location;
+    const searchKey = `${savedLocation.savedAtIso}:${pageVisibility.radiusKm}`;
+
+    if (savedLocationSearchKeyRef.current === searchKey) {
+      return;
+    }
+
+    savedLocationSearchKeyRef.current = searchKey;
+
+    const search: LastNearbySearch = {
+      latitude: savedLocation.latitude,
+      longitude: savedLocation.longitude,
+      radiusKm: pageVisibility.radiusKm,
+      accuracy: null,
+      locationLabel: savedLocation.label,
+    };
+
+    setRadiusKm(pageVisibility.radiusKm);
+    setManualRadius(String(pageVisibility.radiusKm));
+    setLastNearbySearch(search);
+    setNearby((current) => ({
+      ...current,
+      status: 'loading',
+      message: `Uso la posizione salvata da Setup e cerco nel raggio di ${pageVisibility.radiusLabel}...`,
+      errorMessage: undefined,
+      positionLabel: savedLocation.label,
+    }));
+
+    void runNearbySearch(search).catch((error) => {
+      const fallbackMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
+      setNearby((current) => ({
+        ...current,
+        status: 'error',
+        message: 'Ho trovato la posizione salvata, ma non riesco a caricare i luoghi vicini.',
+        errorMessage: fallbackMessage,
+        positionLabel: savedLocation.label,
+      }));
+    });
+  }, [pageVisibility.loaded, pageVisibility.location, pageVisibility.radiusKm, pageVisibility.radiusLabel]);
+
   const handleCurrentPositionSearch = async () => {
     setNearby((current) => ({
       ...current,
       status: 'loading',
-      message: 'Chiedo posizione al dispositivo e cerco le aree nel raggio selezionato...',
+      message: 'Chiedo la posizione al dispositivo e cerco le aree cani ufficiali nel raggio selezionato...',
       errorMessage: undefined,
     }));
 
@@ -290,6 +349,13 @@ export function MapScreen() {
         accuracy: position.accuracy,
         locationLabel: position.locationLabel,
       };
+
+      await savePageVisibilityLocation({
+        latitude: position.latitude,
+        longitude: position.longitude,
+        label: position.locationLabel ?? 'Posizione salvata',
+        savedAtIso: new Date().toISOString(),
+      });
 
       setLastNearbySearch(search);
       await runNearbySearch(search);
@@ -369,7 +435,7 @@ export function MapScreen() {
         <View style={styles.searchHeader}>
           <Image source={dogAreaCartoonIcon} style={styles.dogAreaHeroIcon} />
           <View style={styles.searchCopy}>
-            <Text style={styles.cardTitle}>Trova area cani nel raggio di X km</Text>
+            <Text style={styles.cardTitle}>Trova area cani nel raggio di {pageVisibility.radiusLabel}</Text>
             <Text style={styles.bodyText}>Usa la posizione attuale per vedere solo le aree cani davvero vicine.</Text>
           </View>
         </View>
@@ -391,7 +457,7 @@ export function MapScreen() {
 
         <View style={styles.manualRow}>
           <View style={styles.manualInputWrap}>
-            <Text style={styles.label}>Manuale</Text>
+            <Text style={styles.label}>Raggio attuale</Text>
             <TextInput
               value={manualRadius}
               onChangeText={handleManualRadiusChange}
@@ -402,7 +468,7 @@ export function MapScreen() {
             />
           </View>
           <View style={styles.manualHintWrap}>
-            <Text style={styles.helperText}>Raggio supportato: 0,2-50 km. Consigliato in città: 3 km.</Text>
+            <Text style={styles.helperText}>Raggio massimo: 50 km. Consigliato in città: 3 km.</Text>
           </View>
         </View>
 
@@ -443,7 +509,7 @@ export function MapScreen() {
             title="Aree cani trovate"
             description={
               hiddenNearbyCount
-                ? `Mostro le prime ${nearbyPreview.length} aree più vicine. Altre ${hiddenNearbyCount} sono visibili sulla mappa.`
+                ? `Ecco le prime ${nearbyPreview.length} aree più vicine. Altre ${hiddenNearbyCount} sono visibili sulla mappa.`
                 : 'Tocca una card per aprire subito la navigazione.'
             }
           />

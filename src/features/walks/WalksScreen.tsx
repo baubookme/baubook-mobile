@@ -223,8 +223,34 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const hiddenWalksByRadius = Math.max(walksBoard.walks.length - walksInRadius.length, 0);
   const hiddenPresencesByRadius = Math.max(walksBoard.presences.length - presencesInRadius.length, 0);
   const pageVisibilityCopy = pageVisibilityFilterActive
-    ? `Eventi entro ${pageVisibility.radiusLabel}. Puoi cambiare raggio di ricerca in \"Setup\".`
-    : 'Rileva la posizione in \"Setup\" e definisci un raggio per limitare o aumentare Passeggiate e Presenze live.';
+    ? `Raggio di ricerca BauBook: ${pageVisibility.radiusLabel}. Puoi cambiarlo in \"Setup\"`
+    : 'Rileva la posizione in Setup per limitare Passeggiate live e Presenze live al tuo raggio.';
+
+  useEffect(() => {
+    const savedLocation = pageVisibility.location;
+
+    if (locationMode !== 'current' || !savedLocation) {
+      return;
+    }
+
+    const alreadyUsingSavedLocation =
+      currentLocationPayload?.locationLatitude === savedLocation.latitude &&
+      currentLocationPayload?.locationLongitude === savedLocation.longitude &&
+      currentLocationPayload?.locationLabel === savedLocation.label;
+
+    if (alreadyUsingSavedLocation) {
+      return;
+    }
+
+    setCurrentLocationPayload({
+      locationMode: 'current',
+      locationLabel: savedLocation.label,
+      locationLatitude: savedLocation.latitude,
+      locationLongitude: savedLocation.longitude,
+      manualAddress: null,
+    });
+    setLocationStatusMessage(`Posizione recente: ${savedLocation.label}`);
+  }, [currentLocationPayload, locationMode, pageVisibility.location]);
 
 
   const resolveCurrentLocationPayload = async (): Promise<LocationPayload | null> => {
@@ -260,7 +286,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       }).catch(() => undefined);
 
       setCurrentLocationPayload(payload);
-      setLocationStatusMessage(`Posizione rilevata: ${label}`);
+      setLocationStatusMessage(`Posizione: ${label}`);
       return payload;
     } catch {
       setLocationStatusMessage('Non riesco a leggere la posizione. Prova un indirizzo manuale.');
@@ -587,7 +613,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
             <Text style={styles.cardTitle}>Passeggiate live 🚶🏻‍♀️</Text>
             <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
             {hiddenWalksByRadius > 0 ? (
-              <Text style={styles.filterHiddenText}>{hiddenWalksByRadius === 1 ? '1 passeggiata nascosta.' : `${hiddenWalksByRadius} passeggiate nascoste.`}</Text>
+              <Text style={styles.filterHiddenText}>{hiddenWalksByRadius === 1 ? '1 passeggiata fuori raggio nascosta.' : `${hiddenWalksByRadius} passeggiate fuori raggio nascoste.`}</Text>
             ) : null}
 
           </View>
@@ -625,11 +651,11 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           ) : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>
-                {pageVisibilityFilterActive && walksBoard.walks.length ? 'Nessuna passeggiata nel tuo raggio di ricerca' : 'Nessuna passeggiata live per ora'}
+                {pageVisibilityFilterActive && walksBoard.walks.length ? 'Nessuna passeggiata nel tuo raggio di ricerca' : 'Nessuna passeggiata attiva'}
               </Text>
               <Text style={styles.helperText}>
                 {pageVisibilityFilterActive && walksBoard.walks.length
-                  ? 'Puoi aumentare il raggio in \"Setup\".'
+                  ? 'Puoi aumentare il raggio in Setup.'
                   : 'Crea la prima uscita BauBook!'}
               </Text>
             </View>
@@ -644,7 +670,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
             <Text style={styles.cardTitle}>Presenze live 🐕</Text>
             <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
             {hiddenPresencesByRadius > 0 ? (
-              <Text style={styles.filterHiddenText}>{hiddenPresencesByRadius === 1 ? '1 presenza nascosta.' : `${hiddenPresencesByRadius} presenze nascoste.`}</Text>
+              <Text style={styles.filterHiddenText}>{hiddenPresencesByRadius === 1 ? '1 presenza fuori raggio nascosta.' : `${hiddenPresencesByRadius} presenze fuori raggio nascoste.`}</Text>
             ) : null}
           </View>
         </View>
@@ -677,7 +703,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           ) : (
             <Text style={styles.helperText}>
               {pageVisibilityFilterActive && walksBoard.presences.length
-                ? 'Nessuna presenza nel tuo raggio di ricerca. Puoi aumentarlo in \"Setup\".'
+                ? 'Nessuna presenza nel tuo raggio. Puoi aumentarlo in Setup.'
                 : 'Nessuna presenza attiva. Bene per la privacy, male per la scodinzolata.'}
             </Text>
           )}

@@ -106,7 +106,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const latestLostAlert = useMemo(() => newestAlert(lostAlerts), [lostAlerts]);
 
   const pageVisibilitySummary = pageVisibility.hasLocation
-    ? `Raggio attuale di ricerca: ${pageVisibility.radiusLabel} dalla posizione salvata. Puoi cambiarlo in \"Setup\".`
+    ? `Puoi aggiornare posizione e raggio in \"Setup\".`
     : `Raggio attuale di ricerca: ${pageVisibility.radiusLabel}. Puoi aggiornare posizione e raggio in \"Setup\".`;
 
 
@@ -146,7 +146,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                       </View>
 
       <View style={styles.pageVisibilitySummaryCard}>
-        <Text style={styles.pageVisibilitySummaryEyebrow}>Raggio BauBook</Text>
+        <Text style={styles.pageVisibilitySummaryEyebrow}>Raggio di ricarca BauBook : {pageVisibility.radiusLabel}</Text>
         <Text style={styles.pageVisibilitySummaryText}>{pageVisibilitySummary}</Text>
       </View>
 
