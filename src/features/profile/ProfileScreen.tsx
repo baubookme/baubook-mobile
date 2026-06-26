@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
     },
     legalStack: {
         gap: spacing.sm,
-        marginTop: spacing.lg,
+        marginTop: spacing.xs,
     },
     legalBlock: {
         borderWidth: 1,
