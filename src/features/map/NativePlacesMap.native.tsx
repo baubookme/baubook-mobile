@@ -98,6 +98,7 @@ function extractCoordinates(place: PlaceModel): { latitude: number; longitude: n
     carrier.coordinates,
     carrier.location,
     carrier.geo,
+    carrier.position,
   ];
 
   for (const candidate of candidates) {
@@ -213,6 +214,9 @@ function statusLabel(realtimeStatus?: RealtimeStatus, source?: string): string {
 export function NativePlacesMap({ places, source, realtimeStatus, message, errorMessage }: NativePlacesMapProps) {
   const markers = useMemo(() => buildMarkers(places), [places]);
   const rawPlacesCount = Array.isArray(places) ? places.length : 0;
+  const mapRegionKey = markers.length
+    ? `${markers[0].latitude.toFixed(5)}:${markers[0].longitude.toFixed(5)}:${markers.length}`
+    : 'empty';
 
   const initialRegion = useMemo<Region>(() => {
     const first = markers[0];
@@ -238,6 +242,7 @@ export function NativePlacesMap({ places, source, realtimeStatus, message, error
 
       <View style={styles.mapShell}>
         <MapView
+          key={mapRegionKey}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
           initialRegion={initialRegion}

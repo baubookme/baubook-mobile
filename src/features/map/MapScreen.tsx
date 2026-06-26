@@ -126,7 +126,7 @@ async function readCurrentPosition(): Promise<ResolvedCurrentPosition> {
   const permission = await Location.requestForegroundPermissionsAsync();
 
   if (permission.status !== 'granted') {
-    throw new Error('Permesso posizione non concesso. Autorizza la rilevazione GPS dal dispositivo.');
+    throw new Error('Permesso posizione non concesso. Autorizza la rilevazione dal dispositivo.');
   }
 
   const lastKnown = await Location.getLastKnownPositionAsync({
@@ -234,7 +234,7 @@ export function MapScreen() {
   });
   const [lastNearbySearch, setLastNearbySearch] = useState<LastNearbySearch | null>(null);
 
-  const nearbyMapPlaces = nearby.status === 'success' ? nearby.areas : [];
+  const nearbyMapPlaces = nearby.areas;
   const nearbyPreview = nearbyMapPlaces.slice(0, 8);
   const hiddenNearbyCount = Math.max(nearbyMapPlaces.length - nearbyPreview.length, 0);
 
