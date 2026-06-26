@@ -277,7 +277,7 @@ export function MapScreen() {
     setNearby((current) => ({
       ...current,
       status: 'loading',
-      message: 'Chiedo la posizione al dispositivo e cerco le aree cani ufficiali nel raggio selezionato...',
+      message: 'Chiedo posizione al dispositivo e cerco le aree nel raggio selezionato...',
       errorMessage: undefined,
     }));
 

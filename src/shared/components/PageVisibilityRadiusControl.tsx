@@ -80,8 +80,8 @@ export function PageVisibilityRadiusControl() {
       <View style={styles.footerRow}>
         <Text style={styles.helperText} numberOfLines={2}>
           {pageVisibility.hasLocation
-            ? `Filtro da: ${pageVisibility.locationLabel}.`
-            : 'Rileva una posizione per filtrare una distanza su ciò che vedi.'}
+            ? `${pageVisibility.locationLabel}.`
+            : 'Rileva una posizione per filtrare una distanza in ciò che vedi.'}
         </Text>
         <Pressable
           accessibilityRole="button"

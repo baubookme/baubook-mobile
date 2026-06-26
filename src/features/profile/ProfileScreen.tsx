@@ -7,6 +7,7 @@ import {useAuthAccount} from '../../shared/auth/AuthProvider';
 import {AppButton} from '../../shared/components/AppButton';
 import {AppCard} from '../../shared/components/AppCard';
 import {IconBubble} from '../../shared/components/IconBubble';
+import {PageVisibilityRadiusControl} from '../../shared/components/PageVisibilityRadiusControl';
 import {Screen} from '../../shared/components/Screen';
 import {SectionHeader} from '../../shared/components/SectionHeader';
 import {hasSupabaseConfig} from '../../shared/lib/env';
@@ -35,6 +36,7 @@ function readableError(error: unknown): string {
 
 export function ProfileScreen() {
     const auth = useAuthAccount();
+    const isDemoMode = Boolean((auth as {isDemoMode?: boolean}).isDemoMode);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -343,6 +345,8 @@ export function ProfileScreen() {
                 {feedbackSuccess ? <Text style={styles.successBox}>{feedbackSuccess}</Text> : null}
                 {feedbackError ? <Text style={styles.errorBox}>{feedbackError}</Text> : null}
             </AppCard>
+
+            {isDemoMode ? null : <PageVisibilityRadiusControl />}
 
             <AppCard>
                 <View style={styles.headerRow}>
