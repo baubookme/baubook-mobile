@@ -314,7 +314,7 @@ export async function fetchNearbyDogAreas(params: {
       source: 'supabase',
       areas,
       message: areas.length
-        ? `${areas.length} area/e trovata/e nel raggio selezionato.`
+        ? `${areas.length} area/e disponibili nel raggio attuale`
         : 'Nessuna area rilevata nel raggio selezionato.',
     };
   } catch (error) {

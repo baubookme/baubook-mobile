@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius.xl,
     padding: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
     backgroundColor: '#fffaf3',
     borderWidth: 1,
     borderColor: '#eadfce',
