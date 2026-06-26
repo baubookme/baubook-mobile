@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     },
     formStack: {
         gap: spacing.md,
-        marginTop: spacing.lg,
+        marginTop: spacing.xs,
     },
     formStackCompact: {
         gap: spacing.md,
