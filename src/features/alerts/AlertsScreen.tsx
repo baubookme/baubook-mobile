@@ -16,6 +16,11 @@ import { AppCard } from "../../shared/components/AppCard";
 import { Screen } from "../../shared/components/Screen";
 import { Tag } from "../../shared/components/Tag";
 import { useSafetyBoard } from "../../shared/hooks/useSafetyBoard";
+import {
+  isTargetWithinPageVisibilityRadius,
+  savePageVisibilityLocation,
+  usePageVisibilitySettings,
+} from "../../shared/hooks/usePageVisibilitySettings";
 import { getSupabaseClient } from "../../shared/lib/supabase";
 import { colors, radius, spacing, typography } from "../../shared/theme/theme";
 
@@ -167,6 +172,13 @@ function useSafetyLocationDraft(initialLabel: string) {
         manualAddress: null,
       };
 
+      void savePageVisibilityLocation({
+        latitude,
+        longitude,
+        label,
+        savedAtIso: new Date().toISOString(),
+      }).catch(() => undefined);
+
       setCurrentLocationPayload(payload);
       setLocationStatusMessage(`Posizione rilevata: ${label}`);
       return payload;
@@ -221,6 +233,8 @@ type SafetyLocationDraft = ReturnType<typeof useSafetyLocationDraft>;
 export function AlertsScreen() {
   const auth = useAuthAccount();
   const safetyBoard = useSafetyBoard(auth.profile?.id);
+  const pageVisibility = usePageVisibilitySettings();
+  const isDemoMode = Boolean((auth as { isDemoMode?: boolean }).isDemoMode);
   const lastSafetyLimitPopupMessageRef = useRef<string | null>(null);
   const [safetyNotice, setSafetyNotice] = useState<SafetyNoticeState>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -511,6 +525,24 @@ export function AlertsScreen() {
 
   const canUseCommunityActions = profileReady && userAuthVerified;
 
+  const pageVisibilityFilterActive = !isDemoMode && pageVisibility.hasLocation;
+  const visibleAlerts = useMemo(
+    () =>
+      pageVisibilityFilterActive
+        ? safetyBoard.alerts.filter(
+            (alert) =>
+              alert.isMine ||
+              isTargetWithinPageVisibilityRadius(alert, pageVisibility.location, pageVisibility.radiusKm),
+          )
+        : safetyBoard.alerts,
+    [pageVisibilityFilterActive, pageVisibility.location, pageVisibility.radiusKm, safetyBoard.alerts],
+  );
+  const hiddenAlertsByRadius = Math.max(safetyBoard.alerts.length - visibleAlerts.length, 0);
+  const pageVisibilityCopy = pageVisibilityFilterActive
+    ? `Segnalazioni entro ${pageVisibility.radiusLabel} dalla posizione salvata. Puoi modificare il raggio in \"Setup\".`
+    : "Rileva la posizione in \"Setup\" e definisci un raggio di ricerca per limitare o aumentare le segnalazioni.";
+
+
   const openSightingSheet = (alert: SafetyAlertModel) => {
     if (!canUseCommunityActions || alert.type !== "lost_dog" || alert.isMine) {
       return;
@@ -642,12 +674,16 @@ export function AlertsScreen() {
       <View style={styles.sectionBlock}>
         <Text style={styles.eyebrow}>SAFETY RADAR</Text>
         <Text style={styles.sectionTitle}>Segnalazioni attive</Text>
+        <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
+        {hiddenAlertsByRadius > 0 ? (
+          <Text style={styles.filterHiddenText}>{hiddenAlertsByRadius === 1 ? "1 segnalazione nascosta." : `${hiddenAlertsByRadius} segnalazioni nascoste.`}</Text>
+        ) : null}
 
       </View>
 
       <View style={styles.alertList}>
-        {safetyBoard.alerts.length ? (
-          safetyBoard.alerts.map((alert) => (
+        {visibleAlerts.length ? (
+          visibleAlerts.map((alert) => (
             <SafetyCard
               key={`${alert.type}-${alert.id}`}
               alert={alert}
@@ -663,7 +699,11 @@ export function AlertsScreen() {
           ))
         ) : (
           <AppCard>
-            <Text style={styles.bodyText}>Nessuna segnalazione attiva.</Text>
+            <Text style={styles.bodyText}>
+              {pageVisibilityFilterActive && safetyBoard.alerts.length
+                ? "Nessuna segnalazione nel tuo raggio di ricerca. Puoi aumentarlo in \"Setup\"."
+                : "Nessuna segnalazione attiva."}
+            </Text>
           </AppCard>
         )}
       </View>
@@ -1442,6 +1482,18 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 19,
     fontWeight: "700",
+  },
+  filterSummaryText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: "800",
+  },
+  filterHiddenText: {
+    color: colors.muted,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    fontWeight: "800",
   },
   errorBox: {
     marginTop: spacing.md,

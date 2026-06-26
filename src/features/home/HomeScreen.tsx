@@ -8,6 +8,7 @@ import { useAuthAccount } from '../../shared/auth/AuthProvider';
 import { AppButton } from '../../shared/components/AppButton';
 import { Screen } from '../../shared/components/Screen';
 import { useSafetyBoard } from '../../shared/hooks/useSafetyBoard';
+import { usePageVisibilitySettings } from '../../shared/hooks/usePageVisibilitySettings';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
 import { colors, radius, shadows, spacing, typography } from '../../shared/theme/theme';
 import type { TabKey } from '../../shared/types/domain';
@@ -84,6 +85,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const auth = useAuthAccount();
   const placesState = useSupabasePlaces();
   const safetyBoard = useSafetyBoard(auth.profile?.id);
+  const pageVisibility = usePageVisibilitySettings();
 
   const activeAlerts = useMemo(
     () => safetyBoard.alerts.filter((alert) => alert.status === 'active'),
@@ -102,6 +104,11 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
   const latestDangerAlert = useMemo(() => newestAlert(dangerAlerts), [dangerAlerts]);
   const latestLostAlert = useMemo(() => newestAlert(lostAlerts), [lostAlerts]);
+
+  const pageVisibilitySummary = pageVisibility.hasLocation
+    ? `Raggio attuale di ricerca: ${pageVisibility.radiusLabel} dalla posizione salvata. Puoi cambiarlo in \"Setup\".`
+    : `Raggio attuale di ricerca: ${pageVisibility.radiusLabel}. Puoi aggiornare posizione e raggio in \"Setup\".`;
+
 
   const lostCount = lostAlerts.length;
   const dangerCount = dangerAlerts.length;
@@ -137,6 +144,11 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         <HomeDogDiaryLite onNavigate={onNavigate} />
 
                       </View>
+
+      <View style={styles.pageVisibilitySummaryCard}>
+        <Text style={styles.pageVisibilitySummaryEyebrow}>Raggio BauBook</Text>
+        <Text style={styles.pageVisibilitySummaryText}>{pageVisibilitySummary}</Text>
+      </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -453,6 +465,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  pageVisibilitySummaryCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: 2,
+  },
+  pageVisibilitySummaryEyebrow: {
+    color: colors.primaryDark,
+    fontSize: typography.tiny,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  pageVisibilitySummaryText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
   },
   section: {
     gap: spacing.md,

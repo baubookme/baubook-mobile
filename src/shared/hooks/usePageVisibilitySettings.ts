@@ -18,6 +18,11 @@ export interface PageVisibilityLocation {
   savedAtIso: string;
 }
 
+export interface PageVisibilityTarget {
+  locationLatitude?: unknown;
+  locationLongitude?: unknown;
+}
+
 interface StoredPageVisibilityLocation {
   latitude?: unknown;
   longitude?: unknown;
@@ -29,6 +34,41 @@ interface ResolveLocationLabelResponse {
   label?: unknown;
   formattedAddress?: unknown;
   source?: unknown;
+}
+
+type PageVisibilitySnapshot = {
+  radiusKm: number;
+  location: PageVisibilityLocation | null;
+};
+
+const pageVisibilityListeners = new Set<(snapshot: PageVisibilitySnapshot) => void>();
+
+let pageVisibilitySnapshot: PageVisibilitySnapshot = {
+  radiusKm: DEFAULT_PAGE_VISIBILITY_RADIUS_KM,
+  location: null,
+};
+
+function notifyPageVisibilityListeners() {
+  pageVisibilityListeners.forEach((listener) => {
+    listener(pageVisibilitySnapshot);
+  });
+}
+
+function subscribePageVisibility(listener: (snapshot: PageVisibilitySnapshot) => void): () => void {
+  pageVisibilityListeners.add(listener);
+
+  return () => {
+    pageVisibilityListeners.delete(listener);
+  };
+}
+
+function setPageVisibilitySnapshot(nextSnapshot: Partial<PageVisibilitySnapshot>) {
+  pageVisibilitySnapshot = {
+    ...pageVisibilitySnapshot,
+    ...nextSnapshot,
+  };
+
+  notifyPageVisibilityListeners();
 }
 
 function clampRadius(value: number): number {
@@ -75,7 +115,8 @@ function parseStoredLocation(value: string | null): PageVisibilityLocation | nul
   }
 }
 
-async function saveLocation(location: PageVisibilityLocation): Promise<void> {
+export async function savePageVisibilityLocation(location: PageVisibilityLocation): Promise<void> {
+  setPageVisibilitySnapshot({ location });
   await AsyncStorage.setItem(PAGE_VISIBILITY_LOCATION_STORAGE_KEY, JSON.stringify(location));
 }
 
@@ -87,6 +128,50 @@ export async function getSavedPageVisibilityLocation(): Promise<PageVisibilityLo
 export async function getSavedPageVisibilityRadiusKm(): Promise<number> {
   const stored = await AsyncStorage.getItem(PAGE_VISIBILITY_RADIUS_STORAGE_KEY);
   return parseStoredRadius(stored);
+}
+
+export function pageVisibilityDistanceKm(
+  source: PageVisibilityLocation,
+  targetLatitude: number,
+  targetLongitude: number,
+): number {
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+
+  const deltaLatitude = toRadians(targetLatitude - source.latitude);
+  const deltaLongitude = toRadians(targetLongitude - source.longitude);
+  const sourceLatitude = toRadians(source.latitude);
+  const targetLatitudeRadians = toRadians(targetLatitude);
+
+  const a =
+    Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2) +
+    Math.cos(sourceLatitude) *
+      Math.cos(targetLatitudeRadians) *
+      Math.sin(deltaLongitude / 2) *
+      Math.sin(deltaLongitude / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+export function isTargetWithinPageVisibilityRadius(
+  target: PageVisibilityTarget,
+  source: PageVisibilityLocation | null,
+  radiusKm: number,
+): boolean {
+  if (!source) {
+    return true;
+  }
+
+  const latitude = Number(target.locationLatitude);
+  const longitude = Number(target.locationLongitude);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return false;
+  }
+
+  return pageVisibilityDistanceKm(source, latitude, longitude) <= radiusKm;
 }
 
 export async function resolvePageVisibilityLocationLabel(latitude: number, longitude: number): Promise<string | null> {
@@ -115,11 +200,18 @@ export async function resolvePageVisibilityLocationLabel(latitude: number, longi
 }
 
 export function usePageVisibilitySettings() {
-  const [radiusKm, setRadiusKmState] = useState(DEFAULT_PAGE_VISIBILITY_RADIUS_KM);
-  const [location, setLocation] = useState<PageVisibilityLocation | null>(null);
+  const [radiusKm, setRadiusKmState] = useState(pageVisibilitySnapshot.radiusKm);
+  const [location, setLocation] = useState<PageVisibilityLocation | null>(pageVisibilitySnapshot.location);
   const [loaded, setLoaded] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    return subscribePageVisibility((snapshot) => {
+      setRadiusKmState(snapshot.radiusKm);
+      setLocation(snapshot.location);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -135,8 +227,16 @@ export function usePageVisibilitySettings() {
           return;
         }
 
-        setRadiusKmState(parseStoredRadius(storedRadius));
-        setLocation(parseStoredLocation(storedLocation));
+        const nextRadius = parseStoredRadius(storedRadius);
+        const nextLocation = parseStoredLocation(storedLocation);
+
+        setPageVisibilitySnapshot({
+          radiusKm: nextRadius,
+          location: nextLocation,
+        });
+
+        setRadiusKmState(nextRadius);
+        setLocation(nextLocation);
       } finally {
         if (active) {
           setLoaded(true);
@@ -153,6 +253,7 @@ export function usePageVisibilitySettings() {
 
   const setRadiusKm = useCallback(async (nextRadiusKm: number) => {
     const normalizedRadius = clampRadius(nextRadiusKm);
+    setPageVisibilitySnapshot({ radiusKm: normalizedRadius });
     setRadiusKmState(normalizedRadius);
     await AsyncStorage.setItem(PAGE_VISIBILITY_RADIUS_STORAGE_KEY, String(normalizedRadius));
   }, []);
@@ -186,12 +287,12 @@ export function usePageVisibilitySettings() {
       };
 
       setLocation(nextLocation);
-      await saveLocation(nextLocation);
+      await savePageVisibilityLocation(nextLocation);
 
       if (label === 'Posizione salvata') {
         setMessage('Posizione salvata. Indirizzo non disponibile in questo momento.');
       } else {
-        setMessage(`✅ Posizione aggiornata`);
+        setMessage('✅ Posizione aggiornata');
       }
     } catch {
       setMessage('Non riesco a leggere la posizione. Riprova tra poco.');

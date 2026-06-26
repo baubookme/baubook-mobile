@@ -1,4 +1,4 @@
-import { baubookImages } from '../assets/images';
+﻿import { baubookImages } from '../assets/images';
 import { demoAlerts } from '../data/mockData';
 import { getSupabaseClient } from '../lib/supabase';
 import type { AlertModel, AlertStatus } from '../types/domain';
@@ -37,6 +37,8 @@ export interface SafetyAlertModel extends AlertModel {
   reporterName: string;
   placeId: string | null;
   placeName: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   severity: number | null;
   dangerType: DangerType | null;
   expiresAtIso: string;
@@ -294,6 +296,8 @@ function remoteLostToModel(row: RemoteLostAlertRow, currentProfileId?: string | 
     reporterName: '',
     placeId: row.source_place_id,
     placeName,
+    locationLatitude: row.location_latitude ?? null,
+    locationLongitude: row.location_longitude ?? null,
     severity: null,
     dangerType: null,
     expiresAtIso: row.expires_at,
@@ -332,6 +336,8 @@ function remoteDangerToModel(row: RemoteDangerReportRow, currentProfileId?: stri
     reporterName: publicProfileName(profile?.display_name),
     placeId: row.source_place_id,
     placeName,
+    locationLatitude: row.location_latitude ?? null,
+    locationLongitude: row.location_longitude ?? null,
     severity: row.severity,
     dangerType,
     expiresAtIso: row.expires_at,
@@ -359,6 +365,8 @@ function demoToSafety(alert: AlertModel): SafetyAlertModel {
     reporterName: danger ? 'Demo BauBook' : '',
     placeId: null,
     placeName: alert.area,
+    locationLatitude: null,
+    locationLongitude: null,
     severity: danger ? 2 : null,
     dangerType: danger ? 'suspected_poison' : null,
     expiresAtIso: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
@@ -735,3 +743,6 @@ export async function reportSafetyContent(
 
   return { alreadyReported: false };
 }
+
+
+

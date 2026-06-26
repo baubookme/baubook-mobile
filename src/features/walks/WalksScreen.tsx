@@ -10,6 +10,11 @@ import { IconBubble } from '../../shared/components/IconBubble';
 import { Screen } from '../../shared/components/Screen';
 import { Tag } from '../../shared/components/Tag';
 import { useSupabasePlaces } from '../../shared/hooks/useSupabasePublicData';
+import {
+  isTargetWithinPageVisibilityRadius,
+  savePageVisibilityLocation,
+  usePageVisibilitySettings,
+} from '../../shared/hooks/usePageVisibilitySettings';
 import { useWalksBoard } from '../../shared/hooks/useWalksBoard';
 import { getSupabaseClient } from '../../shared/lib/supabase';
 import { colors, radius, spacing, typography } from '../../shared/theme/theme';
@@ -140,6 +145,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const auth = useAuthAccount();
   const placesState = useSupabasePlaces();
   const walksBoard = useWalksBoard(auth.profile?.id);
+  const pageVisibility = usePageVisibilitySettings();
+  const isDemoMode = Boolean((auth as { isDemoMode?: boolean }).isDemoMode);
 
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -190,6 +197,36 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const cleanWalkMessage = useMemo(() => message.trim() || 'Passeggiata BauBook senza messaggio.', [message]);
   const presenceMessage = useMemo(() => selectedPresenceOption.helper, [selectedPresenceOption.helper]);
 
+  const pageVisibilityFilterActive = !isDemoMode && pageVisibility.hasLocation;
+  const walksInRadius = useMemo(
+    () =>
+      pageVisibilityFilterActive
+        ? walksBoard.walks.filter(
+            (plan) =>
+              plan.isMine ||
+              isTargetWithinPageVisibilityRadius(plan, pageVisibility.location, pageVisibility.radiusKm),
+          )
+        : walksBoard.walks,
+    [pageVisibilityFilterActive, pageVisibility.location, pageVisibility.radiusKm, walksBoard.walks],
+  );
+  const presencesInRadius = useMemo(
+    () =>
+      pageVisibilityFilterActive
+        ? walksBoard.presences.filter(
+            (presence) =>
+              presence.isMine ||
+              isTargetWithinPageVisibilityRadius(presence, pageVisibility.location, pageVisibility.radiusKm),
+          )
+        : walksBoard.presences,
+    [pageVisibilityFilterActive, pageVisibility.location, pageVisibility.radiusKm, walksBoard.presences],
+  );
+  const hiddenWalksByRadius = Math.max(walksBoard.walks.length - walksInRadius.length, 0);
+  const hiddenPresencesByRadius = Math.max(walksBoard.presences.length - presencesInRadius.length, 0);
+  const pageVisibilityCopy = pageVisibilityFilterActive
+    ? `Eventi entro ${pageVisibility.radiusLabel}. Puoi cambiare raggio di ricerca in \"Setup\".`
+    : 'Rileva la posizione in \"Setup\" e definisci un raggio per limitare o aumentare Passeggiate e Presenze live.';
+
+
   const resolveCurrentLocationPayload = async (): Promise<LocationPayload | null> => {
     setLocationResolving(true);
     setLocationStatusMessage('Rilevo la posizione...');
@@ -214,6 +251,13 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         locationLongitude: longitude,
         manualAddress: null,
       };
+
+      void savePageVisibilityLocation({
+        latitude,
+        longitude,
+        label,
+        savedAtIso: new Date().toISOString(),
+      }).catch(() => undefined);
 
       setCurrentLocationPayload(payload);
       setLocationStatusMessage(`Posizione rilevata: ${label}`);
@@ -541,14 +585,18 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Passeggiate live 🚶🏻‍♀️</Text>
+            <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
+            {hiddenWalksByRadius > 0 ? (
+              <Text style={styles.filterHiddenText}>{hiddenWalksByRadius === 1 ? '1 passeggiata nascosta.' : `${hiddenWalksByRadius} passeggiate nascoste.`}</Text>
+            ) : null}
 
           </View>
         </View>
 
 
         <View style={styles.walkList}>
-          {walksBoard.walks.length ? (
-            walksBoard.walks.map((plan) => {
+          {walksInRadius.length ? (
+            walksInRadius.map((plan) => {
               const isBlockedAuthor = !plan.isMine && plan.isBlockedByMe;
 
               return (
@@ -576,8 +624,14 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
             })
           ) : (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyTitle}>Nessuna passeggiata live per ora</Text>
-              <Text style={styles.helperText}>Crea la prima uscita BauBook!</Text>
+              <Text style={styles.emptyTitle}>
+                {pageVisibilityFilterActive && walksBoard.walks.length ? 'Nessuna passeggiata nel tuo raggio di ricerca' : 'Nessuna passeggiata live per ora'}
+              </Text>
+              <Text style={styles.helperText}>
+                {pageVisibilityFilterActive && walksBoard.walks.length
+                  ? 'Puoi aumentare il raggio in \"Setup\".'
+                  : 'Crea la prima uscita BauBook!'}
+              </Text>
             </View>
           )}
         </View>
@@ -588,12 +642,16 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
 
           <View style={styles.flexOne}>
             <Text style={styles.cardTitle}>Presenze live 🐕</Text>
+            <Text style={styles.filterSummaryText}>{pageVisibilityCopy}</Text>
+            {hiddenPresencesByRadius > 0 ? (
+              <Text style={styles.filterHiddenText}>{hiddenPresencesByRadius === 1 ? '1 presenza nascosta.' : `${hiddenPresencesByRadius} presenze nascoste.`}</Text>
+            ) : null}
           </View>
         </View>
 
         <View style={styles.presenceList}>
-          {walksBoard.presences.length ? (
-            walksBoard.presences.map((presence) => {
+          {presencesInRadius.length ? (
+            presencesInRadius.map((presence) => {
               const isBlockedAuthor = !presence.isMine && presence.isBlockedByMe;
 
               return (
@@ -617,7 +675,11 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
               );
             })
           ) : (
-            <Text style={styles.helperText}>Nessuna presenza attiva. Bene per la privacy, male per la scodinzolata.</Text>
+            <Text style={styles.helperText}>
+              {pageVisibilityFilterActive && walksBoard.presences.length
+                ? 'Nessuna presenza nel tuo raggio di ricerca. Puoi aumentarlo in \"Setup\".'
+                : 'Nessuna presenza attiva. Bene per la privacy, male per la scodinzolata.'}
+            </Text>
           )}
         </View>
       </AppCard>
@@ -758,6 +820,18 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 19,
     fontWeight: '700',
+  },
+  filterSummaryText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  filterHiddenText: {
+    color: colors.muted,
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    fontWeight: '800',
   },
   warningText: {
     color: colors.warning,
