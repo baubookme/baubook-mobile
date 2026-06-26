@@ -423,7 +423,7 @@ export function MapScreen() {
                 : 'Stato ricerca'}
           </Text>
           <Text style={styles.bodyText}>{nearby.message}</Text>
-          {nearby.positionLabel ? <Text style={styles.helperText}>Posizione usata: {nearby.positionLabel}</Text> : null}
+          {nearby.positionLabel ? <Text style={styles.helperText}>Posizione rilevata: {nearby.positionLabel}</Text> : null}
           {nearby.errorMessage ? <Text style={styles.errorText}>{nearby.errorMessage}</Text> : null}
         </View>
       </AppCard>
