@@ -281,7 +281,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
           <View style={styles.sectionTitleRow}>
             <IconBubble source={baubookImages.icons.friends} tone="teal" />
             <View style={styles.flexOne}>
-              <Text style={styles.cardTitle}>BauBook friends</Text>
+              <Text style={styles.cardTitle}>Compagni di scodinzolata</Text>
               <Text style={styles.bodyText}>Cerca e gestisci la tua lista amici. Max {MAX_DOG_FRIENDS}.</Text>
             </View>
             <Tag label={`${friends.length}/${MAX_DOG_FRIENDS}`} tone={friendLimitReached ? 'orange' : 'green'} />
@@ -400,7 +400,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             <IconBubble source={baubookImages.icons.favorites} tone="warm" />
             <View style={styles.flexOne}>
 
-              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il mio piccolo branco salvato su BauBook!' : 'Nessun BauBook friend ancora aggiunto. 🥺'}</Text>
+              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il mio piccolo branco salvato su BauBook!' : 'Nessun amico BauBook ancora aggiunto. 🥺'}</Text>
             </View>
           </View>
 

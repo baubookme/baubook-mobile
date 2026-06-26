@@ -159,6 +159,8 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const [currentLocationPayload, setCurrentLocationPayload] = useState<LocationPayload | null>(null);
   const [locationStatusMessage, setLocationStatusMessage] = useState<string | null>(null);
   const [locationResolving, setLocationResolving] = useState(false);
+  const [walkComposerExpanded, setWalkComposerExpanded] = useState(false);
+  const [presenceComposerExpanded, setPresenceComposerExpanded] = useState(false);
 
   const livePlaces = useMemo(
     () => placesState.places.filter((place) => place.moderationStatus !== 'removed'),
@@ -190,6 +192,19 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
   const canUpdateWalk = canUseLiveWrites && hasMyActiveWalk;
   const canCreatePresence = canUseLiveWrites && !hasMyActivePresence;
   const canUpdatePresence = canUseLiveWrites && hasMyActivePresence;
+
+  useEffect(() => {
+    if (hasMyActiveWalk) {
+      setWalkComposerExpanded(true);
+    }
+  }, [hasMyActiveWalk]);
+
+  useEffect(() => {
+    if (hasMyActivePresence) {
+      setPresenceComposerExpanded(true);
+    }
+  }, [hasMyActivePresence]);
+
   const resolvedLocationLabel =
     locationMode === 'current'
       ? currentLocationPayload?.locationLabel ?? 'Posizione attuale da rilevare'
@@ -499,7 +514,16 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           </View>
         </View>
 
-        <View style={styles.formGroup}>
+        <CollapseToggle
+          expanded={walkComposerExpanded}
+          expandedLabel="Chiudi modulo passeggiata"
+          collapsedLabel="Apri modulo passeggiata"
+          onPress={() => setWalkComposerExpanded((value) => !value)}
+        />
+
+        {walkComposerExpanded ? (
+          <>
+            <View style={styles.formGroup}>
           <Text style={styles.label}>Attore protagonista 👉</Text>
           <View style={styles.chipRow}>
             {auth.dogs.length ? (
@@ -561,8 +585,10 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
         </View>
 
         <GateMessages authSignedIn={auth.isSignedIn} hasDog={auth.dogs.length > 0} locationReady={locationReady} placesLive={placesLive} hasWritePlace={writePlaceReady} />
-        {walkErrorMessage ? <Text style={styles.errorBox}>{walkErrorMessage}</Text> : null}
-        {walkActionMessage ? <Text style={styles.successBox}>{walkActionMessage}</Text> : null}
+            {walkErrorMessage ? <Text style={styles.errorBox}>{walkErrorMessage}</Text> : null}
+            {walkActionMessage ? <Text style={styles.successBox}>{walkActionMessage}</Text> : null}
+          </>
+        ) : null}
       </AppCard>
 
       <AppCard tone="teal">
@@ -574,7 +600,16 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           </View>
         </View>
 
-        <View style={styles.formGroup}>
+        <CollapseToggle
+          expanded={presenceComposerExpanded}
+          expandedLabel="Chiudi Modulo presenza"
+          collapsedLabel="Apri modulo presenza"
+          onPress={() => setPresenceComposerExpanded((value) => !value)}
+        />
+
+        {presenceComposerExpanded ? (
+          <>
+            <View style={styles.formGroup}>
           <Text style={styles.label}>Posizione</Text>
           <Text style={styles.locationSummary}>{resolvedLocationLabel}</Text>
         </View>
@@ -602,8 +637,10 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
           </View>
         </View>
 
-        {presenceErrorMessage ? <Text style={styles.errorBox}>{presenceErrorMessage}</Text> : null}
-        {presenceActionMessage ? <Text style={styles.successBox}>{presenceActionMessage}</Text> : null}
+            {presenceErrorMessage ? <Text style={styles.errorBox}>{presenceErrorMessage}</Text> : null}
+            {presenceActionMessage ? <Text style={styles.successBox}>{presenceActionMessage}</Text> : null}
+          </>
+        ) : null}
       </AppCard>
 
       <AppCard elevated={false}>
@@ -770,6 +807,33 @@ function LocationModeButton({ label, selected, onPress }: { label: string; selec
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.locationModeButton, selected && styles.locationModeButtonSelected, pressed && styles.choiceChipPressed]}>
       <Text style={[styles.locationModeButtonText, selected && styles.locationModeButtonTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function CollapseToggle({
+  expanded,
+  expandedLabel,
+  collapsedLabel,
+  onPress,
+}: {
+  expanded: boolean;
+  expandedLabel: string;
+  collapsedLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.collapseToggle, expanded && styles.collapseToggleExpanded, pressed && styles.collapseTogglePressed]}
+    >
+      <Text style={styles.collapseToggleLabel}>{expanded ? expandedLabel : collapsedLabel}</Text>
+      <View style={styles.collapseToggleActionRow}>
+        <Text style={styles.collapseToggleAction}>{expanded ? 'Chiudi' : 'Apri'}</Text>
+        <Text style={styles.collapseToggleGlyph}>{expanded ? '−' : '+'}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -1033,6 +1097,51 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  collapseToggle: {
+    marginTop: spacing.md,
+    minHeight: 48,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceWarm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  collapseToggleExpanded: {
+    borderColor: colors.primary,
+    backgroundColor: colors.tealSoft,
+  },
+  collapseTogglePressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
+  },
+  collapseToggleLabel: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  collapseToggleActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  collapseToggleAction: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
+  },
+  collapseToggleGlyph: {
+    color: colors.primaryDark,
+    fontSize: typography.h3,
+    lineHeight: typography.h3,
+    fontWeight: '900',
   },
   formGroup: {
     gap: spacing.xs,
