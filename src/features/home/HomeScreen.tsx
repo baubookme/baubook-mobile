@@ -220,7 +220,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         </View>
       </View>
 
-      <Text style={styles.versionFooter}>BauBook v0.6.0</Text>
+      <Text style={styles.versionFooter}>BauBook v0.7.4</Text>
     </Screen>
   );
 }

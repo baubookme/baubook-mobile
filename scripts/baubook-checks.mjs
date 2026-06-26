@@ -40,12 +40,12 @@ function listFiles(dir, extensions, out = []) {
 function checkVersion() {
   const pkg = readJson('package.json');
   const app = readJson('app.json');
-  assert(pkg.version === '0.6.0', `package.json version attesa 0.6.0, trovata ${pkg.version}`);
-  assert(app.expo?.version === '0.6.0', `app.json expo.version attesa 0.6.0, trovata ${app.expo?.version}`);
-  assert(Number(app.expo?.android?.versionCode) === 28, 'Android versionCode atteso 28');
-  assert(String(app.expo?.ios?.buildNumber) === '28', 'iOS buildNumber atteso 28');
+  assert(pkg.version === '0.7.4', `package.json version attesa 0.7.4, trovata ${pkg.version}`);
+  assert(app.expo?.version === '0.7.4', `app.json expo.version attesa 0.7.4, trovata ${app.expo?.version}`);
+  assert(Number(app.expo?.android?.versionCode) === 34, 'Android versionCode atteso 34');
+  assert(String(app.expo?.ios?.buildNumber) === '34', 'iOS buildNumber atteso 34');
   assert(String(app.expo?.extra?.baseline) === '2.3.0', 'extra.baseline atteso 2.3.0');
-  console.log('[baubook-check] OK versioni 0.6.0 / 2.3.0');
+  console.log('[baubook-check] OK versioni 0.7.4 / 2.3.0');
 }
 
 function checkPackageScripts() {
@@ -98,7 +98,7 @@ function checkHomePresentability() {
   ];
   const hits = blocked.filter((token) => home.toLowerCase().includes(token.toLowerCase()));
   assert(hits.length === 0, `Home contiene ancora elementi da sviluppatore: ${hits.join(', ')}`);
-  assert(home.includes('BauBook v0.6.0'), 'Home deve mostrare solo il numero versione in basso: BauBook v0.6.0');
+  assert(home.includes('BauBook v0.7.4'), 'Home deve mostrare solo il numero versione in basso: BauBook v0.7.4');
   console.log('[baubook-check] OK Home presentabile');
 }
 

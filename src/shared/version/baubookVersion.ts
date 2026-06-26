@@ -4,8 +4,8 @@ export const BAUBOOK_RELEASE = {
   releaseName: 'Beta Trust Command Center',
   releaseTag: 'v0.3.1-beta-trust-command-center',
   releaseDate: '2026-06-09',
-  androidVersionCode: 14,
-  iosBuildNumber: '14',
+  androidVersionCode: 34,
+  iosBuildNumber: '34',
 } as const;
 
 export type BauBookRelease = typeof BAUBOOK_RELEASE;
