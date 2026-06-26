@@ -24,7 +24,12 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 34
+      "versionCode": 34,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBjHA5L__s2ZFDjfakC8n6xDg76tqEneMs"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

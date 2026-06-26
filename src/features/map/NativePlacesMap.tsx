@@ -266,7 +266,7 @@ export function NativePlacesMap(props: NativePlacesMapProps): React.ReactElement
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{markers.length ? 'Risultati filtrati' : 'Mappa pronta'}</Text>
         <Text style={styles.title}>
-          {markers.length ? `${markers.length} area/e cani nel raggio` : 'Cerca nel raggio per vedere i marker'}
+          {markers.length ? `${markers.length} area/e 🐶 nel raggio` : 'Cerca nel raggio per vedere i marker'}
         </Text>
         <Text style={styles.body}>
           {markers.length

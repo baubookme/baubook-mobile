@@ -175,8 +175,7 @@ export function NativePlacesMap({ places, source, realtimeStatus, message, error
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Mappa nativa</Text>
-        <Text style={styles.title}>Luoghi BauBook</Text>
+        <Text style={styles.eyebrow}>Mappa - Luoghi BauBook</Text>
         <Text style={styles.status}>{statusLabel(realtimeStatus, source)}</Text>
       </View>
 

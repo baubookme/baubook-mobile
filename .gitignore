@@ -56,3 +56,9 @@ baubook_*.zip
 baubook_*.zip
 
 supabase/.temp/
+
+# Local Android debug signing keys
+android/app/keystores/*.keystore
+
+# Local Android config
+android/local.properties
