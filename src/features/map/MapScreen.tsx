@@ -44,6 +44,7 @@ interface ResolvedCurrentPosition {
   locationLabel: string | null;
 }
 
+
 async function resolveReadableLocationLabel(latitude: number, longitude: number): Promise<string | null> {
   const client = getSupabaseClient();
 
@@ -67,16 +68,51 @@ async function resolveReadableLocationLabel(latitude: number, longitude: number)
   }
 }
 
-async function readCurrentPosition(): Promise<ResolvedCurrentPosition> {
-  const permission = await Location.requestForegroundPermissionsAsync();
+const CURRENT_POSITION_TIMEOUT_MS = 8000;
+const LOCATION_LABEL_TIMEOUT_MS = 3000;
 
-  if (permission.status !== 'granted') {
-    throw new Error('Permesso posizione non concesso. Autorizza la posizione dal dispositivo oppure riprova dal browser.');
+function isUsableCoordinate(latitude: number, longitude: number): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180 &&
+    (latitude !== 0 || longitude !== 0)
+  );
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+  });
+}
+
+async function toResolvedPosition(
+  position: Location.LocationObject | null | undefined,
+  fallbackLabel: string,
+): Promise<ResolvedCurrentPosition | null> {
+  if (!position?.coords) {
+    return null;
   }
 
-  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   const { latitude, longitude, accuracy } = position.coords;
-  const locationLabel = (await resolveReadableLocationLabel(latitude, longitude)) ?? 'Posizione condivisa';
+
+  if (!isUsableCoordinate(latitude, longitude)) {
+    return null;
+  }
+
+  const locationLabel =
+    (await withTimeout(resolveReadableLocationLabel(latitude, longitude), LOCATION_LABEL_TIMEOUT_MS)) ?? fallbackLabel;
 
   return {
     latitude,
@@ -84,6 +120,38 @@ async function readCurrentPosition(): Promise<ResolvedCurrentPosition> {
     accuracy,
     locationLabel,
   };
+}
+
+async function readCurrentPosition(): Promise<ResolvedCurrentPosition> {
+  const permission = await Location.requestForegroundPermissionsAsync();
+
+  if (permission.status !== 'granted') {
+    throw new Error('Permesso posizione non concesso. Autorizza la rilevazione GPS dal dispositivo.');
+  }
+
+  const lastKnown = await Location.getLastKnownPositionAsync({
+    maxAge: 5 * 60 * 1000,
+    requiredAccuracy: 5000,
+  }).catch(() => null);
+
+  const resolvedLastKnown = await toResolvedPosition(lastKnown, '-');
+
+  if (resolvedLastKnown) {
+    return resolvedLastKnown;
+  }
+
+  const current = await withTimeout(
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+    CURRENT_POSITION_TIMEOUT_MS,
+  );
+
+  const resolvedCurrent = await toResolvedPosition(current, 'Posizione condivisa');
+
+  if (resolvedCurrent) {
+    return resolvedCurrent;
+  }
+
+  throw new Error('Impossibile leggere la posizione attuale dal dispositivo.');
 }
 
 function formatCoordinate(value: number): string {
@@ -228,13 +296,12 @@ export function MapScreen() {
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : JSON.stringify(error);
 
-      setNearby({
+      setNearby((current) => ({
+        ...current,
         status: 'error',
-        source: null,
-        areas: [],
-        message: 'Non riesco a leggere la posizione attuale.',
+        message: 'Non riesco a leggere la posizione attuale. Se disponibile mantengo l’ultima rilevata.',
         errorMessage: fallbackMessage,
-      });
+      }));
     }
   };
 
@@ -293,7 +360,7 @@ export function MapScreen() {
 
         <Text style={styles.mapDescription}>
           {nearbyMapPlaces.length
-            ? 'I marker sono limitati alle aree cani trovate nel raggio selezionato.'
+            ? 'I marker sono limitati alle aree trovate nel raggio selezionato.'
             : 'La mappa resta pronta: dopo la ricerca mostrerà solo i luoghi coinvolti nel filtro.'}
         </Text>
       </View>

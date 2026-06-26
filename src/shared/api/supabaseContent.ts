@@ -314,12 +314,12 @@ export async function fetchNearbyDogAreas(params: {
       source: 'supabase',
       areas,
       message: areas.length
-        ? `${areas.length} area/e cani trovata/e nel raggio selezionato.`
-        : 'Nessuna area cani geocodificata nel raggio selezionato.',
+        ? `${areas.length} area/e trovata/e nel raggio selezionato.`
+        : 'Nessuna area rilevata nel raggio selezionato.',
     };
   } catch (error) {
     return fallbackNearbyDogAreas(
-      'Non riesco a completare la ricerca nel raggio.',
+      'Non riesco a completare la ricerca nel raggio scelta.',
       normalizeError(error),
     );
   }
@@ -329,7 +329,7 @@ async function countRows(tableName: string): Promise<{ count: number; errorMessa
   const client = getSupabaseClient();
 
   if (!client) {
-    return { count: 0, errorMessage: 'Supabase client non configurato' };
+    return { count: 0, errorMessage: 'Client non configurato' };
   }
 
   const { count, error } = await client.from(tableName).select('*', { count: 'exact', head: true });

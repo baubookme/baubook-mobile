@@ -150,7 +150,7 @@ function useSafetyLocationDraft(initialLabel: string) {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
-        setLocationStatusMessage("Permesso posizione non concesso. Usa un indirizzo manuale.");
+        setLocationStatusMessage("Permesso posizione non concesso. Prova un indirizzo manuale.");
         return null;
       }
 
@@ -171,7 +171,7 @@ function useSafetyLocationDraft(initialLabel: string) {
       setLocationStatusMessage(`Posizione rilevata: ${label}`);
       return payload;
     } catch {
-      setLocationStatusMessage("Non riesco a leggere la posizione. Usa un indirizzo manuale.");
+      setLocationStatusMessage("Non riesco a leggere la posizione. Prova un indirizzo manuale.");
       return null;
     } finally {
       setLocationResolving(false);

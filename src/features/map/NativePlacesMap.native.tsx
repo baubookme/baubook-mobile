@@ -30,6 +30,7 @@ interface CoordinateCarrier extends CoordinateValue {
   coordinate?: CoordinateValue | null;
   coordinates?: CoordinateValue | null;
   location?: CoordinateValue | null;
+  geo?: CoordinateValue | null;
   position?: CoordinateValue | null;
 }
 
@@ -51,7 +52,40 @@ const VENICE_REGION: Region = {
 };
 
 function toFiniteNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().replace(',', '.');
+
+    if (!normalized.length) {
+      return null;
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function readCoordinateValue(candidate: unknown, keys: string[]): number | null {
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+
+  const record = candidate as Record<string, unknown>;
+
+  for (const key of keys) {
+    const value = toFiniteNumber(record[key]);
+
+    if (value !== null) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 function extractCoordinates(place: PlaceModel): { latitude: number; longitude: number } | null {
@@ -63,7 +97,7 @@ function extractCoordinates(place: PlaceModel): { latitude: number; longitude: n
     carrier.coordinate,
     carrier.coordinates,
     carrier.location,
-    carrier.position,
+    carrier.geo,
   ];
 
   for (const candidate of candidates) {
@@ -71,10 +105,32 @@ function extractCoordinates(place: PlaceModel): { latitude: number; longitude: n
       continue;
     }
 
-    const latitude = toFiniteNumber(candidate.latitude ?? candidate.lat);
-    const longitude = toFiniteNumber(candidate.longitude ?? candidate.lng);
+    const latitude = readCoordinateValue(candidate, [
+      'latitude',
+      'lat',
+      'placeLatitude',
+      'place_latitude',
+      'gpsLatitude',
+      'gps_latitude',
+    ]);
 
-    if (latitude !== null && longitude !== null && (latitude !== 0 || longitude !== 0)) {
+    const longitude = readCoordinateValue(candidate, [
+      'longitude',
+      'lng',
+      'lon',
+      'placeLongitude',
+      'place_longitude',
+      'gpsLongitude',
+      'gps_longitude',
+    ]);
+
+    if (
+      latitude !== null &&
+      longitude !== null &&
+      Math.abs(latitude) <= 90 &&
+      Math.abs(longitude) <= 180 &&
+      (latitude !== 0 || longitude !== 0)
+    ) {
       return { latitude, longitude };
     }
   }
@@ -156,6 +212,7 @@ function statusLabel(realtimeStatus?: RealtimeStatus, source?: string): string {
 
 export function NativePlacesMap({ places, source, realtimeStatus, message, errorMessage }: NativePlacesMapProps) {
   const markers = useMemo(() => buildMarkers(places), [places]);
+  const rawPlacesCount = Array.isArray(places) ? places.length : 0;
 
   const initialRegion = useMemo<Region>(() => {
     const first = markers[0];
@@ -214,9 +271,9 @@ export function NativePlacesMap({ places, source, realtimeStatus, message, error
 
       {markers.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>Nessun marker con coordinate valide</Text>
+          <Text style={styles.emptyTitle}>{rawPlacesCount ? 'Nessun marker con coordinate valide' : 'Nessun risultato da mostrare'}</Text>
           <Text style={styles.emptyText}>
-            I luoghi sono disponibili, ma non espongono ancora coordinate utilizzabili dalla mappa nativa.
+            {rawPlacesCount ? 'I luoghi sono disponibili, ma non espongono ancora coordinate utilizzabili dalla mappa.' : 'Usa la posizione attuale per cercare aree e servizi nel raggio selezionato.'}
           </Text>
         </View>
       ) : null}

@@ -219,7 +219,7 @@ export function WalksScreen({ onNavigate }: WalksScreenProps) {
       setLocationStatusMessage(`Posizione rilevata: ${label}`);
       return payload;
     } catch {
-      setLocationStatusMessage('Non riesco a leggere la posizione. Usa un indirizzo manuale.');
+      setLocationStatusMessage('Non riesco a leggere la posizione. Prova un indirizzo manuale.');
       return null;
     } finally {
       setLocationResolving(false);
