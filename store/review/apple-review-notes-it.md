@@ -1,6 +1,7 @@
 ﻿# Apple App Review Notes - BauBook 0.7.4
 
 BauBook is a local community app for dog owners in the Venezia-Mestre area.
+After beta phase, maybe will be extended to other Italian cities.
 
 No paid account is required for review. 
 
@@ -44,5 +45,5 @@ https://baubook.me/community-guidelines
 Support:
 https://baubook.me/support
 
-Contact: info@baubook.me
+Admin contact: admin@baubook.me
 
