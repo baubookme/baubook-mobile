@@ -98,6 +98,8 @@ function hashtagLabel(tag: string) {
     return `#${normalizeTag(tag)}`;
 }
 
+type PhotoSource = 'camera' | 'library';
+
 function readDogAvatarUri(dog: unknown) {
     const record = dog as
         | {
@@ -208,24 +210,39 @@ export function DogProfileScreen() {
         setIsEditing(false);
     };
 
-    const handlePickPhoto = async () => {
+    const handlePickPhoto = async (source: PhotoSource) => {
         if (!auth.isSignedIn) {
             Alert.alert('Accesso richiesto', 'Accedi nel tab Setup per salvare la foto del 🐶.');
             return;
         }
 
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const permission =
+            source === 'camera'
+                ? await ImagePicker.requestCameraPermissionsAsync()
+                : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-            Alert.alert('Permesso foto necessario', 'Autorizza l’accesso alla libreria foto per scegliere l’avatar del tuo 🐶.');
+            Alert.alert(
+                source === 'camera' ? 'Permesso fotocamera necessario' : 'Permesso foto necessario',
+                source === 'camera'
+                    ? "Autorizza l'accesso alla fotocamera per scattare l'avatar del tuo cane."
+                    : "Autorizza l'accesso alla libreria foto per scegliere l'avatar del tuo cane.",
+            );
             return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.85,
-        });
+        const result =
+            source === 'camera'
+                ? await ImagePicker.launchCameraAsync({
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.85,
+                })
+                : await ImagePicker.launchImageLibraryAsync({
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.85,
+                });
 
         if (result.canceled || !result.assets?.[0]?.uri) {
             return;
@@ -426,11 +443,20 @@ export function DogProfileScreen() {
                     <View style={styles.editActionsContainer}>
                         <View style={styles.editPhotoRow}>
                             <AppButton
-                                label="Foto"
+                                label="Scatta"
                                 variant="ghost"
+                                size="compact"
                                 icon={baubookImages.icons.camera}
                                 disabled={!auth.isSignedIn || auth.isBusy}
-                                onPress={() => void handlePickPhoto()}
+                                onPress={() => void handlePickPhoto('camera')}
+                            />
+                            <AppButton
+                                label="Archivio"
+                                variant="ghost"
+                                size="compact"
+                                icon={baubookImages.icons.stories}
+                                disabled={!auth.isSignedIn || auth.isBusy}
+                                onPress={() => void handlePickPhoto('library')}
                             />
                         </View>
 
@@ -656,6 +682,7 @@ const styles = StyleSheet.create({
     },
     editActionsContainer: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: spacing.md,
@@ -663,9 +690,11 @@ const styles = StyleSheet.create({
     },
     editPhotoRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'flex-start',
         alignItems: 'center',
-        flexShrink: 0,
+        gap: spacing.sm,
+        flexShrink: 1,
     },
     editSubmitRow: {
         flexDirection: 'row',
