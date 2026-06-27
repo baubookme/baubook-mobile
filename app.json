@@ -1,0 +1,113 @@
+{
+  "expo": {
+    "name": "BauBook!",
+    "slug": "baubook",
+    "version": "0.7.4",
+    "plugins": [
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyBjHA5L__s2ZFDjfakC8n6xDg76tqEneMs"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "BauBook usa la fotocamera per scattare la foto profilo del tuo cane.",
+          "photosPermission": "BauBook usa la libreria foto per scegliere la foto profilo del tuo cane.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "baubook",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "me.baubook.app",
+      "buildNumber": "34",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "me.baubook.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8ED",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 34,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBjHA5L__s2ZFDjfakC8n6xDg76tqEneMs"
+        }
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "name": "BauBook!",
+      "shortName": "BauBook!"
+    },
+    "extra": {
+      "projectName": "BauBook 0.7.4 Beta Experience",
+      "betaCity": "Venezia-Mestre",
+      "preferredDevFlow": "web + Android development build + Supabase Auth + walks + safety alerts + compact docs",
+      "baseline": "2.3.0",
+      "launchReadiness": "beta-experience-cartoon-toolbar",
+      "sponsoredLiteDefault": false,
+      "releaseName": "BauBook 0.7.4 Store Metadata & Legal Readiness",
+      "cartoonToolbar": true,
+      "sponsoredLiteDefaultEnabled": false,
+      "baubookBaseline": "2.3.0",
+      "baubookReleaseName": "BauBook 0.7.4 Store Safety Moderation Readiness",
+      "nativeMapViewMarkers": true,
+      "mapProvider": "react-native-maps",
+      "baubookLaunchMode": "store-safety-moderation-readiness",
+      "eas": {
+        "projectId": "bd85b195-0fc3-4b4c-8b4c-af8f119f51ca"
+      },
+      "baubook": {
+        "baseline": "2.3.0",
+        "label": "Store Safety Moderation Readiness",
+        "releaseName": "BauBook 0.7.4 Store Metadata & Legal Readiness",
+        "releaseTag": "baubook-0.7.4-store-metadata-legal-readiness",
+        "releaseDate": "2026-06-25",
+        "storeLegalReadiness": true,
+        "legalUrls": {
+          "home": "https://baubook.me/",
+          "privacy": "https://baubook.me/privacy/",
+          "terms": "https://baubook.me/terms/",
+          "communityGuidelines": "https://baubook.me/community-guidelines/",
+          "support": "https://baubook.me/support/",
+          "accountDeletion": "https://baubook.me/account-deletion/"
+        }
+      },
+      "mapCareCommandCenter": true,
+      "productionBackendCutover": true,
+      "productizedHome": true,
+      "betaAuthEmailPasswordOtp": true,
+      "welcomeEmailAfterSignup": true,
+      "adminModerationFoundation": true,
+      "storeSafetyModerationReadiness": true,
+      "adminModerationHideRestore": true,
+      "userBlocking": true,
+      "ugcReportAcrossCoreSurfaces": true,
+      "storeLegalReadiness": true,
+      "legalPagesReady": true,
+      "reviewNotesReady": true,
+      "legalUrls": {
+        "home": "https://baubook.me/",
+        "privacy": "https://baubook.me/privacy/",
+        "terms": "https://baubook.me/terms/",
+        "communityGuidelines": "https://baubook.me/community-guidelines/",
+        "support": "https://baubook.me/support/",
+        "accountDeletion": "https://baubook.me/account-deletion/"
+      }
+    }
+  }
+}

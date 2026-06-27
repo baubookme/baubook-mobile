@@ -62,4 +62,4 @@ android/app/keystores/*.keystore
 
 # Local Android config
 android/local.properties
-/app.json
+
