@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   savedPackText: {
-    paddingTop: 15,
+    paddingTop: 10,
   },
   bodyTextStrong: {
     color: colors.primaryDark,
