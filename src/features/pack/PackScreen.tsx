@@ -252,7 +252,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             <Image source={baubookImages.pack.dogFriends} style={styles.heroPackImage} />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>Branco</Text>
+            <Text style={styles.eyebrow}>Branco BauBook</Text>
             <Text style={styles.title}>{selectedDog ? `Amici del ❤️` : 'Il branco BauBook'}</Text>
             <Text style={styles.bodyText}>Aggiungi fino a {MAX_DOG_FRIENDS} amici BauBook cercando per nome utente o 🐕.</Text>
           </View>

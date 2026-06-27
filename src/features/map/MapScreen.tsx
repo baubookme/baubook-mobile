@@ -19,6 +19,12 @@ const dogAreaCartoonIcon = require('../../../assets/baubook/map/dog_area_cartoon
 
 const radiusOptions = [1, 3, 5, 10];
 
+function formatSearchRadiusLabel(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  const label = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',');
+  return `${label} km`;
+}
+
 type NearbyStatus = 'idle' | 'loading' | 'success' | 'error';
 
 interface NearbyState {
@@ -226,6 +232,8 @@ export function MapScreen() {
   const { source, reload, realtimeStatus } = useSupabasePlaces();
   const pageVisibility = usePageVisibilitySettings();
   const savedLocationSearchKeyRef = useRef<string | null>(null);
+  const initializedRadiusFromGlobalRef = useRef(false);
+  const hasLocalRadiusOverrideRef = useRef(false);
 
   const [radiusKm, setRadiusKm] = useState(3);
   const [manualRadius, setManualRadius] = useState('3');
@@ -242,6 +250,8 @@ export function MapScreen() {
   const hiddenNearbyCount = Math.max(nearbyMapPlaces.length - nearbyPreview.length, 0);
 
   const handleManualRadiusChange = (value: string) => {
+    hasLocalRadiusOverrideRef.current = true;
+
     const cleaned = value.replace(',', '.').replace(/[^0-9.]/g, '');
     setManualRadius(cleaned);
 
@@ -278,10 +288,11 @@ export function MapScreen() {
 
 
   useEffect(() => {
-    if (!pageVisibility.loaded) {
+    if (!pageVisibility.loaded || initializedRadiusFromGlobalRef.current || hasLocalRadiusOverrideRef.current) {
       return;
     }
 
+    initializedRadiusFromGlobalRef.current = true;
     setRadiusKm(pageVisibility.radiusKm);
     setManualRadius(String(pageVisibility.radiusKm));
   }, [pageVisibility.loaded, pageVisibility.radiusKm]);
@@ -292,7 +303,9 @@ export function MapScreen() {
     }
 
     const savedLocation = pageVisibility.location;
-    const searchKey = `${savedLocation.savedAtIso}:${pageVisibility.radiusKm}`;
+    const searchRadiusKm = hasLocalRadiusOverrideRef.current ? radiusKm : pageVisibility.radiusKm;
+    const searchRadiusLabel = formatSearchRadiusLabel(searchRadiusKm);
+    const searchKey = `${savedLocation.savedAtIso}:${searchRadiusKm}`;
 
     if (savedLocationSearchKeyRef.current === searchKey) {
       return;
@@ -303,18 +316,21 @@ export function MapScreen() {
     const search: LastNearbySearch = {
       latitude: savedLocation.latitude,
       longitude: savedLocation.longitude,
-      radiusKm: pageVisibility.radiusKm,
+      radiusKm: searchRadiusKm,
       accuracy: null,
       locationLabel: savedLocation.label,
     };
 
-    setRadiusKm(pageVisibility.radiusKm);
-    setManualRadius(String(pageVisibility.radiusKm));
+    if (!hasLocalRadiusOverrideRef.current) {
+      setRadiusKm(pageVisibility.radiusKm);
+      setManualRadius(String(pageVisibility.radiusKm));
+    }
+
     setLastNearbySearch(search);
     setNearby((current) => ({
       ...current,
       status: 'loading',
-      message: `Uso la posizione salvata da Setup e cerco nel raggio di ${pageVisibility.radiusLabel}...`,
+      message: `Uso la posizione aggiornata e cerco nel raggio di ${searchRadiusLabel}...`,
       errorMessage: undefined,
       positionLabel: savedLocation.label,
     }));
@@ -336,7 +352,7 @@ export function MapScreen() {
     setNearby((current) => ({
       ...current,
       status: 'loading',
-      message: 'Chiedo la posizione al dispositivo e cerco le aree cani ufficiali nel raggio selezionato...',
+      message: `Chiedo la posizione al dispositivo e cerco le aree ufficiali nel raggio di ${formatSearchRadiusLabel(radiusKm)}...`,
       errorMessage: undefined,
     }));
 
@@ -376,7 +392,7 @@ export function MapScreen() {
       ...current,
       status: lastNearbySearch ? 'loading' : current.status,
       message: lastNearbySearch
-        ? 'Ricarico i luoghi dal database e aggiorno la ricerca nel raggio selezionato...'
+        ? `Ricarico i luoghi dal database e aggiorno la ricerca nel raggio di ${formatSearchRadiusLabel(radiusKm)}...`
         : 'Ricarico i luoghi dal database...',
       errorMessage: undefined,
     }));
@@ -385,7 +401,12 @@ export function MapScreen() {
       await Promise.resolve(reload());
 
       if (lastNearbySearch) {
-        await runNearbySearch(lastNearbySearch);
+        const search: LastNearbySearch = {
+          ...lastNearbySearch,
+          radiusKm,
+        };
+        setLastNearbySearch(search);
+        await runNearbySearch(search);
         return;
       }
 
@@ -435,7 +456,7 @@ export function MapScreen() {
         <View style={styles.searchHeader}>
           <Image source={dogAreaCartoonIcon} style={styles.dogAreaHeroIcon} />
           <View style={styles.searchCopy}>
-            <Text style={styles.cardTitle}>Trova area cani nel raggio di {pageVisibility.radiusLabel}</Text>
+            <Text style={styles.cardTitle}>Trova area cani nel raggio di {formatSearchRadiusLabel(radiusKm)}</Text>
             <Text style={styles.bodyText}>Usa la posizione attuale per vedere solo le aree cani davvero vicine.</Text>
           </View>
         </View>
@@ -448,6 +469,7 @@ export function MapScreen() {
               label={`${option} km`}
               selected={radiusKm === option}
               onPress={() => {
+                hasLocalRadiusOverrideRef.current = true;
                 setRadiusKm(option);
                 setManualRadius(String(option));
               }}
@@ -457,7 +479,7 @@ export function MapScreen() {
 
         <View style={styles.manualRow}>
           <View style={styles.manualInputWrap}>
-            <Text style={styles.label}>Raggio attuale</Text>
+            <Text style={styles.label}>Manuale</Text>
             <TextInput
               value={manualRadius}
               onChangeText={handleManualRadiusChange}
@@ -510,7 +532,7 @@ export function MapScreen() {
             description={
               hiddenNearbyCount
                 ? `Ecco le prime ${nearbyPreview.length} aree più vicine. Altre ${hiddenNearbyCount} sono visibili sulla mappa.`
-                : 'Tocca una card per aprire subito la navigazione.'
+                : 'Per arrivarci clicca \'Apri navigazione\' nella card.'
             }
           />
 

@@ -65,7 +65,7 @@ const startOptions: StartOption[] = [
 ];
 
 const presenceOptions: PresenceOption[] = [
-  { label: 'Accetto compagnia', status: 'available', helper: 'Sono disponibile a incontrare altri cani.' },
+  { label: 'Accetto compagnia', status: 'available', helper: 'Sono disponibile a incontrare altri amici.' },
   { label: 'Sto passeggiando', status: 'walking', helper: 'Gironzolo qui intorno senza meta.' },
   { label: 'Sto giocando', status: 'playing', helper: 'Sono in zona e ho voglia di socializzare.' },
   { label: 'Sono in area cani', status: 'dog_area', helper: 'Chi si fa una corsetta?' },
