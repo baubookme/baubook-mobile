@@ -1,28 +1,48 @@
 ﻿# Apple App Review Notes - BauBook 0.7.4
 
-BauBook! è una beta per la community locale di persone con cane nell'area Venezia-Mestre.
+BauBook is a local community app for dog owners in the Venezia-Mestre area.
 
-## Accesso e account
-L'app supporta autenticazione email/password e codice email. In fase beta può essere presente anche una modalità demo locale per esplorare l'esperienza senza creare un account Supabase e senza scritture backend.
+No paid account is required for review. 
 
-## Funzioni principali da testare
-- Creazione/accesso account.
-- Profilo cane.
-- Diario smart del branco.
-- Passeggiate e presenze temporanee.
-- Branco/amici.
-- Avvisi e segnalazioni di sicurezza.
-- Feedback beta e supporto.
+On first launch, if not signed in, the reviewer can choose demo mode from the startup prompt to explore the app.
 
-## Note sicurezza e community
-BauBook non è un servizio di emergenza e non sostituisce veterinari, autorità locali o numeri di emergenza. Le funzioni di sicurezza sono informative e locali.
+Main areas to test:
+- Home
+- Map
+- Dog profile
+- Walks / temporary presence
+- Pack / dog friends
+- Safety alerts
+- Profile / account deletion request
 
-## URL pubblici
-- Privacy Policy: https://baubook.me/privacy/
-- Terms: https://baubook.me/terms/
-- Community Guidelines: https://baubook.me/community-guidelines/
-- Support: https://baubook.me/support/
-- Account deletion: https://baubook.me/account-deletion/
+Some live community actions require a signed-in account. If needed, use:
 
-Supporto: info@baubook.me
+email/userid: dev@baubook.me
+
+Password: 12345678
+
+BauBook is not an emergency service. 
+
+Safety features are community information tools only.
+
+User-generated content can be reported from the relevant screens, and users can be blocked where community profiles are shown.
+
+Administrative moderation tools are available in the 'Setup' tab for administrator accounts only. These tools allow BauBook admins to review reports and manage community safety.
+
+Account deletion is available in Profile / Account, and also at:
+https://baubook.me/account-deletion
+
+Privacy policy:
+https://baubook.me/privacy
+
+Terms:
+https://baubook.me/terms
+
+Community guidelines:
+https://baubook.me/community-guidelines
+
+Support:
+https://baubook.me/support
+
+Contact: info@baubook.me
 

@@ -72,7 +72,7 @@ EXPO_PUBLIC_BAUBOOK_SPONSORED_LITE_ENABLED=false
 EXPO_PUBLIC_BAUBOOK_CONTACT_EMAIL=support@baubook.me
 EXPO_PUBLIC_BAUBOOK_PRIVACY_URL=https://baubook.me/privacy
 EXPO_PUBLIC_BAUBOOK_TERMS_URL=https://baubook.me/terms
-EXPO_PUBLIC_BAUBOOK_DELETE_ACCOUNT_URL=https://baubook.me/account/delete
+EXPO_PUBLIC_BAUBOOK_DELETE_ACCOUNT_URL=https://baubook.me/account-deletion/
 ```
 
 Regole:
