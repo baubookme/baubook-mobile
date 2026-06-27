@@ -24,8 +24,8 @@
     "bb:supabase": "powershell -ExecutionPolicy Bypass -File ./baubook.ps1 -Mode supabase-doctor",
     "supabase:doctor": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-doctor.ps1",
     "safety:smoke": "powershell -ExecutionPolicy Bypass -File ./scripts/safety-smoke-check.ps1",
-    "check": "npm run typecheck \u0026\u0026 node scripts/baubook-checks.mjs",
-    "production:check": "npm run typecheck \u0026\u0026 node scripts/baubook-checks.mjs --production",
+    "check": "npm run typecheck && node scripts/baubook-checks.mjs",
+    "production:check": "npm run typecheck && node scripts/baubook-checks.mjs --production",
     "launch:check": "node scripts/baubook-checks.mjs --launch",
     "launch:check:strict": "node scripts/baubook-checks.mjs --launch --strict"
   },
@@ -33,10 +33,10 @@
     "@expo/metro-runtime": "~56.0.14",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.107.0",
-    "expo": "~56.0.9",
-    "expo-dev-client": "^56.0.19",
-    "expo-image-picker": "~56.0.17",
-    "expo-location": "~56.0.17",
+    "expo": "~56.0.12",
+    "expo-dev-client": "~56.0.20",
+    "expo-image-picker": "~56.0.18",
+    "expo-location": "~56.0.18",
     "pg": "^8.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -51,7 +51,7 @@
   },
   "baubook": {
     "baseline": "2.3.0",
-    "releaseName": "BauBook 0.7.4 Store Metadata \u0026 Legal Readiness",
+    "releaseName": "BauBook 0.7.4 Store Metadata & Legal Readiness",
     "releaseTag": "baubook-0.7.4-store-metadata-legal-readiness",
     "releaseDate": "2026-06-25",
     "label": "Store Safety Moderation Readiness",
@@ -66,4 +66,3 @@
     }
   }
 }
-
