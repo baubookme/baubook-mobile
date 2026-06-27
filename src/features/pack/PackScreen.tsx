@@ -400,7 +400,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
             <IconBubble source={baubookImages.icons.favorites} tone="warm" />
             <View style={styles.flexOne}>
 
-              <Text style={styles.bodyText}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il mio piccolo branco salvato su BauBook!' : 'Nessun amico BauBook ancora aggiunto. 🥺'}</Text>
+              <Text style={[styles.bodyText, status !== 'loading' && friends.length ? styles.savedPackText : null]}>{status === 'loading' ? 'Caricamento lista...' : friends.length ? 'Il mio piccolo branco salvato su BauBook!' : 'Nessun amico BauBook ancora aggiunto. 🥺'}</Text>
             </View>
           </View>
 
@@ -531,6 +531,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  savedPackText: {
+    paddingTop: 15,
   },
   bodyTextStrong: {
     color: colors.primaryDark,
