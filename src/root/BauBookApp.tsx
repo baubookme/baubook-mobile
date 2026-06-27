@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType } from 'react-native';
 
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlertsScreen } from '../features/alerts/AlertsScreen';
 
@@ -179,6 +180,10 @@ function BauBookShell() {
 
  const { status, isSignedIn, isDemoMode } = useAuthAccount();
 
+ const insets = useSafeAreaInsets();
+ const tabBarBottomOffset = Platform.OS === 'web' ? spacing.md : Math.max(insets.bottom, spacing.sm);
+ const contentBottomPadding = 108 + tabBarBottomOffset;
+
  const [activeTab, setActiveTab] = useState<TabKey>('home');
 
  const registrationLocked = status === 'signed_out' && !isSignedIn && !isDemoMode;
@@ -264,9 +269,9 @@ function BauBookShell() {
  <View style={styles.appRoot}>
  <View style={styles.deviceShell}>
 
- <View style={styles.content}>{screen}</View>
+ <View style={[styles.content, { paddingBottom: contentBottomPadding }]}>{screen}</View>
 
- <View style={styles.tabBar}>
+ <View style={[styles.tabBar, { bottom: tabBarBottomOffset }]}>
 
  {tabs.map((tab) => {
 
@@ -411,8 +416,6 @@ const styles = StyleSheet.create({
  left: spacing.md,
 
  right: spacing.md,
-
- bottom: Platform.OS === 'web' ? spacing.md : spacing.sm,
 
  minHeight: 88,
 

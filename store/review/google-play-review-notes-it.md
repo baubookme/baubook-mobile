@@ -15,7 +15,7 @@ Main areas to test:
 - Safety alerts
 - Profile / account deletion request
 
-Some live community actions require a signed-in account. If needed, use: 
+Some live community actions require a signed-in account. If needed, use temporary demo account:
 
 email/userid: dev@baubook.me
 
