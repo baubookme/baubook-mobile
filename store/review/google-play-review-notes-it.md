@@ -1,6 +1,7 @@
 ﻿# Google Play Review Notes - BauBook 0.7.4
 
 BauBook is a local community app for dog owners in the Venezia-Mestre area.
+After beta phase, maybe will be extended to other Italian cities.
 
 No paid account is required for review. 
 
@@ -15,7 +16,7 @@ Main areas to test:
 - Safety alerts
 - Profile / account deletion request
 
-Some live community actions require a signed-in account. If needed, use: 
+Some live community actions require a signed-in account. If needed, use temporary demo account:
 
 email/userid: dev@baubook.me
 
@@ -44,5 +45,5 @@ https://baubook.me/community-guidelines
 Support:
 https://baubook.me/support
 
-Contact: info@baubook.me
+Admin contact: admin@baubook.me
 

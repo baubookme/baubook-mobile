@@ -146,7 +146,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                       </View>
 
       <View style={styles.pageVisibilitySummaryCard}>
-        <Text style={styles.pageVisibilitySummaryEyebrow}>Raggio di ricarca BauBook : {pageVisibility.radiusLabel}</Text>
+        <Text style={styles.pageVisibilitySummaryEyebrow}>Raggio di ricerca BauBook : {pageVisibility.radiusLabel}</Text>
         <Text style={styles.pageVisibilitySummaryText}>{pageVisibilitySummary}</Text>
       </View>
 
