@@ -23,6 +23,7 @@ Non committare mai:
 
 ```txt
 .env
+app.json
 node_modules/
 .expo/
 android/
@@ -131,7 +132,7 @@ Prima di ogni commit stabile:
 
 ```powershell
 git status --short
-npm run docs:check
+powershell -ExecutionPolicy Bypass -File .\scripts\docs-structure-check.ps1
 npm run launch:check
 npm run typecheck
 ```
@@ -139,8 +140,8 @@ npm run typecheck
 Per una pre-beta piu' severa:
 
 ```powershell
-npm run beta:check
 npm run launch:check:strict
+npm run safety:smoke
 ```
 
 `launch:check:strict` puo' richiedere `.env` reale e export web. Se fallisce per configurazioni non ancora definitive, leggere l'errore prima di modificare codice.

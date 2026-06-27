@@ -13,9 +13,9 @@ Il diario smart del branco
 BauBook aiuta chi vive con un cane a tenere traccia di profilo, passeggiate, presenze nel branco, amici e segnalazioni utili nel territorio pilota Venezia-Mestre.
 
 ## Descrizione lunga
-BauBook! Ã¨ una beta applicativa pensata per rendere piÃ¹ semplice la vita quotidiana con il cane: profilo del cane, diario del branco, passeggiate, presenze temporanee, amici, avvisi di sicurezza e canali di supporto.
+BauBook! è una beta applicativa pensata per rendere più semplice la vita quotidiana con il cane: profilo del cane, diario del branco, passeggiate, presenze temporanee, amici, avvisi di sicurezza e canali di supporto.
 
-La prima area pilota Ã¨ Venezia-Mestre. L'app Ã¨ progettata per una community locale: informazioni essenziali, interazioni leggere e un approccio prudente alla sicurezza. Le funzioni di feedback aiutano a migliorare l'esperienza prima del lancio pubblico completo.
+La prima area pilota è Venezia-Mestre. L'app è progettata per una community locale: informazioni essenziali, interazioni leggere e un approccio prudente alla sicurezza. Le funzioni di feedback aiutano a migliorare l'esperienza prima del lancio pubblico completo.
 
 Funzioni principali:
 - profilo cane e dati utili;
@@ -40,5 +40,5 @@ Venezia-Mestre.
 - Email supporto: info@baubook.me
 
 ## Note copy
-Evitare claim medici, veterinari, assicurativi o di emergenza. BauBook non sostituisce veterinari, autoritÃ  locali o servizi di emergenza.
+Evitare claim medici, veterinari, assicurativi o di emergenza. BauBook non sostituisce veterinari, autorità locali o servizi di emergenza.
 

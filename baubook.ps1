@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("web", "android-build", "android-dev", "android-go", "doctor", "supabase-doctor", "install", "clean", "typecheck", "export-web", "stop-emulator")]
+  [ValidateSet("web", "android-build", "android-dev", "android-go", "doctor", "supabase-doctor", "install", "clean", "typecheck", "stop-emulator")]
   [string]$Mode = "web",
 
   [ValidateSet("lan", "localhost")]
@@ -434,6 +434,5 @@ switch ($Mode) {
   "install" { .\scripts\install-clean.ps1 }
   "clean" { Clear-LocalCache }
   "typecheck" { Run-Typecheck }
-  "export-web" { Run-Typecheck; Invoke-Logged { npm run export:web } "npm run export:web" }
   "stop-emulator" { .\stop_emu.ps1 }
 }

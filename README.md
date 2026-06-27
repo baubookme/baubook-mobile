@@ -1,6 +1,6 @@
 # BauBook! Venezia-Mestre MVP Workspace
 
-**BauBook 0.0.6 Beta** per Expo, React Native, TypeScript e Supabase.
+**BauBook 0.7.4 Store Metadata & Legal Readiness** per Expo, React Native, TypeScript e Supabase.
 
 Root locale standard del repo: `C:\baubook`.
 
@@ -10,9 +10,10 @@ Root locale standard del repo: `C:\baubook`.
 ```powershell
 cd C:\baubook
 .\scripts\install-clean.ps1
-npm run docs:check
+powershell -ExecutionPolicy Bypass -File .\scripts\docs-structure-check.ps1
 npm run launch:check
 npm run typecheck
+npm run check
 .\baubook.ps1 -Mode web
 .\baubook.ps1 -Mode android-build -CleanPrebuild
 .\baubook.ps1 -Mode android-dev

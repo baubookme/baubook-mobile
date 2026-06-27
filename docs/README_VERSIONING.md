@@ -7,9 +7,10 @@ Regole pratiche per versionare BauBook senza moltiplicare documenti temporanei.
 Baseline di questo pacchetto:
 
 ```txt
-BauBook 1.9.9 In-App Launch Compliance + Docs Compaction
-app/package: 0.2.9
-tag consigliato: v0.2.9-in-app-launch-compliance-docs
+BauBook 0.7.4 Store Metadata & Legal Readiness
+app/package: 0.7.4
+baseline: 2.3.0
+tag consigliato: baubook-0.7.4-store-metadata-legal-readiness
 branch operativo: main
 repo locale: C:\baubook
 ```
@@ -33,7 +34,8 @@ Ogni blocco stabile aggiorna insieme:
 
 - `package.json` `version`;
 - `package-lock.json` root/package version;
-- `app.json` `expo.version`;
+- `src/shared/version/baubookVersion.ts`;
+- `app.json` locale, non tracciato nel repo;
 - Android `versionCode`;
 - iOS `buildNumber`;
 - `app.json` `expo.extra.baseline`;
@@ -44,9 +46,9 @@ Ogni blocco stabile aggiorna insieme:
 Commit piccoli, uno per blocco stabile:
 
 ```powershell
-git add .
+git add package.json package-lock.json src docs store
 git status --short
-git commit -m "docs: compact launch documentation and versioning"
+git commit -m "chore: align BauBook 0.7.4 metadata"
 ```
 
 Evitare commit con:
@@ -55,6 +57,7 @@ Evitare commit con:
 _baubook_work/
 _baubook_backups/
 .env
+app.json
 node_modules/
 .expo/
 android/
@@ -66,16 +69,16 @@ ios/
 Taggare solo baseline funzionanti:
 
 ```powershell
-git tag -a v0.2.9-in-app-launch-compliance-docs -m "BauBook 1.9.9 In-App Launch Compliance + Docs Compaction"
+git tag -a baubook-0.7.4-store-metadata-legal-readiness -m "BauBook 0.7.4 Store Metadata & Legal Readiness"
 git push origin main
-git push origin v0.2.9-in-app-launch-compliance-docs
+git push origin baubook-0.7.4-store-metadata-legal-readiness
 ```
 
-Se un tag viene messo sul commit sbagliato prima del push finale:
+Se un tag BauBook appena creato viene messo sul commit sbagliato prima del push finale:
 
 ```powershell
-git tag -f -a v0.2.9-in-app-launch-compliance-docs HEAD -m "BauBook 1.9.9 In-App Launch Compliance + Docs Compaction"
-git push --force origin v0.2.9-in-app-launch-compliance-docs
+git tag -f -a baubook-0.7.4-store-metadata-legal-readiness HEAD -m "BauBook 0.7.4 Store Metadata & Legal Readiness"
+git push --force origin baubook-0.7.4-store-metadata-legal-readiness
 ```
 
 Usare force solo sui tag BauBook appena creati, non su branch condivisi.
@@ -102,7 +105,7 @@ Le note operative temporanee vanno nel messaggio di commit, nella conversazione 
 ## Checklist prima del push
 
 ```powershell
-npm run docs:check
+powershell -ExecutionPolicy Bypass -File .\scripts\docs-structure-check.ps1
 npm run launch:check
 npm run typecheck
 git status --short
@@ -112,33 +115,5 @@ Poi:
 
 ```powershell
 git push origin main
-git push origin v0.2.9-in-app-launch-compliance-docs
+git push origin baubook-0.7.4-store-metadata-legal-readiness
 ```
-
-## BauBook 2.0.0 - v0.3.0-beta-experience-cartoon-toolbar
-
-- Versione app/package: 0.3.0.
-- Android versionCode: 13.
-- iOS buildNumber: 13.
-- Esperienza beta visibile: toolbar con badge cartoon coerenti con la Home.
-- Check nuovo: npm run ui:check.
-
-## BauBook 2.0.0
-
-- Tag: `v0.3.0-beta-experience-cartoon-toolbar`
-- Versione app/package: `0.3.0`
-- Baseline: `2.0.0`
-- Contenuto: Beta Experience + Cartoon Toolbar.
-
-
-## v0.3.2-live-map-realtime-radar
-
-Release BauBook 2.0.2: realtime/polling diagnostico per i dati mappa, migration Supabase 0009 e check `map:realtime:check`.
-
-## v0.3.3-native-mapview-markers
-
-- App/package version: 0.3.3.
-- Baseline: 2.0.3.
-- Introduce una mappa nativa con react-native-maps e marker reali per i luoghi BauBook.
-- Mantiene il badge realtime/polling introdotto in 2.0.2 e aggiunge il check `npm run map:native:check`.
-

@@ -42,7 +42,7 @@ foreach ($needle in @("0001_initial_schema.sql", "0008_launch_readiness_native_s
 }
 
 $versioning = Get-Content "docs/README_VERSIONING.md" -Raw
-foreach ($needle in @("v0.3.3-native-mapview-markers", "main", "package-lock.json", "HOTFIX", "BASELINE")) {
+foreach ($needle in @("baubook-0.7.4-store-metadata-legal-readiness", "main", "package-lock.json", "HOTFIX", "BASELINE")) {
   if ($versioning -match [regex]::Escape($needle)) { Ok "README_VERSIONING copre $needle" } else { Fail "README_VERSIONING non copre $needle" }
 }
 
