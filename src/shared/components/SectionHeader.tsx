@@ -4,7 +4,7 @@ import { colors, spacing, typography } from '../theme/theme';
 
 interface SectionHeaderProps {
   eyebrow?: string;
-  title: string;
+  title?: string;
   description?: string;
 }
 
@@ -12,7 +12,7 @@ export function SectionHeader({ eyebrow, title, description }: SectionHeaderProp
   return (
     <View style={styles.wrap}>
       {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={styles.title}>{title}</Text>
+      {title ? <Text style={styles.title}>{title}</Text> : null}
       {description ? <Text style={styles.description}>{description}</Text> : null}
     </View>
   );

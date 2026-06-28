@@ -428,7 +428,7 @@ export function DogProfileScreen() {
                         />
                     </View>
 
-                    <View style={styles.formGroup}>
+                    <View style={[styles.formGroup, styles.notesFormGroup]}>
                         <Text style={styles.label}>Note utili 📝</Text>
                         <TextInput
                             value={privateNotes}
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: spacing.md,
-        marginTop: spacing.lg,
+        marginTop: spacing.xs,
     },
     editPhotoRow: {
         flexDirection: 'row',
@@ -733,6 +733,9 @@ const styles = StyleSheet.create({
     formGroup: {
         gap: spacing.xs,
         marginBottom: spacing.md,
+    },
+    notesFormGroup: {
+        marginBottom: 0,
     },
     label: {
         color: colors.text,
