@@ -700,6 +700,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
+        flexGrow: 1,
         flexShrink: 0,
     },
     formHeader: {
