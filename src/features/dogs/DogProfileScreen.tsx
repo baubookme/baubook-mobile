@@ -223,10 +223,10 @@ export function DogProfileScreen() {
 
         if (!permission.granted) {
             Alert.alert(
-                source === 'camera' ? 'Permesso fotocamera necessario' : 'Permesso foto necessario',
+                source === 'camera' ? 'Permesso fotocamera necessario' : 'Permesso accesso archivio foto necessario',
                 source === 'camera'
-                    ? "Autorizza l'accesso alla fotocamera per scattare l'avatar del tuo cane."
-                    : "Autorizza l'accesso alla libreria foto per scegliere l'avatar del tuo cane.",
+                    ? "Autorizza l'accesso alla fotocamera per scattare l'avatar del tuo 🐾."
+                    : "Autorizza l'accesso alla libreria foto per scegliere l'avatar del tuo 🐾.",
             );
             return;
         }
@@ -451,7 +451,7 @@ export function DogProfileScreen() {
                                 onPress={() => void handlePickPhoto('camera')}
                             />
                             <AppButton
-                                label="Archivio"
+                                label="Archivio foto"
                                 variant="ghost"
                                 size="compact"
                                 icon={baubookImages.icons.stories}
