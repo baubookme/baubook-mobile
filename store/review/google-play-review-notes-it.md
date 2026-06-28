@@ -22,6 +22,8 @@ email/userid: dev@baubook.me
 
 Password: 12345678
 
+After closed beta, user password requirements will be updated to a more secure format managed centrally by BauBook admins.
+
 BauBook is not an emergency service. 
 
 Safety features are community information tools only.
