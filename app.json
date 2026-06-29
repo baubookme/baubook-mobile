@@ -18,7 +18,16 @@
           "microphonePermission": false
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF8ED"
+        }
+      ]
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
