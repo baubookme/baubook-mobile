@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ImageSourcePropType } from 'react-native';
 
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlertsScreen } from '../features/alerts/AlertsScreen';
@@ -26,6 +27,8 @@ import { CartoonTabIcon, type CartoonTone } from '../shared/components/CartoonTa
 
 import { colors, shadows, spacing } from '../shared/theme/theme';
 import type { TabKey } from '../shared/types/domain';
+
+const WELCOME_BOARD_STORAGE_KEY = 'baubook.welcomeBoardSeen.v1';
 
 type TabItem = {
 
@@ -58,15 +61,167 @@ const tabs: TabItem[] = [
 
 ];
 
+const welcomeSlides = [
+ {
+  eyebrow: 'Benvenuto',
+  title: 'BauBook ti aiuta a orientarti subito',
+  text: 'Mappa, profilo e strumenti utili sono pensati per partire leggeri, anche se vuoi solo curiosare.',
+  icon: baubookImages.avatar,
+  tone: 'teal',
+ },
+ {
+  eyebrow: 'Vicino a te',
+  title: 'Posti, presenze e passeggiate',
+  text: 'Trova luoghi utili, guarda cosa succede nei dintorni e scopri funzioni pensate per la vita con il tuo cane.',
+  icon: baubookImages.quickActions.map,
+  tone: 'orange',
+ },
+ {
+  eyebrow: 'Community',
+  title: 'Branco e aiuto quando serve',
+  text: 'Aggiungi amici BauBook, segnala contenuti non adatti e usa gli alert con calma e responsabilità.',
+  icon: baubookImages.pack.dogFriends,
+  tone: 'pink',
+ },
+] satisfies Array<{
+ eyebrow: string;
+ title: string;
+ text: string;
+ icon: ImageSourcePropType;
+ tone: 'teal' | 'orange' | 'pink';
+}>;
+
+type WelcomeBoardStatus = 'checking' | 'show' | 'done';
+
+type WelcomeBoardProps = {
+
+ visible: boolean;
+
+ onDone: () => void;
+
+};
+
+function WelcomeBoard({ visible, onDone }: WelcomeBoardProps) {
+
+ const [slideIndex, setSlideIndex] = useState(0);
+
+ const slide = welcomeSlides[slideIndex];
+
+ const isLastSlide = slideIndex === welcomeSlides.length - 1;
+
+ const heroToneStyle = slide.tone === 'orange'
+  ? styles.welcomeHeroOrange
+  : slide.tone === 'pink'
+   ? styles.welcomeHeroPink
+   : styles.welcomeHeroTeal;
+
+ useEffect(() => {
+
+  if (visible) {
+
+   setSlideIndex(0);
+
+  }
+
+ }, [visible]);
+
+ const handleNext = () => {
+
+  if (isLastSlide) {
+
+   onDone();
+
+   return;
+
+  }
+
+  setSlideIndex((current) => Math.min(current + 1, welcomeSlides.length - 1));
+
+ };
+
+ return (
+
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onDone}>
+
+   <View style={styles.welcomeBackdrop}>
+
+    <View style={styles.welcomeCard}>
+
+     <View style={styles.welcomeTopRow}>
+
+      <Text style={styles.welcomeStepText}>{slideIndex + 1}/{welcomeSlides.length}</Text>
+
+      <Pressable
+       onPress={onDone}
+       accessibilityRole="button"
+       accessibilityLabel="Salta welcome BauBook"
+       style={({ pressed }) => [styles.welcomeSkipButton, pressed && styles.welcomeButtonPressed]}
+      >
+
+       <Text style={styles.welcomeSkipText}>Salta</Text>
+
+      </Pressable>
+
+     </View>
+
+     <View style={[styles.welcomeHero, heroToneStyle]}>
+
+      <Image source={slide.icon} style={styles.welcomeHeroImage} />
+
+     </View>
+
+     <View style={styles.welcomeCopy}>
+
+      <Text style={styles.welcomeEyebrow}>{slide.eyebrow}</Text>
+
+      <Text style={styles.welcomeTitle}>{slide.title}</Text>
+
+      <Text style={styles.welcomeText}>{slide.text}</Text>
+
+     </View>
+
+     <View style={styles.welcomeDotsRow}>
+
+      {welcomeSlides.map((item, index) => (
+
+       <View key={item.eyebrow} style={[styles.welcomeDot, index === slideIndex && styles.welcomeDotActive]} />
+
+      ))}
+
+     </View>
+
+     <Pressable
+      onPress={handleNext}
+      accessibilityRole="button"
+      accessibilityLabel={isLastSlide ? 'Vai alla scelta accesso' : 'Vai alla prossima slide'}
+      style={({ pressed }) => [styles.welcomePrimaryButton, pressed && styles.welcomeButtonPressed]}
+     >
+
+      <Text style={styles.welcomePrimaryButtonText}>{isLastSlide ? 'Inizia' : 'Avanti'}</Text>
+
+     </Pressable>
+
+    </View>
+
+   </View>
+
+  </Modal>
+
+ );
+
+}
+
 type StartupAuthPromptProps = {
 
  onRegister: () => void;
 
  onDemo: () => void;
 
+ enabled: boolean;
+
 };
 
-function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
+function StartupAuthPrompt({ onRegister, onDemo, enabled }: StartupAuthPromptProps) {
 
  const { status, isSignedIn, isDemoMode, startDemoMode } = useAuthAccount();
 
@@ -75,6 +230,14 @@ function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
  const hasPromptedRef = useRef(false);
 
  useEffect(() => {
+
+  if (!enabled) {
+
+   setVisible(false);
+
+   return;
+
+  }
 
   if (isSignedIn || isDemoMode) {
 
@@ -92,7 +255,7 @@ function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
 
   }
 
- }, [isDemoMode, isSignedIn, status]);
+ }, [enabled, isDemoMode, isSignedIn, status]);
 
  const handleRegisterPress = () => {
 
@@ -120,13 +283,13 @@ function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
 
     <View style={styles.authModalCard}>
 
-     <Text style={styles.authModalEyebrow}>Accesso richiesto</Text>
+     <Text style={styles.authModalEyebrow}>BauBook</Text>
 
-     <Text style={styles.authModalTitle}>Non sei registrato 👤</Text>
+     <Text style={styles.authModalTitle}>Come vuoi entrare?</Text>
 
      <Text style={styles.authModalText}>
 
-      Accedi o registrati per salvare il profilo, il tuo amico 🐾 e usare BauBook in modo completo. Oppure dai prima un’occhiata in modalità demo.
+      Accedi per salvare profilo e attività, oppure entra in demo per guardarti intorno prima di registrarti.
 
      </Text>
 
@@ -138,13 +301,13 @@ function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
 
        accessibilityRole="button"
 
-       accessibilityLabel="Registrati o accedi"
+       accessibilityLabel="Accedi a BauBook"
 
        style={({ pressed }) => [styles.authModalButton, pressed && styles.authModalButtonPressed]}
 
       >
 
-       <Text style={styles.authModalButtonText}>Registrati / Accedi</Text>
+       <Text style={styles.authModalButtonText}>Accedi</Text>
 
       </Pressable>
 
@@ -154,13 +317,13 @@ function StartupAuthPrompt({ onRegister, onDemo }: StartupAuthPromptProps) {
 
        accessibilityRole="button"
 
-       accessibilityLabel="Vorrei dare un'occhiata"
+       accessibilityLabel="Voglio dare un'occhiata"
 
        style={({ pressed }) => [styles.authModalButton, styles.authModalSecondaryButton, pressed && styles.authModalButtonPressed]}
 
       >
 
-       <Text style={[styles.authModalButtonText, styles.authModalSecondaryButtonText]}>Vorrei dare un’occhiata</Text>
+       <Text style={[styles.authModalButtonText, styles.authModalSecondaryButtonText]}>Voglio dare un'occhiata</Text>
 
       </Pressable>
 
@@ -185,8 +348,45 @@ function BauBookShell() {
  const contentBottomPadding = 108 + tabBarBottomOffset;
 
  const [activeTab, setActiveTab] = useState<TabKey>('home');
+ const [welcomeBoardStatus, setWelcomeBoardStatus] = useState<WelcomeBoardStatus>('checking');
 
  const registrationLocked = status === 'signed_out' && !isSignedIn && !isDemoMode;
+
+ useEffect(() => {
+
+  if (isSignedIn || isDemoMode) {
+
+   setWelcomeBoardStatus('done');
+
+   return;
+
+  }
+
+  if (status !== 'signed_out') {
+
+   return;
+
+  }
+
+  let active = true;
+
+  AsyncStorage.getItem(WELCOME_BOARD_STORAGE_KEY)
+   .then((value) => {
+    if (active) {
+     setWelcomeBoardStatus(value === 'true' ? 'done' : 'show');
+    }
+   })
+   .catch(() => {
+    if (active) {
+     setWelcomeBoardStatus('show');
+    }
+   });
+
+  return () => {
+   active = false;
+  };
+
+ }, [isDemoMode, isSignedIn, status]);
 
  useEffect(() => {
 
@@ -219,6 +419,13 @@ function BauBookShell() {
  const handleDemo = useCallback(() => {
 
   setActiveTab('home');
+
+ }, []);
+
+ const handleWelcomeBoardDone = useCallback(() => {
+
+  setWelcomeBoardStatus('done');
+  void AsyncStorage.setItem(WELCOME_BOARD_STORAGE_KEY, 'true').catch(() => undefined);
 
  }, []);
 
@@ -264,7 +471,8 @@ function BauBookShell() {
  return (
 
  <>
- <StartupAuthPrompt onRegister={handleRegister} onDemo={handleDemo} />
+ <WelcomeBoard visible={registrationLocked && welcomeBoardStatus === 'show'} onDone={handleWelcomeBoardDone} />
+ <StartupAuthPrompt onRegister={handleRegister} onDemo={handleDemo} enabled={welcomeBoardStatus === 'done'} />
 
  <View style={styles.appRoot}>
  <View style={styles.deviceShell}>
@@ -500,6 +708,248 @@ const styles = StyleSheet.create({
  tabLabelDisabled: {
 
  color: colors.muted,
+
+ },
+
+ welcomeBackdrop: {
+
+ flex: 1,
+
+ alignItems: 'center',
+
+ justifyContent: 'center',
+
+ padding: spacing.lg,
+
+ backgroundColor: 'rgba(39, 28, 16, 0.32)',
+
+ },
+
+ welcomeCard: {
+
+ width: '100%',
+
+ maxWidth: 430,
+
+ borderRadius: 32,
+
+ borderWidth: 1,
+
+ borderColor: colors.navBorder,
+
+ backgroundColor: colors.navSurface,
+
+ padding: spacing.lg,
+
+ gap: spacing.md,
+
+ ...shadows.card,
+
+ },
+
+ welcomeTopRow: {
+
+ flexDirection: 'row',
+
+ alignItems: 'center',
+
+ justifyContent: 'space-between',
+
+ },
+
+ welcomeStepText: {
+
+ color: colors.muted,
+
+ fontSize: 12,
+
+ fontWeight: '900',
+
+ },
+
+ welcomeSkipButton: {
+
+ minHeight: 36,
+
+ borderRadius: 18,
+
+ paddingHorizontal: spacing.md,
+
+ alignItems: 'center',
+
+ justifyContent: 'center',
+
+ backgroundColor: colors.surface,
+
+ borderWidth: 1,
+
+ borderColor: colors.border,
+
+ },
+
+ welcomeSkipText: {
+
+ color: colors.primaryDark,
+
+ fontSize: 13,
+
+ fontWeight: '900',
+
+ },
+
+ welcomeHero: {
+
+ height: 174,
+
+ borderRadius: 28,
+
+ alignItems: 'center',
+
+ justifyContent: 'center',
+
+ borderWidth: 1,
+
+ borderColor: colors.border,
+
+ overflow: 'hidden',
+
+ },
+
+ welcomeHeroTeal: {
+
+ backgroundColor: colors.tealSoft,
+
+ },
+
+ welcomeHeroOrange: {
+
+ backgroundColor: colors.orangeSoft,
+
+ },
+
+ welcomeHeroPink: {
+
+ backgroundColor: colors.pinkSoft,
+
+ },
+
+ welcomeHeroImage: {
+
+ width: 136,
+
+ height: 136,
+
+ resizeMode: 'contain',
+
+ },
+
+ welcomeCopy: {
+
+ gap: spacing.xs,
+
+ },
+
+ welcomeEyebrow: {
+
+ color: colors.primaryDark,
+
+ fontSize: 12,
+
+ fontWeight: '900',
+
+ letterSpacing: 0.8,
+
+ textTransform: 'uppercase',
+
+ },
+
+ welcomeTitle: {
+
+ color: colors.ink,
+
+ fontSize: 25,
+
+ lineHeight: 30,
+
+ fontWeight: '900',
+
+ },
+
+ welcomeText: {
+
+ color: colors.muted,
+
+ fontSize: 15,
+
+ lineHeight: 22,
+
+ fontWeight: '700',
+
+ },
+
+ welcomeDotsRow: {
+
+ flexDirection: 'row',
+
+ justifyContent: 'center',
+
+ alignItems: 'center',
+
+ gap: spacing.xs,
+
+ },
+
+ welcomeDot: {
+
+ width: 8,
+
+ height: 8,
+
+ borderRadius: 4,
+
+ backgroundColor: colors.border,
+
+ },
+
+ welcomeDotActive: {
+
+ width: 24,
+
+ backgroundColor: colors.primary,
+
+ },
+
+ welcomePrimaryButton: {
+
+ minHeight: 52,
+
+ borderRadius: 26,
+
+ alignItems: 'center',
+
+ justifyContent: 'center',
+
+ backgroundColor: colors.primary,
+
+ paddingHorizontal: spacing.lg,
+
+ },
+
+ welcomePrimaryButtonText: {
+
+ color: colors.navSurface,
+
+ fontSize: 16,
+
+ fontWeight: '900',
+
+ },
+
+ welcomeButtonPressed: {
+
+ opacity: 0.86,
+
+ transform: [{ scale: 0.98 }],
 
  },
 
