@@ -690,11 +690,11 @@ const styles = StyleSheet.create({
     },
     editPhotoRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         alignItems: 'center',
         gap: spacing.sm,
-        flexShrink: 1,
+        width: '100%',
+        flexShrink: 0,
     },
     editSubmitRow: {
         flexDirection: 'row',
