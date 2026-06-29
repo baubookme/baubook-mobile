@@ -435,6 +435,26 @@ export async function signInWithPassword(email: string, password: string): Promi
     return data.session;
 }
 
+export async function signInWithGoogleIdToken(idToken: string): Promise<Session | null> {
+    const client = assertSupabaseClient();
+    const cleanToken = idToken.trim();
+
+    if (!cleanToken) {
+        throw new Error('Token Google non disponibile.');
+    }
+
+    const {data, error} = await client.auth.signInWithIdToken({
+        provider: 'google',
+        token: cleanToken,
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+
+    return data.session;
+}
+
 export async function requestEmailOtp(email: string): Promise<string> {
     const client = assertSupabaseClient();
     const cleanEmail = cleanEmailAddress(email);

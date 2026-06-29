@@ -11,6 +11,7 @@ import {
     saveDog,
     requestEmailOtp,
     sendEmailLogin,
+    signInWithGoogleIdToken,
     signInWithPassword as signInWithPasswordSupabase,
     signOut as signOutSupabase,
     signUpWithPassword as signUpWithPasswordSupabase,
@@ -22,6 +23,7 @@ import {
 } from '../api/authAccount';
 import {hasSupabaseConfig} from '../lib/env';
 import {getSupabaseClient} from '../lib/supabase';
+import {getGoogleIdToken, isGoogleSignInAvailable} from './googleSignIn';
 
 type AuthStatus = 'idle' | 'loading' | 'signed_out' | 'signed_in' | 'demo' | 'error';
 
@@ -37,8 +39,10 @@ interface AuthContextValue {
     isSignedIn: boolean;
     isDemoMode: boolean;
     isBusy: boolean;
+    isGoogleSignInAvailable: boolean;
     startDemoMode: () => void;
     exitDemoMode: () => void;
+    signInWithGoogle: () => Promise<void>;
     signInWithPassword: (email: string, password: string) => Promise<void>;
     signUpWithPassword: (input: SignUpWithPasswordInput) => Promise<void>;
     requestOtpCode: (email: string) => Promise<void>;
@@ -242,6 +246,29 @@ export function AuthProvider({children}: PropsWithChildren) {
         }
     }, [refreshAccount]);
 
+    const signInWithGoogle = useCallback(async () => {
+        try {
+            setStatus('loading');
+            const idToken = await getGoogleIdToken();
+
+            if (!idToken) {
+                setStatus(session ? 'signed_in' : 'signed_out');
+                setMessage('Accesso Google annullato.');
+                setErrorMessage(undefined);
+                return;
+            }
+
+            await signInWithGoogleIdToken(idToken);
+            await refreshAccount();
+            setMessage('Accesso con Google completato: sessione BauBook attiva.');
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Accesso con Google non riuscito.');
+            setErrorMessage(normalizeError(error));
+        }
+    }, [refreshAccount, session]);
+
     const signUpWithPassword = useCallback(async (input: SignUpWithPasswordInput) => {
         try {
             setStatus('loading');
@@ -387,8 +414,10 @@ export function AuthProvider({children}: PropsWithChildren) {
         isSignedIn: Boolean(user),
         isDemoMode: status === 'demo',
         isBusy: status === 'loading',
+        isGoogleSignInAvailable,
         startDemoMode,
         exitDemoMode,
+        signInWithGoogle,
         signInWithPassword,
         signUpWithPassword,
         requestOtpCode,
@@ -398,7 +427,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         saveProfile,
         saveDogProfile,
         signOut,
-    }), [dogs, errorMessage, exitDemoMode, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
+    }), [dogs, errorMessage, exitDemoMode, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithGoogle, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

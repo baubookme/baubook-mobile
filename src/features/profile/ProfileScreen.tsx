@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {StyleSheet, Text, TextInput, View} from 'react-native';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {baubookImages} from '../../shared/assets/images';
 import {requestAccountDeletion, fetchPendingAccountDeletionRequest} from '../../shared/api/launchReadiness';
 import {AdminModerationScreen} from '../admin/AdminModerationScreen';
@@ -12,7 +12,7 @@ import {Screen} from '../../shared/components/Screen';
 import {SectionHeader} from '../../shared/components/SectionHeader';
 import {hasSupabaseConfig} from '../../shared/lib/env';
 import {getSupabaseClient} from '../../shared/lib/supabase';
-import {colors, radius, spacing, typography} from '../../shared/theme/theme';
+import {colors, radius, shadows, spacing, typography} from '../../shared/theme/theme';
 
 const APP_VERSION = '0.7.2';
 
@@ -211,6 +211,11 @@ export function ProfileScreen() {
     const handlePasswordLogin = async () => {
         setAuthFormError('');
         await runAuthAction(() => auth.signInWithPassword(email, password));
+    };
+
+    const handleGoogleLogin = async () => {
+        setAuthFormError('');
+        await runAuthAction(() => auth.signInWithGoogle());
     };
 
     const handlePasswordSignup = async () => {
@@ -423,6 +428,12 @@ export function ProfileScreen() {
                                 </View>
                                 <AppButton label="Accedi con password" disabled={authActionDisabled}
                                            onPress={() => void handlePasswordLogin()}/>
+                                {auth.isGoogleSignInAvailable ? (
+                                    <GoogleLoginButton
+                                        disabled={authActionDisabled}
+                                        onPress={() => void handleGoogleLogin()}
+                                    />
+                                ) : null}
 
                             </View>
                         ) : null}
@@ -510,6 +521,7 @@ export function ProfileScreen() {
                             <Text style={styles.label}>Nome profilo visibile</Text>
                             <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome"
                                        placeholderTextColor={colors.muted} style={styles.input}/>
+                            <Text style={styles.helperText}>Lo puoi cambiare quando vuoi. Viene mostrato nella community BauBook.</Text>
                         </View>
                         <View style={styles.actionsRow}>
                             <AppButton label={auth.profile ? "Aggiorna profilo" : "Salva profilo"}
@@ -589,6 +601,30 @@ function LegalBlock({title, body}: { title: string; body: string }) {
             <Text style={styles.legalTitle}>{title}</Text>
             <Text style={styles.helperText}>{body}</Text>
         </View>
+    );
+}
+
+function GoogleLoginButton({disabled, onPress}: { disabled: boolean; onPress: () => void }) {
+    return (
+        <Pressable
+            accessibilityLabel="Continua con Google"
+            accessibilityRole="button"
+            disabled={disabled}
+            onPress={onPress}
+            style={({pressed}) => [
+                styles.googleButton,
+                disabled ? styles.googleButtonDisabled : null,
+                pressed && !disabled ? styles.googleButtonPressed : null,
+            ]}
+        >
+            <View style={styles.googleIconBadge}>
+                <Text style={styles.googleIconText}>G</Text>
+            </View>
+            <View style={styles.googleButtonCopy}>
+                <Text style={styles.googleButtonLabel}>Continua con Google</Text>
+                <Text style={styles.googleButtonHint}>Account Google sul dispositivo</Text>
+            </View>
+        </Pressable>
     );
 }
 
@@ -701,6 +737,58 @@ const styles = StyleSheet.create({
         padding: spacing.sm,
         fontSize: typography.small,
         lineHeight: 19,
+        fontWeight: '800',
+    },
+    googleButton: {
+        width: '100%',
+        minHeight: 58,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.navSurface,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        ...shadows.soft,
+    },
+    googleButtonPressed: {
+        transform: [{scale: 0.98}],
+        opacity: 0.9,
+    },
+    googleButtonDisabled: {
+        opacity: 0.55,
+    },
+    googleIconBadge: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: 1,
+        borderColor: '#E2E6EA',
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    googleIconText: {
+        color: '#4285F4',
+        fontSize: 21,
+        lineHeight: 24,
+        fontWeight: '900',
+    },
+    googleButtonCopy: {
+        flex: 1,
+        gap: 1,
+    },
+    googleButtonLabel: {
+        color: colors.ink,
+        fontSize: typography.body,
+        fontWeight: '900',
+    },
+    googleButtonHint: {
+        color: colors.muted,
+        fontSize: typography.tiny,
+        lineHeight: 14,
         fontWeight: '800',
     },
     actionsRow: {
