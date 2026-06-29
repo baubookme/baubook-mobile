@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 
 import { baubookImages } from '../../shared/assets/images';
@@ -56,6 +56,17 @@ const quickActions: QuickAction[] = [
     tone: 'green',
   },
 ];
+
+const PARTNERSHIP_EMAIL = 'admin@baubook.me';
+
+function openPartnershipEmail() {
+  const subject = encodeURIComponent('Richiesta partnership BauBook');
+  const body = encodeURIComponent(
+    'Ciao BauBook,\n\nvorrei richiedere una partnership.\n\nNome attivita/referente:\nCitta:\nMessaggio:\n',
+  );
+
+  void Linking.openURL(`mailto:${PARTNERSHIP_EMAIL}?subject=${subject}&body=${body}`).catch(() => undefined);
+}
 
 function newestAlert(alerts: SafetyAlertModel[]): SafetyAlertModel | null {
   if (!alerts.length) {
@@ -232,7 +243,18 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         </View>
       </View>
 
-      <Text style={styles.versionFooter}>BauBook v0.7.4</Text>
+      <View style={styles.footerBlock}>
+        <Text style={styles.versionFooter}>BauBook v0.7.4</Text>
+        <Pressable
+          accessibilityLabel="Richiedi partnership via email"
+          accessibilityRole="button"
+          onPress={openPartnershipEmail}
+          style={({ pressed }) => [styles.partnershipFooterButton, pressed && styles.pressed]}
+        >
+          <Image source={baubookImages.icons.messages} style={styles.partnershipFooterIcon} />
+          <Text style={styles.partnershipFooterText}>Richiedi partnership</Text>
+        </Pressable>
+      </View>
     </Screen>
   );
 }
@@ -695,6 +717,35 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.tiny,
     fontWeight: '800',
+    textAlign: 'center',
+  },
+  footerBlock: {
+    width: '100%',
+    gap: spacing.xs,
+  },
+  partnershipFooterButton: {
+    width: '100%',
+    minHeight: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  partnershipFooterIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+  },
+  partnershipFooterText: {
+    color: colors.primaryDark,
+    fontSize: typography.small,
+    fontWeight: '900',
     textAlign: 'center',
   },
   pressed: {
