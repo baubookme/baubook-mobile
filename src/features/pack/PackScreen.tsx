@@ -348,7 +348,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                             accessibilityLabel={`Sblocca ${result.dogName}`}
                             style={({ pressed }) => [styles.blockedInlineAction, searchStatus === 'loading' ? styles.friendIconActionDisabled : null, pressed ? styles.pressed : null]}
                           >
-                            <Text style={styles.blockedInlineActionText}>Sblocca utente 🔓</Text>
+                            <Text style={styles.blockedInlineActionText} numberOfLines={1}>Sblocca utente 🔓</Text>
                           </Pressable>
                         ) : null}
                       </View>
