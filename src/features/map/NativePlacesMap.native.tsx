@@ -39,9 +39,16 @@ interface MapMarkerModel {
   name: string;
   description: string;
   kind: string;
+  kindLabel: string;
   latitude: number;
   longitude: number;
   pinColor: string;
+}
+
+interface LegendItemModel {
+  key: string;
+  label: string;
+  color: string;
 }
 
 const VENICE_REGION: Region = {
@@ -144,6 +151,10 @@ function markerColor(kind: string): string {
     return '#D83A2E';
   }
 
+  if (kind === 'dog_area') {
+    return '#0F8F7A';
+  }
+
   if (kind === 'walk' || kind === 'trail' || kind === 'beach') {
     return '#0F8F7A';
   }
@@ -153,6 +164,46 @@ function markerColor(kind: string): string {
   }
 
   return '#2F6BFF';
+}
+
+function markerKindLabel(kind: string): string {
+  if (kind === 'dog_area') {
+    return 'Area cani';
+  }
+
+  if (kind === 'warning_zone') {
+    return 'Zona attenzione';
+  }
+
+  if (kind === 'walk' || kind === 'trail' || kind === 'beach') {
+    return 'Passeggiata / outdoor';
+  }
+
+  if (kind === 'vet' || kind === 'pet_shop' || kind === 'service') {
+    return 'Servizio';
+  }
+
+  return 'Luogo BauBook';
+}
+
+function buildLegendItems(markers: MapMarkerModel[]): LegendItemModel[] {
+  const seen = new Set<string>();
+  const items: LegendItemModel[] = [];
+
+  for (const marker of markers) {
+    if (seen.has(marker.kind)) {
+      continue;
+    }
+
+    seen.add(marker.kind);
+    items.push({
+      key: marker.kind,
+      label: marker.kindLabel,
+      color: marker.pinColor,
+    });
+  }
+
+  return items;
 }
 
 function buildMarkers(places: PlaceModel[]): MapMarkerModel[] {
@@ -185,6 +236,7 @@ function buildMarkers(places: PlaceModel[]): MapMarkerModel[] {
         kind,
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
+        kindLabel: markerKindLabel(kind),
         pinColor: markerColor(kind),
       };
     })
@@ -213,6 +265,7 @@ function statusLabel(realtimeStatus?: RealtimeStatus, source?: string): string {
 
 export function NativePlacesMap({ places, source, realtimeStatus, message, errorMessage }: NativePlacesMapProps) {
   const markers = useMemo(() => buildMarkers(places), [places]);
+  const legendItems = useMemo(() => buildLegendItems(markers), [markers]);
   const rawPlacesCount = Array.isArray(places) ? places.length : 0;
   const mapRegionKey = markers.length
     ? `${markers[0].latitude.toFixed(5)}:${markers[0].longitude.toFixed(5)}:${markers.length}`
@@ -262,7 +315,7 @@ export function NativePlacesMap({ places, source, realtimeStatus, message, error
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>{marker.name}</Text>
                   <Text style={styles.calloutText}>{marker.description}</Text>
-                  <Text style={styles.calloutKind}>{marker.kind}</Text>
+                  <Text style={styles.calloutKind}>{marker.kindLabel}</Text>
                 </View>
               </Callout>
             </Marker>
@@ -286,12 +339,13 @@ export function NativePlacesMap({ places, source, realtimeStatus, message, error
       {message ? <Text style={styles.message}>{message}</Text> : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-      <View style={styles.legend}>
-        <LegendDot color="#0F8F7A" label="Passeggiate / outdoor" />
-        <LegendDot color="#E2871A" label="Servizi" />
-        <LegendDot color="#D83A2E" label="Zone attenzione" />
-        <LegendDot color="#2F6BFF" label="Altri luoghi" />
-      </View>
+      {legendItems.length ? (
+        <View style={styles.legend}>
+          {legendItems.map((item) => (
+            <LegendDot key={item.key} color={item.color} label={item.label} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

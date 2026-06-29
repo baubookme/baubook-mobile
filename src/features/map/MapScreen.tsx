@@ -246,7 +246,7 @@ export function MapScreen() {
   const [lastNearbySearch, setLastNearbySearch] = useState<LastNearbySearch | null>(null);
 
   const nearbyMapPlaces = nearby.areas;
-  const nearbyPreview = nearbyMapPlaces.slice(0, 8);
+  const nearbyPreview = nearbyMapPlaces.slice(0, 5);
   const hiddenNearbyCount = Math.max(nearbyMapPlaces.length - nearbyPreview.length, 0);
 
   const handleManualRadiusChange = (value: string) => {
@@ -531,7 +531,7 @@ export function MapScreen() {
             title="Aree cani trovate"
             description={
               hiddenNearbyCount
-                ? `Ecco le prime ${nearbyPreview.length} aree più vicine. Altre ${hiddenNearbyCount} sono visibili sulla mappa.`
+                ? `Ecco le prime ${nearbyPreview.length} aree nell'elenco. Le altre ${hiddenNearbyCount} restano presenti come pin sulla mappa.`
                 : 'Per arrivarci clicca \'Apri navigazione\' nella card.'
             }
           />

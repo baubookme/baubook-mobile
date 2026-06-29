@@ -203,7 +203,7 @@ function remotePlaceToModel(row: RemotePlaceRow): PlaceModel {
 }
 
 function remoteNearbyDogAreaToModel(row: RemoteNearbyDogAreaRow): NearbyDogAreaModel {
-  const kind = normalizePlaceKind(row.type);
+  const kind: PlaceKind = 'dog_area';
   const distanceKm = typeof row.distance_km === 'number' ? row.distance_km : 0;
   const latitude = typeof row.lat === 'number' ? row.lat : 0;
   const longitude = typeof row.lng === 'number' ? row.lng : 0;
