@@ -252,7 +252,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           style={({ pressed }) => [styles.partnershipFooterButton, pressed && styles.pressed]}
         >
           <Image source={baubookImages.icons.messages} style={styles.partnershipFooterIcon} />
-          <Text style={styles.partnershipFooterText}>Richiedi partnership</Text>
+          <Text style={styles.partnershipFooterText}>Richiedi partnership BauBook 🤝‍</Text>
         </Pressable>
       </View>
     </Screen>
