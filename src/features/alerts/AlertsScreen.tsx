@@ -880,8 +880,8 @@ export function AlertsScreen() {
 
         {lostDraftExpanded ? (
           <View style={styles.collapsibleContent}>
-            <View style={styles.formGroup}>
-              <View style={styles.chipRow}>
+            <View style={[styles.formGroup, styles.lostDogSelectorGroup]}>
+              <View style={[styles.chipRow, styles.lostDogSelectorChipRow]}>
                 {auth.dogs.length ? (
                   auth.dogs.map((dog) => (
                     <ChoiceChip
@@ -1611,6 +1611,12 @@ const styles = StyleSheet.create({
   formGroup: {
     gap: spacing.xs,
     marginTop: spacing.lg,
+  },
+  lostDogSelectorGroup: {
+    marginTop: 0,
+  },
+  lostDogSelectorChipRow: {
+    marginTop: 0,
   },
   sheetFormGroup: {
     marginTop: spacing.sm,
