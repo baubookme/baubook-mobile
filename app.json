@@ -17,7 +17,8 @@
           "photosPermission": "BauBook usa la libreria foto per scegliere la foto profilo del tuo cane.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -107,7 +108,8 @@
         "communityGuidelines": "https://baubook.me/community-guidelines/",
         "support": "https://baubook.me/support/",
         "accountDeletion": "https://baubook.me/account-deletion/"
-      }
+      },
+      "googleWebClientId": "897885667384-lublbvs6a8lqkhpii1ctfpm9h5elslkq.apps.googleusercontent.com"
     }
   }
 }
