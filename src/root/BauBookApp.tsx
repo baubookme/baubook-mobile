@@ -66,21 +66,21 @@ const welcomeSlides = [
   eyebrow: 'Benvenuto',
   title: 'BauBook ti aiuta a orientarti subito',
   text: 'Mappa, profilo e strumenti utili sono pensati per partire leggeri, anche se vuoi solo curiosare.',
-  icon: baubookImages.avatar,
+  icon: baubookImages.welcome.communityLocal,
   tone: 'teal',
  },
  {
   eyebrow: 'Vicino a te',
   title: 'Posti, presenze e passeggiate',
   text: 'Trova luoghi utili, guarda cosa succede nei dintorni e scopri funzioni pensate per la vita con il tuo cane.',
-  icon: baubookImages.quickActions.map,
+  icon: baubookImages.welcome.mapWalks,
   tone: 'orange',
  },
  {
   eyebrow: 'Community',
   title: 'Branco e aiuto quando serve',
   text: 'Aggiungi amici BauBook, segnala contenuti non adatti e usa gli alert con calma e responsabilità.',
-  icon: baubookImages.pack.dogFriends,
+  icon: baubookImages.welcome.packSafety,
   tone: 'pink',
  },
 ] satisfies Array<{
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
 
  welcomeHero: {
 
- height: 174,
+ aspectRatio: 16 / 9,
 
  borderRadius: 28,
 
@@ -835,11 +835,11 @@ const styles = StyleSheet.create({
 
  welcomeHeroImage: {
 
- width: 136,
+ width: '100%',
 
- height: 136,
+ height: '100%',
 
- resizeMode: 'contain',
+ resizeMode: 'cover',
 
  },
 

@@ -15,6 +15,11 @@ export const baubookImages = {
   homeSafety: {
     scout: require('../../../assets/baubook/home/safety_scout.png') as ImageSourcePropType,
   },
+  welcome: {
+    communityLocal: require('../../../assets/baubook/welcome/welcome-community-local.jpg') as ImageSourcePropType,
+    mapWalks: require('../../../assets/baubook/welcome/welcome-map-walks.jpg') as ImageSourcePropType,
+    packSafety: require('../../../assets/baubook/welcome/welcome-pack-safety.jpg') as ImageSourcePropType,
+  },
   safetyCircles: {
     lostHelp: require('../../../assets/baubook/safety-circles/lost_help.png') as ImageSourcePropType,
   },
