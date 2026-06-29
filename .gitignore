@@ -63,3 +63,4 @@ android/app/keystores/*.keystore
 # Local Android config
 android/local.properties
 
+/_id_secrets.txt

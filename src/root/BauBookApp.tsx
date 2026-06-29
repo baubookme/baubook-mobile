@@ -64,22 +64,22 @@ const tabs: TabItem[] = [
 const welcomeSlides = [
  {
   eyebrow: 'Benvenuto',
-  title: 'BauBook ti aiuta a orientarti subito',
-  text: 'Mappa, profilo e strumenti utili sono pensati per partire leggeri, anche se vuoi solo curiosare.',
+  title: 'BauBook ti aiuta a orientarti subito 🧭',
+  text: 'Mappa, profilo e servizi utili sono pensati per essere semplici e immediati, anche se vuoi solo curiosare.',
   icon: baubookImages.welcome.communityLocal,
   tone: 'teal',
  },
  {
   eyebrow: 'Vicino a te',
-  title: 'Posti, presenze e passeggiate',
-  text: 'Trova luoghi utili, guarda cosa succede nei dintorni e scopri funzioni pensate per la vita con il tuo cane.',
+  title: 'Luoghi, presenze e passeggiate 👣',
+  text: 'Trova luoghi utili, guarda cosa succede nei dintorni e scopri funzioni pensate per la vita con il tuo amico 🐕.',
   icon: baubookImages.welcome.mapWalks,
   tone: 'orange',
  },
  {
   eyebrow: 'Community',
-  title: 'Branco e aiuto quando serve',
-  text: 'Aggiungi amici BauBook, segnala contenuti non adatti e usa gli alert con calma e responsabilità.',
+  title: 'Branco e aiuto tra noi quando serve 🤝',
+  text: 'Aggiungi amici BauBook, segnala contenuti non appropriati e usa le seganalazioni con prudenza e responsabilità.',
   icon: baubookImages.welcome.packSafety,
   tone: 'pink',
  },
