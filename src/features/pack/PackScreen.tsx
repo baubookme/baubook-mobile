@@ -27,6 +27,17 @@ function compactLocation(label: string | null | undefined): string | null {
   return clean?.length ? clean : null;
 }
 
+function FriendActionGlyph({ type }: { type: 'add' | 'remove' }) {
+  const colorStyle = type === 'add' ? styles.friendAddGlyphBar : styles.friendRemoveGlyphBar;
+
+  return (
+    <View style={styles.friendIconGlyph} pointerEvents="none">
+      <View style={[styles.friendIconGlyphHorizontal, colorStyle]} />
+      {type === 'add' ? <View style={[styles.friendIconGlyphVertical, colorStyle]} /> : null}
+    </View>
+  );
+}
+
 export function PackScreen({ onNavigate }: PackScreenProps) {
   const auth = useAuthAccount();
   const [selectedDogId, setSelectedDogId] = useState<string | null>(auth.dogs[0]?.id ?? null);
@@ -372,7 +383,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                           pressed ? styles.pressed : null,
                         ]}
                       >
-                        <Text style={[styles.friendIconActionText, styles.friendAddActionText]}>+</Text>
+                        <FriendActionGlyph type="add" />
                       </Pressable>
                     </View>
                     {!result.isBlockedByMe ? (
@@ -455,7 +466,7 @@ export function PackScreen({ onNavigate }: PackScreenProps) {
                         pressed ? styles.pressed : null,
                       ]}
                     >
-                      <Text style={[styles.friendIconActionText, styles.friendRemoveActionText]}>−</Text>
+                      <FriendActionGlyph type="remove" />
                     </Pressable>
                   </View>
                   {!friend.isBlockedByMe ? (
@@ -712,25 +723,29 @@ const styles = StyleSheet.create({
   friendIconActionDisabled: {
     opacity: 0.45,
   },
-  friendIconActionText: {
-    width: '100%',
-    height: 58,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
-    fontWeight: '900',
+  friendIconGlyph: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  friendAddActionText: {
-    color: colors.surface,
-    fontSize: 44,
-    lineHeight: 58,
-    transform: [{ translateY: -4 }],
+  friendIconGlyphHorizontal: {
+    position: 'absolute',
+    width: 28,
+    height: 6,
+    borderRadius: radius.pill,
   },
-  friendRemoveActionText: {
-    color: colors.primaryDark,
-    fontSize: 54,
-    lineHeight: 56,
-    transform: [{ translateY: -5 }],
+  friendIconGlyphVertical: {
+    position: 'absolute',
+    width: 6,
+    height: 28,
+    borderRadius: radius.pill,
+  },
+  friendAddGlyphBar: {
+    backgroundColor: colors.surface,
+  },
+  friendRemoveGlyphBar: {
+    backgroundColor: colors.primaryDark,
   },
   friendEmptyMeta: {
     color: colors.muted,
