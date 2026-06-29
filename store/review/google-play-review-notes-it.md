@@ -30,7 +30,9 @@ Safety features are community information tools only.
 
 User-generated content can be reported from the relevant screens, and users can be blocked where community profiles are shown.
 
-Administrative moderation tools are available in the 'Setup' tab for administrator accounts only. These tools allow BauBook admins to review reports and manage community safety.
+Administrative moderation tools are available in the 'Setup' tab for administrator accounts only*. These tools allow BauBook admins to review reports and manage community safety.
+
+*ref. AdminModerationScreen.tsx
 
 Account deletion is available in Profile / Account, and also at:
 https://baubook.me/account-deletion
