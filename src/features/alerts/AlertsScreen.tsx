@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScrollView } from "react-native";
 import { Easing, Animated, Image, Modal, Pressable, ScrollView as RNScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Location from "expo-location";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   dangerIconForType,
@@ -1293,6 +1294,9 @@ function SightingBottomSheet({
   onSubmit: () => void;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
+  const actionsBottomPadding = Math.max(insets.bottom, spacing.lg);
+
   if (!alert) {
     return null;
   }
@@ -1358,7 +1362,7 @@ function SightingBottomSheet({
             />
           </RNScrollView>
 
-          <View style={styles.sheetActionsRow}>
+          <View style={[styles.sheetActionsRow, { paddingBottom: actionsBottomPadding }]}>
             <AppButton label="Annulla" variant="ghost" disabled={submitting} onPress={onClose} />
             <AppButton
               label={submitting ? "Invio..." : hasMySighting ? "Aggiorna" : "Registra"}
