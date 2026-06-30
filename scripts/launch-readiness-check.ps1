@@ -136,8 +136,7 @@ foreach ($sql in @(
   "supabase/migrations/0005_safety_alerts_bootstrap.sql",
   "supabase/migrations/0006_official_venice_dog_areas.sql",
   "supabase/migrations/0007_geocoded_dog_area_radius_search.sql",
-  "supabase/migrations/0008_launch_readiness_native_sponsored_slots.sql",
-  "supabase/seeds/venezia_mestre_demo.sql"
+  "supabase/migrations/0008_launch_readiness_native_sponsored_slots.sql"
 )) { Assert-File $sql -Required | Out-Null }
 
 Write-Section "Comandi tecnici"
