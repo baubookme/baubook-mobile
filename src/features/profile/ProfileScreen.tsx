@@ -532,7 +532,7 @@ export function ProfileScreen() {
                                         autoCapitalize="none"
                                         autoCorrect={false}
                                         secureTextEntry
-                                        placeholder="Almeno 8 caratteri"
+                                        placeholder="Almeno 10 caratteri"
                                         placeholderTextColor={colors.muted}
                                         style={styles.input}
                                     />

@@ -125,7 +125,7 @@ function normalizeAuthErrorMessage(message: string): string {
     }
 
     if (lower.includes('password') && (lower.includes('weak') || lower.includes('short') || lower.includes('at least'))) {
-        return 'Password troppo debole: usa almeno 8 caratteri.';
+        return 'Password troppo debole: usa almeno un numero/i, una lettera/e minuscola e una lettera/e maiuscola';
     }
 
     if (lower.includes('user already registered') || lower.includes('already registered')) {
@@ -224,8 +224,8 @@ function cleanEmailAddress(email: string): string {
 
 function cleanPassword(password: string): string {
     const cleanValue = password.trim();
-    if (cleanValue.length < 8) {
-        throw new Error('Password troppo breve: usa almeno 8 caratteri.');
+    if (cleanValue.length < 10) {
+        throw new Error('Password troppo breve: usa almeno 10 caratteri.');
     }
     return cleanValue;
 }
