@@ -40,6 +40,9 @@ export function ProfileScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
+    const [resetPassword, setResetPassword] = useState('');
+    const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+    const [passwordRecoveryFormError, setPasswordRecoveryFormError] = useState('');
     const [otp, setOtp] = useState('');
     const [registerDisplayName, setRegisterDisplayName] = useState('');
     const [authMode, setAuthMode] = useState<AuthMode>('password_login');
@@ -213,9 +216,45 @@ export function ProfileScreen() {
         await runAuthAction(() => auth.signInWithPassword(email, password));
     };
 
+    const handleForgotPassword = async () => {
+        setAuthFormError('');
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!isValidEmail(normalizedEmail)) {
+            setAuthFormError('Inserisci prima la tua email per ricevere il link di recupero.');
+            return;
+        }
+
+        if (email !== normalizedEmail) {
+            setEmail(normalizedEmail);
+        }
+
+        await runAuthAction(() => auth.requestPasswordReset(normalizedEmail));
+    };
+
     const handleGoogleLogin = async () => {
         setAuthFormError('');
         await runAuthAction(() => auth.signInWithGoogle());
+    };
+
+    const handleCompletePasswordReset = async () => {
+        setPasswordRecoveryFormError('');
+
+        if (resetPassword.trim().length < 8) {
+            setPasswordRecoveryFormError('Usa una password di almeno 8 caratteri.');
+            return;
+        }
+
+        if (resetPassword !== resetPasswordConfirm) {
+            setPasswordRecoveryFormError('Le due password non coincidono.');
+            return;
+        }
+
+        await runAuthAction(async () => {
+            await auth.completePasswordReset(resetPassword);
+            setResetPassword('');
+            setResetPasswordConfirm('');
+        });
     };
 
     const handlePasswordSignup = async () => {
@@ -428,6 +467,21 @@ export function ProfileScreen() {
                                 </View>
                                 <AppButton label="Accedi con password" disabled={authActionDisabled}
                                            onPress={() => void handlePasswordLogin()}/>
+                                <View style={styles.forgotPasswordRow}>
+                                    <Pressable
+                                        accessibilityLabel="Recupera password"
+                                        accessibilityRole="button"
+                                        disabled={authActionDisabled}
+                                        onPress={() => void handleForgotPassword()}
+                                        style={({pressed}) => [
+                                            styles.forgotPasswordLink,
+                                            pressed && !authActionDisabled ? styles.forgotPasswordLinkPressed : null,
+                                            authActionDisabled ? styles.forgotPasswordLinkDisabled : null,
+                                        ]}
+                                    >
+                                        <Text style={styles.forgotPasswordText}>Password dimenticata?</Text>
+                                    </Pressable>
+                                </View>
                                 {auth.isGoogleSignInAvailable ? (
                                     <GoogleLoginButton
                                         disabled={authActionDisabled}
@@ -512,6 +566,40 @@ export function ProfileScreen() {
                     </View>
                 ) : (
                     <View style={styles.formStack}>
+                        {auth.passwordRecoveryPending ? (
+                            <View style={styles.passwordRecoveryPanel}>
+                                <Text style={styles.label}>Nuova password BauBook</Text>
+                                <Text style={styles.helperText}>
+                                    Imposta una password per questo account. Non cambia la password Google.
+                                </Text>
+                                <TextInput
+                                    value={resetPassword}
+                                    onChangeText={setResetPassword}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    secureTextEntry
+                                    placeholder="Almeno 8 caratteri"
+                                    placeholderTextColor={colors.muted}
+                                    style={styles.input}
+                                />
+                                <TextInput
+                                    value={resetPasswordConfirm}
+                                    onChangeText={setResetPasswordConfirm}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    secureTextEntry
+                                    placeholder="Ripeti nuova password"
+                                    placeholderTextColor={colors.muted}
+                                    style={styles.input}
+                                />
+                                <AppButton
+                                    label="Salva nuova password"
+                                    disabled={authActionDisabled}
+                                    onPress={() => void handleCompletePasswordReset()}
+                                />
+                                {passwordRecoveryFormError ? <Text style={styles.errorBox}>{passwordRecoveryFormError}</Text> : null}
+                            </View>
+                        ) : null}
                         <View style={styles.metricGrid}>
                             <Metric label="Email" value={auth.user?.email ?? 'non disponibile'}/>
                             <Metric label="Nome visibile" value={auth.profile?.displayName || 'da completare'}/>
@@ -669,6 +757,34 @@ const styles = StyleSheet.create({
     },
     formStackCompact: {
         gap: spacing.md,
+    },
+    forgotPasswordRow: {
+        alignItems: 'flex-end',
+        marginTop: -spacing.sm,
+    },
+    forgotPasswordLink: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: spacing.xs,
+    },
+    forgotPasswordLinkPressed: {
+        opacity: 0.65,
+    },
+    forgotPasswordLinkDisabled: {
+        opacity: 0.45,
+    },
+    forgotPasswordText: {
+        color: colors.primaryDark,
+        fontSize: typography.small,
+        fontWeight: '900',
+    },
+    passwordRecoveryPanel: {
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        backgroundColor: colors.surfaceWarm,
+        padding: spacing.md,
+        gap: spacing.sm,
     },
     authModeRow: {
         flexDirection: 'row',

@@ -10,11 +10,13 @@ import {
     normalizeError,
     saveDog,
     requestEmailOtp,
+    requestPasswordReset as requestPasswordResetSupabase,
     sendEmailLogin,
     signInWithGoogleIdToken,
     signInWithPassword as signInWithPasswordSupabase,
     signOut as signOutSupabase,
     signUpWithPassword as signUpWithPasswordSupabase,
+    updateAccountPassword,
     verifyEmailOtp,
     type DogDraftInput,
     type SignUpWithPasswordInput,
@@ -26,6 +28,11 @@ import {getSupabaseClient} from '../lib/supabase';
 import {getGoogleIdToken, isGoogleSignInAvailable} from './googleSignIn';
 
 type AuthStatus = 'idle' | 'loading' | 'signed_out' | 'signed_in' | 'demo' | 'error';
+
+interface ConsumedAuthUrl {
+    message: string;
+    passwordRecovery: boolean;
+}
 
 interface AuthContextValue {
     status: AuthStatus;
@@ -40,11 +47,14 @@ interface AuthContextValue {
     isDemoMode: boolean;
     isBusy: boolean;
     isGoogleSignInAvailable: boolean;
+    passwordRecoveryPending: boolean;
     startDemoMode: () => void;
     exitDemoMode: () => void;
     signInWithGoogle: () => Promise<void>;
     signInWithPassword: (email: string, password: string) => Promise<void>;
     signUpWithPassword: (input: SignUpWithPasswordInput) => Promise<void>;
+    requestPasswordReset: (email: string) => Promise<void>;
+    completePasswordReset: (password: string) => Promise<void>;
     requestOtpCode: (email: string) => Promise<void>;
     sendLoginEmail: (email: string) => Promise<void>;
     verifyOtpCode: (email: string, token: string) => Promise<void>;
@@ -67,7 +77,7 @@ function extractAuthParams(url: string): Record<string, string> {
     return result;
 }
 
-async function consumeAuthUrl(url: string): Promise<string | null> {
+async function consumeAuthUrl(url: string): Promise<ConsumedAuthUrl | null> {
     const client = getSupabaseClient();
     if (!client || !url) {
         return null;
@@ -84,7 +94,13 @@ async function consumeAuthUrl(url: string): Promise<string | null> {
         if (error) {
             throw new Error(normalizeError(error));
         }
-        return 'Link magico confermato: sessione BauBook attiva.';
+        const passwordRecovery = params.type === 'recovery';
+        return {
+            message: passwordRecovery
+                ? 'Link recupero confermato: scegli una nuova password BauBook.'
+                : 'Link magico confermato: sessione BauBook attiva.',
+            passwordRecovery,
+        };
     }
 
     if (params.access_token && params.refresh_token) {
@@ -95,7 +111,13 @@ async function consumeAuthUrl(url: string): Promise<string | null> {
         if (error) {
             throw new Error(normalizeError(error));
         }
-        return 'Sessione BauBook attivata dal link email.';
+        const passwordRecovery = params.type === 'recovery';
+        return {
+            message: passwordRecovery
+                ? 'Link recupero confermato: scegli una nuova password BauBook.'
+                : 'Sessione BauBook attivata dal link email.',
+            passwordRecovery,
+        };
     }
 
     return null;
@@ -109,12 +131,14 @@ export function AuthProvider({children}: PropsWithChildren) {
     const [dogs, setDogs] = useState<UserDogModel[]>([]);
     const [message, setMessage] = useState('Auth non ancora verificata.');
     const [errorMessage, setErrorMessage] = useState<string | undefined>();
+    const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
 
     const resetToSignedOut = useCallback((nextMessage: string, nextErrorMessage?: string) => {
         setSession(null);
         setUser(null);
         setProfile(null);
         setDogs([]);
+        setPasswordRecoveryPending(false);
         setStatus('signed_out');
         setMessage(nextMessage);
         setErrorMessage(nextErrorMessage);
@@ -175,10 +199,16 @@ export function AuthProvider({children}: PropsWithChildren) {
             return undefined;
         }
 
-        const {data} = client.auth.onAuthStateChange((_event, nextSession) => {
+        const {data} = client.auth.onAuthStateChange((event, nextSession) => {
             setSession(nextSession);
             setUser(nextSession?.user ?? null);
-            void refreshAccount();
+            void refreshAccount().then(() => {
+                if (event === 'PASSWORD_RECOVERY') {
+                    setPasswordRecoveryPending(true);
+                    setMessage('Link recupero confermato: scegli una nuova password BauBook.');
+                    setErrorMessage(undefined);
+                }
+            });
         });
 
         return () => data.subscription.unsubscribe();
@@ -191,10 +221,12 @@ export function AuthProvider({children}: PropsWithChildren) {
             }
 
             try {
-                const authMessage = await consumeAuthUrl(url);
-                if (authMessage) {
-                    setMessage(authMessage);
+                const authResult = await consumeAuthUrl(url);
+                if (authResult) {
                     await refreshAccount();
+                    setPasswordRecoveryPending(authResult.passwordRecovery);
+                    setMessage(authResult.message);
+                    setErrorMessage(undefined);
                 }
             } catch (error) {
                 setStatus('error');
@@ -223,6 +255,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         setUser(null);
         setProfile(null);
         setDogs([]);
+        setPasswordRecoveryPending(false);
         setStatus('demo');
         setMessage('Modalità demo attiva: puoi dare un’occhiata a BauBook per curiosare.🦴');
         setErrorMessage(undefined);
@@ -237,6 +270,7 @@ export function AuthProvider({children}: PropsWithChildren) {
             setStatus('loading');
             await signInWithPasswordSupabase(email, password);
             await refreshAccount();
+            setPasswordRecoveryPending(false);
             setMessage('Accesso completato: sessione BauBook attiva.');
             setErrorMessage(undefined);
         } catch (error) {
@@ -260,6 +294,7 @@ export function AuthProvider({children}: PropsWithChildren) {
 
             await signInWithGoogleIdToken(idToken);
             await refreshAccount();
+            setPasswordRecoveryPending(false);
             setMessage('Accesso con Google completato: sessione BauBook attiva.');
             setErrorMessage(undefined);
         } catch (error) {
@@ -280,6 +315,7 @@ export function AuthProvider({children}: PropsWithChildren) {
                 setStatus('signed_out');
             }
 
+            setPasswordRecoveryPending(false);
             setMessage(result.message);
             setErrorMessage(undefined);
         } catch (error) {
@@ -288,6 +324,35 @@ export function AuthProvider({children}: PropsWithChildren) {
             setMessage('Registrazione non riuscita.');
             setErrorMessage(nextErrorMessage);
             throw new Error(nextErrorMessage);
+        }
+    }, [refreshAccount]);
+
+    const requestPasswordReset = useCallback(async (email: string) => {
+        try {
+            setStatus('loading');
+            const nextMessage = await requestPasswordResetSupabase(email);
+            setStatus(session ? 'signed_in' : 'signed_out');
+            setMessage(nextMessage);
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Invio recupero password non riuscito.');
+            setErrorMessage(normalizeError(error));
+        }
+    }, [session]);
+
+    const completePasswordReset = useCallback(async (password: string) => {
+        try {
+            setStatus('loading');
+            await updateAccountPassword(password);
+            setPasswordRecoveryPending(false);
+            await refreshAccount();
+            setMessage('Password BauBook aggiornata. Dal prossimo accesso puoi usare email e password.');
+            setErrorMessage(undefined);
+        } catch (error) {
+            setStatus('error');
+            setMessage('Aggiornamento password non riuscito.');
+            setErrorMessage(normalizeError(error));
         }
     }, [refreshAccount]);
 
@@ -324,6 +389,7 @@ export function AuthProvider({children}: PropsWithChildren) {
             setStatus('loading');
             await verifyEmailOtp(email, token);
             await refreshAccount();
+            setPasswordRecoveryPending(false);
             setMessage('Codice OTP verificato: sessione BauBook attiva.');
         } catch (error) {
             setStatus('error');
@@ -392,6 +458,7 @@ export function AuthProvider({children}: PropsWithChildren) {
             setUser(null);
             setProfile(null);
             setDogs([]);
+            setPasswordRecoveryPending(false);
             setStatus('signed_out');
             setMessage('Logout completato.');
             setErrorMessage(undefined);
@@ -415,11 +482,14 @@ export function AuthProvider({children}: PropsWithChildren) {
         isDemoMode: status === 'demo',
         isBusy: status === 'loading',
         isGoogleSignInAvailable,
+        passwordRecoveryPending,
         startDemoMode,
         exitDemoMode,
         signInWithGoogle,
         signInWithPassword,
         signUpWithPassword,
+        requestPasswordReset,
+        completePasswordReset,
         requestOtpCode,
         sendLoginEmail,
         verifyOtpCode,
@@ -427,7 +497,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         saveProfile,
         saveDogProfile,
         signOut,
-    }), [dogs, errorMessage, exitDemoMode, message, profile, refreshAccount, requestOtpCode, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithGoogle, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
+    }), [completePasswordReset, dogs, errorMessage, exitDemoMode, message, passwordRecoveryPending, profile, refreshAccount, requestOtpCode, requestPasswordReset, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithGoogle, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
