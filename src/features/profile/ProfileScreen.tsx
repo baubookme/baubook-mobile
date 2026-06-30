@@ -47,6 +47,8 @@ export function ProfileScreen() {
     const [registerDisplayName, setRegisterDisplayName] = useState('');
     const [authMode, setAuthMode] = useState<AuthMode>('password_login');
     const [authFormError, setAuthFormError] = useState('');
+    const [passwordLoginFailed, setPasswordLoginFailed] = useState(false);
+    const [passwordResetRequested, setPasswordResetRequested] = useState(false);
     const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
     const [lastSubmittedSignupKey, setLastSubmittedSignupKey] = useState('');
     const [signupRequestSent, setSignupRequestSent] = useState(false);
@@ -194,9 +196,11 @@ export function ProfileScreen() {
 
         setAuthMode(mode);
         setAuthFormError('');
+        setPasswordLoginFailed(false);
     };
 
     const authActionDisabled = auth.isBusy || isAuthSubmitting;
+    const showForgotPassword = authMode === 'password_login' && passwordLoginFailed && !passwordResetRequested;
 
     const runAuthAction = async (action: () => Promise<void>) => {
         if (authActionDisabled) {
@@ -213,7 +217,14 @@ export function ProfileScreen() {
 
     const handlePasswordLogin = async () => {
         setAuthFormError('');
-        await runAuthAction(() => auth.signInWithPassword(email, password));
+        setPasswordLoginFailed(false);
+        try {
+            await runAuthAction(() => auth.signInWithPassword(email, password));
+        } catch {
+            if (!passwordResetRequested) {
+                setPasswordLoginFailed(true);
+            }
+        }
     };
 
     const handleForgotPassword = async () => {
@@ -229,11 +240,18 @@ export function ProfileScreen() {
             setEmail(normalizedEmail);
         }
 
-        await runAuthAction(() => auth.requestPasswordReset(normalizedEmail));
+        try {
+            await runAuthAction(() => auth.requestPasswordReset(normalizedEmail));
+            setPasswordResetRequested(true);
+            setPasswordLoginFailed(false);
+        } catch {
+            setPasswordLoginFailed(true);
+        }
     };
 
     const handleGoogleLogin = async () => {
         setAuthFormError('');
+        setPasswordLoginFailed(false);
         await runAuthAction(() => auth.signInWithGoogle());
     };
 
@@ -467,21 +485,23 @@ export function ProfileScreen() {
                                 </View>
                                 <AppButton label="Accedi con password" disabled={authActionDisabled}
                                            onPress={() => void handlePasswordLogin()}/>
-                                <View style={styles.forgotPasswordRow}>
-                                    <Pressable
-                                        accessibilityLabel="Recupera password"
-                                        accessibilityRole="button"
-                                        disabled={authActionDisabled}
-                                        onPress={() => void handleForgotPassword()}
-                                        style={({pressed}) => [
-                                            styles.forgotPasswordLink,
-                                            pressed && !authActionDisabled ? styles.forgotPasswordLinkPressed : null,
-                                            authActionDisabled ? styles.forgotPasswordLinkDisabled : null,
-                                        ]}
-                                    >
-                                        <Text style={styles.forgotPasswordText}>Password dimenticata?</Text>
-                                    </Pressable>
-                                </View>
+                                {showForgotPassword ? (
+                                    <View style={styles.forgotPasswordRow}>
+                                        <Pressable
+                                            accessibilityLabel="Recupera password"
+                                            accessibilityRole="button"
+                                            disabled={authActionDisabled}
+                                            onPress={() => void handleForgotPassword()}
+                                            style={({pressed}) => [
+                                                styles.forgotPasswordLink,
+                                                pressed && !authActionDisabled ? styles.forgotPasswordLinkPressed : null,
+                                                authActionDisabled ? styles.forgotPasswordLinkDisabled : null,
+                                            ]}
+                                        >
+                                            <Text style={styles.forgotPasswordText}>Password dimenticata?</Text>
+                                        </Pressable>
+                                    </View>
+                                ) : null}
                                 {auth.isGoogleSignInAvailable ? (
                                     <GoogleLoginButton
                                         disabled={authActionDisabled}

@@ -274,9 +274,11 @@ export function AuthProvider({children}: PropsWithChildren) {
             setMessage('Accesso completato: sessione BauBook attiva.');
             setErrorMessage(undefined);
         } catch (error) {
+            const nextErrorMessage = normalizeError(error);
             setStatus('error');
             setMessage('Accesso con password non riuscito.');
-            setErrorMessage(normalizeError(error));
+            setErrorMessage(nextErrorMessage);
+            throw new Error(nextErrorMessage);
         }
     }, [refreshAccount]);
 
@@ -335,9 +337,11 @@ export function AuthProvider({children}: PropsWithChildren) {
             setMessage(nextMessage);
             setErrorMessage(undefined);
         } catch (error) {
+            const nextErrorMessage = normalizeError(error);
             setStatus('error');
             setMessage('Invio recupero password non riuscito.');
-            setErrorMessage(normalizeError(error));
+            setErrorMessage(nextErrorMessage);
+            throw new Error(nextErrorMessage);
         }
     }, [session]);
 
