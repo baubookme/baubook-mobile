@@ -161,7 +161,7 @@ export function AuthProvider({children}: PropsWithChildren) {
         setProfile(snapshot.profile);
         setDogs(snapshot.dogs);
         setStatus(snapshot.user ? 'signed_in' : 'signed_out');
-        setMessage(snapshot.user ? 'Sessione attiva: profilo BauBook caricato.' : 'Nessuna sessione attiva.');
+        setMessage(snapshot.user ? 'Sessione attiva: profilo BauBook caricato 🟢' : 'Nessuna sessione attiva ⭕');
         setErrorMessage(undefined);
     }, [resetToSignedOut]);
 

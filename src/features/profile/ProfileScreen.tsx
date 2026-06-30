@@ -415,7 +415,7 @@ export function ProfileScreen() {
                     <IconBubble source={baubookImages.icons.settings} tone="teal"/>
                     <View style={styles.headerCopy}>
                         <Text style={styles.eyebrow}>Account BauBook</Text>
-                        <Text style={styles.cardTitle}>{auth.isSignedIn ? 'Il tuo account' : 'Accedi a BauBook'}</Text>
+                        <Text style={styles.cardTitle}>{auth.isSignedIn ? 'Il tuo account 👤' : 'Accedi a BauBook 🔑'}</Text>
                     </View>
                 </View>
                 <Text style={styles.bodyText}>{auth.message}</Text>
