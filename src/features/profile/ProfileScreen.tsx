@@ -626,10 +626,9 @@ export function ProfileScreen() {
                             <Metric label="Pelosi salvati" value={String(auth.dogs.length)}/>
                         </View>
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Nome profilo visibile</Text>
+                            <Text style={styles.label}>Nome profilo visibile - puoi cambiarlo qui</Text>
                             <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome"
                                        placeholderTextColor={colors.muted} style={styles.input}/>
-                            <Text style={styles.helperText}>Lo puoi cambiare quando vuoi. Viene mostrato nella community BauBook.</Text>
                         </View>
                         <View style={styles.actionsRow}>
                             <AppButton label={auth.profile ? "Aggiorna profilo" : "Salva profilo"}
