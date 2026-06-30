@@ -435,6 +435,34 @@ export async function signInWithPassword(email: string, password: string): Promi
     return data.session;
 }
 
+export async function requestPasswordReset(email: string): Promise<string> {
+    const client = assertSupabaseClient();
+    const cleanEmail = cleanEmailAddress(email);
+
+    const {error} = await client.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: getAuthRedirectUrl(),
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+
+    return `Email di recupero inviata a ${cleanEmail}. Apri il link per impostare una nuova password BauBook.`;
+}
+
+export async function updateAccountPassword(password: string): Promise<void> {
+    const client = assertSupabaseClient();
+    const cleanValue = cleanPassword(password);
+
+    const {error} = await client.auth.updateUser({
+        password: cleanValue,
+    });
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
+}
+
 export async function signInWithGoogleIdToken(idToken: string): Promise<Session | null> {
     const client = assertSupabaseClient();
     const cleanToken = idToken.trim();
