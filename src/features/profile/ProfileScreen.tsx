@@ -626,7 +626,7 @@ export function ProfileScreen() {
                             <Metric label="Pelosi salvati" value={String(auth.dogs.length)}/>
                         </View>
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Nome profilo visibile - puoi cambiarlo qui</Text>
+                            <Text style={styles.label}>Nome profilo visibile - puoi cambiarlo qui ✏️</Text>
                             <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Nome"
                                        placeholderTextColor={colors.muted} style={styles.input}/>
                         </View>
