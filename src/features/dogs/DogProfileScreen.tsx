@@ -161,6 +161,7 @@ export function DogProfileScreen() {
     const [isEditing, setIsEditing] = useState(false);
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
     const [isSavingTags, setIsSavingTags] = useState(false);
+    const [isRemovingDog, setIsRemovingDog] = useState(false);
     const [dogName, setDogName] = useState(firstDog?.name ?? '');
     const [headline, setHeadline] = useState(firstDog?.notesPublic ?? '');
     const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
@@ -323,6 +324,42 @@ export function DogProfileScreen() {
         setIsEditing(false);
     };
 
+    const removeSavedDog = async (dogId: string) => {
+        setIsRemovingDog(true);
+
+        try {
+            await auth.removeDogProfile(dogId);
+            setIsEditing(false);
+            setIsTagEditorOpen(false);
+            setIsSavingTags(false);
+        } catch {
+            return;
+        } finally {
+            setIsRemovingDog(false);
+        }
+    };
+
+    const handleRemoveDog = () => {
+        if (!firstDog || auth.isDemoMode || auth.isBusy || isRemovingDog) {
+            return;
+        }
+
+        const dogLabel = firstDog.name.trim() || 'questo profilo';
+
+        Alert.alert(
+            'Rimuovere profilo cane?',
+            `Rimuovi ${dogLabel} da BauBook? Il tuo profilo utente resterà attivo.`,
+            [
+                {text: 'Annulla', style: 'cancel'},
+                {
+                    text: `Rimuovi ${dogLabel}`,
+                    style: 'destructive',
+                    onPress: () => void removeSavedDog(firstDog.id),
+                },
+            ],
+        );
+    };
+
     return (
         <Screen>
             <SectionHeader
@@ -366,24 +403,36 @@ export function DogProfileScreen() {
                 </View>
 
                 <View style={styles.profileActionsRow}>
-                    <AppButton
-                        label={isEditing ? 'Chiudi modifica' : firstDog ? 'Modifica' : 'Crea profilo'}
-                        variant={isEditing ? 'ghost' : 'primary'}
-                        icon={isEditing ? baubookImages.icons.profileGear : baubookImages.icons.profileGearLight}
-                        disabled={auth.isDemoMode}
-                        onPress={() => {
-                            if (auth.isDemoMode) {
-                                return;
-                            }
+                    {firstDog ? (
+                        <View style={styles.profileActionStart}>
+                            <AppButton
+                                label={`Rimuovi ${firstDog.name}`}
+                                variant="ghost"
+                                disabled={auth.isDemoMode || auth.isBusy || isRemovingDog}
+                                onPress={handleRemoveDog}
+                            />
+                        </View>
+                    ) : null}
+                    <View style={styles.profileActionEnd}>
+                        <AppButton
+                            label={isEditing ? 'Chiudi modifica' : firstDog ? 'Modifica' : 'Crea profilo'}
+                            variant={isEditing ? 'ghost' : 'primary'}
+                            icon={isEditing ? baubookImages.icons.profileGear : baubookImages.icons.profileGearLight}
+                            disabled={auth.isDemoMode || isRemovingDog}
+                            onPress={() => {
+                                if (auth.isDemoMode || isRemovingDog) {
+                                    return;
+                                }
 
-                            if (isEditing) {
-                                handleCancelEdit();
-                                return;
-                            }
+                                if (isEditing) {
+                                    handleCancelEdit();
+                                    return;
+                                }
 
-                            setIsEditing(true);
-                        }}
-                    />
+                                setIsEditing(true);
+                            }}
+                        />
+                    </View>
                 </View>
 
                 {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
@@ -663,10 +712,19 @@ const styles = StyleSheet.create({
     profileActionsRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         alignItems: 'center',
         gap: spacing.sm,
         marginTop: spacing.lg,
+    },
+    profileActionStart: {
+        flexShrink: 1,
+        alignItems: 'flex-start',
+    },
+    profileActionEnd: {
+        flexShrink: 1,
+        alignItems: 'flex-end',
+        marginLeft: 'auto',
     },
     errorBox: {
         marginTop: spacing.lg,

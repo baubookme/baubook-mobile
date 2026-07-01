@@ -22,6 +22,7 @@ export interface UserDogModel {
     id: string;
     ownerId: string;
     name: string;
+    isActive: boolean;
     birthYear: number | null;
     size: 'small' | 'medium' | 'large' | 'giant' | null;
     personalityTags: string[];
@@ -54,6 +55,7 @@ interface RemoteDogRow {
     id: string;
     owner_id: string;
     name: string;
+    is_active?: boolean | null;
     birth_year: number | null;
     size: UserDogModel['size'];
     personality_tags: string[] | null;
@@ -302,6 +304,7 @@ function remoteDogToModel(row: RemoteDogRow): UserDogModel {
         id: row.id,
         ownerId: row.owner_id,
         name: row.name,
+        isActive: row.is_active ?? true,
         birthYear: row.birth_year,
         size: row.size,
         personalityTags: row.personality_tags ?? [],
@@ -317,7 +320,7 @@ function remoteDogToModel(row: RemoteDogRow): UserDogModel {
     };
 }
 
-const dogSelectFields = 'id, owner_id, name, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, avatar_url, created_at, updated_at';
+const dogSelectFields = 'id, owner_id, name, is_active, birth_year, size, personality_tags, sociality_tags, walk_tags, notes_public, notes_private, visibility, moderation_status, avatar_url, created_at, updated_at';
 
 async function getCurrentAuthState(): Promise<{session: Session | null; user: User | null}> {
     const client = assertSupabaseClient();
@@ -579,6 +582,7 @@ export async function fetchMyDogs(profileId: string): Promise<UserDogModel[]> {
         .from('dogs')
         .select(dogSelectFields)
         .eq('owner_id', profileId)
+        .eq('is_active', true)
         .order('created_at', {ascending: true});
 
     if (error) {
@@ -630,6 +634,7 @@ export async function saveDog(profileId: string, dog: DogDraftInput): Promise<Us
         notes_private: dog.notesPrivate?.trim() || null,
         visibility: dog.visibility ?? 'public',
         moderation_status: 'approved',
+        is_active: true,
     };
 
     if ('avatarUrl' in dog) {
@@ -647,4 +652,28 @@ export async function saveDog(profileId: string, dog: DogDraftInput): Promise<Us
     }
 
     return remoteDogToModel(data as RemoteDogRow);
+}
+
+export async function deactivateDog(profileId: string, dogId: string): Promise<void> {
+    const client = assertSupabaseClient();
+    const cleanDogId = dogId.trim();
+
+    if (!cleanDogId) {
+        throw new Error('Profilo cane non valido.');
+    }
+
+    const {error} = await client
+        .from('dogs')
+        .update({
+            is_active: false,
+            visibility: 'private',
+        })
+        .eq('id', cleanDogId)
+        .eq('owner_id', profileId)
+        .select('id')
+        .single();
+
+    if (error) {
+        throw new Error(normalizeError(error));
+    }
 }

@@ -4,6 +4,7 @@ import {Linking, Platform} from 'react-native';
 import type {Session, User} from '@supabase/supabase-js';
 
 import {
+    deactivateDog,
     ensureCurrentProfile,
     fetchAccountSnapshot,
     isStaleAuthSessionError,
@@ -61,6 +62,7 @@ interface AuthContextValue {
     refreshAccount: () => Promise<void>;
     saveProfile: (displayName: string) => Promise<void>;
     saveDogProfile: (dog: DogDraftInput) => Promise<UserDogModel | null>;
+    removeDogProfile: (dogId: string) => Promise<void>;
     signOut: () => Promise<void>;
 }
 
@@ -454,6 +456,35 @@ export function AuthProvider({children}: PropsWithChildren) {
         }
     }, [handleStaleAuthSession, profile]);
 
+    const removeDogProfile = useCallback(async (dogId: string) => {
+        if (!profile) {
+            setStatus('error');
+            setMessage('Prima crea o carica il profilo utente BauBook.');
+            setErrorMessage('Profilo utente mancante.');
+            return;
+        }
+
+        try {
+            setStatus('loading');
+            await deactivateDog(profile.id, dogId);
+            setDogs((current) => current.filter((dog) => dog.id !== dogId));
+            setStatus('signed_in');
+            setMessage('Profilo cane rimosso da BauBook. Il tuo profilo utente resta attivo.');
+            setErrorMessage(undefined);
+        } catch (error) {
+            if (isStaleAuthSessionError(error)) {
+                await handleStaleAuthSession();
+                return;
+            }
+
+            const nextErrorMessage = normalizeError(error);
+            setStatus('error');
+            setMessage('Rimozione profilo cane non riuscita.');
+            setErrorMessage(nextErrorMessage);
+            throw new Error(nextErrorMessage);
+        }
+    }, [handleStaleAuthSession, profile]);
+
     const signOut = useCallback(async () => {
         try {
             setStatus('loading');
@@ -500,8 +531,9 @@ export function AuthProvider({children}: PropsWithChildren) {
         refreshAccount,
         saveProfile,
         saveDogProfile,
+        removeDogProfile,
         signOut,
-    }), [completePasswordReset, dogs, errorMessage, exitDemoMode, message, passwordRecoveryPending, profile, refreshAccount, requestOtpCode, requestPasswordReset, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithGoogle, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
+    }), [completePasswordReset, dogs, errorMessage, exitDemoMode, message, passwordRecoveryPending, profile, refreshAccount, removeDogProfile, requestOtpCode, requestPasswordReset, saveDogProfile, saveProfile, sendLoginEmail, session, signInWithGoogle, signInWithPassword, signOut, signUpWithPassword, startDemoMode, status, user, verifyOtpCode]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

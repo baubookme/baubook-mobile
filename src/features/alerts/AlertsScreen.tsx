@@ -397,7 +397,12 @@ export function AlertsScreen() {
   }, [safetyBoard.errorMessage]);
 
   useEffect(() => {
-    if (!selectedDogId && auth.dogs[0]?.id) {
+    if (!auth.dogs.length) {
+      setSelectedDogId(null);
+      return;
+    }
+
+    if (!selectedDogId || !auth.dogs.some((dog) => dog.id === selectedDogId)) {
       setSelectedDogId(auth.dogs[0].id);
     }
   }, [auth.dogs, selectedDogId]);
