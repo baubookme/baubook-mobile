@@ -466,7 +466,7 @@ export function AuthProvider({children}: PropsWithChildren) {
 
         try {
             setStatus('loading');
-            await deactivateDog(profile.id, dogId);
+            await deactivateDog(dogId);
             setDogs((current) => current.filter((dog) => dog.id !== dogId));
             setStatus('signed_in');
             setMessage('Profilo cane rimosso da BauBook. Il tuo profilo utente resta attivo.');

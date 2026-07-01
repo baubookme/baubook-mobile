@@ -654,7 +654,7 @@ export async function saveDog(profileId: string, dog: DogDraftInput): Promise<Us
     return remoteDogToModel(data as RemoteDogRow);
 }
 
-export async function deactivateDog(profileId: string, dogId: string): Promise<void> {
+export async function deactivateDog(dogId: string): Promise<void> {
     const client = assertSupabaseClient();
     const cleanDogId = dogId.trim();
 
@@ -662,16 +662,9 @@ export async function deactivateDog(profileId: string, dogId: string): Promise<v
         throw new Error('Profilo cane non valido.');
     }
 
-    const {error} = await client
-        .from('dogs')
-        .update({
-            is_active: false,
-            visibility: 'private',
-        })
-        .eq('id', cleanDogId)
-        .eq('owner_id', profileId)
-        .select('id')
-        .single();
+    const {error} = await client.rpc('soft_deactivate_my_dog', {
+        dog_id_input: cleanDogId,
+    });
 
     if (error) {
         throw new Error(normalizeError(error));
