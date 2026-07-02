@@ -5,6 +5,7 @@ web-build
 
 android
 ios
+scripts
 
 .env
 .env.local
