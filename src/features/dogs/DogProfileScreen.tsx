@@ -162,6 +162,8 @@ export function DogProfileScreen() {
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
     const [isSavingTags, setIsSavingTags] = useState(false);
     const [isRemovingDog, setIsRemovingDog] = useState(false);
+    const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
+    const [removeDogError, setRemoveDogError] = useState('');
     const [dogName, setDogName] = useState(firstDog?.name ?? '');
     const [headline, setHeadline] = useState(firstDog?.notesPublic ?? '');
     const [privateNotes, setPrivateNotes] = useState(firstDog?.notesPrivate ?? '');
@@ -185,6 +187,8 @@ export function DogProfileScreen() {
             setPrivateNotes(firstDog.notesPrivate ?? '');
             setAvatarUri(readDogAvatarUri(firstDog));
             setSelectedTags(nextTags);
+            setIsRemoveConfirmOpen(false);
+            setRemoveDogError('');
             return;
         }
 
@@ -194,6 +198,8 @@ export function DogProfileScreen() {
         setAvatarUri(null);
         setSelectedTags([]);
         setIsTagEditorOpen(false);
+        setIsRemoveConfirmOpen(false);
+        setRemoveDogError('');
     }, [firstDog?.id]);
 
     const handleCancelEdit = () => {
@@ -326,38 +332,28 @@ export function DogProfileScreen() {
 
     const removeSavedDog = async (dogId: string) => {
         setIsRemovingDog(true);
+        setRemoveDogError('');
 
         try {
             await auth.removeDogProfile(dogId);
             setIsEditing(false);
             setIsTagEditorOpen(false);
             setIsSavingTags(false);
-        } catch {
-            return;
+            setIsRemoveConfirmOpen(false);
+        } catch (error) {
+            setRemoveDogError(error instanceof Error ? error.message : 'Rimozione profilo cane non riuscita.');
         } finally {
             setIsRemovingDog(false);
         }
     };
 
     const handleRemoveDog = () => {
-        if (!firstDog || auth.isDemoMode || auth.isBusy || isRemovingDog) {
+        if (!firstDog || auth.isDemoMode || isRemovingDog) {
             return;
         }
 
-        const dogLabel = firstDog.name.trim() || 'questo profilo';
-
-        Alert.alert(
-            'Rimuovere profilo cane?',
-            `Rimuovi ${dogLabel} da BauBook? Il tuo profilo utente resterà attivo.`,
-            [
-                {text: 'Annulla', style: 'cancel'},
-                {
-                    text: `Rimuovi ${dogLabel}`,
-                    style: 'destructive',
-                    onPress: () => void removeSavedDog(firstDog.id),
-                },
-            ],
-        );
+        setRemoveDogError('');
+        setIsRemoveConfirmOpen(true);
     };
 
     return (
@@ -408,7 +404,7 @@ export function DogProfileScreen() {
                             <AppButton
                                 label={`Rimuovi ${firstDog.name}`}
                                 variant="ghost"
-                                disabled={auth.isDemoMode || auth.isBusy || isRemovingDog}
+                                disabled={auth.isDemoMode || isRemovingDog}
                                 onPress={handleRemoveDog}
                             />
                         </View>
@@ -434,6 +430,35 @@ export function DogProfileScreen() {
                         />
                     </View>
                 </View>
+
+                {isRemoveConfirmOpen && firstDog ? (
+                    <View style={styles.removeConfirmBox}>
+                        <Text style={styles.removeConfirmTitle}>Rimuovere {firstDog.name}?</Text>
+                        <Text style={styles.removeConfirmText}>
+                            Il profilo cane verrà disattivato, il tuo account BauBook resterà attivo.
+                        </Text>
+                        <View style={styles.removeConfirmActions}>
+                            <AppButton
+                                label="Annulla"
+                                variant="ghost"
+                                size="compact"
+                                disabled={isRemovingDog}
+                                onPress={() => {
+                                    setIsRemoveConfirmOpen(false);
+                                    setRemoveDogError('');
+                                }}
+                            />
+                            <AppButton
+                                label={isRemovingDog ? 'Rimuovo...' : 'Conferma rimozione'}
+                                variant="danger"
+                                size="compact"
+                                disabled={isRemovingDog}
+                                onPress={() => void removeSavedDog(firstDog.id)}
+                            />
+                        </View>
+                        {removeDogError ? <Text selectable style={styles.removeConfirmError}>{removeDogError}</Text> : null}
+                    </View>
+                ) : null}
 
                 {auth.errorMessage ? <Text selectable style={styles.errorBox}>{auth.errorMessage}</Text> : null}
             </AppCard>
@@ -725,6 +750,39 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         alignItems: 'flex-end',
         marginLeft: 'auto',
+    },
+    removeConfirmBox: {
+        marginTop: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.danger,
+        borderRadius: radius.md,
+        backgroundColor: colors.redSoft,
+        padding: spacing.md,
+        gap: spacing.sm,
+    },
+    removeConfirmTitle: {
+        color: colors.ink,
+        fontSize: typography.body,
+        fontWeight: '900',
+    },
+    removeConfirmText: {
+        color: colors.text,
+        fontSize: typography.small,
+        lineHeight: 19,
+        fontWeight: '700',
+    },
+    removeConfirmActions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    removeConfirmError: {
+        color: colors.text,
+        fontSize: typography.small,
+        lineHeight: 19,
+        fontWeight: '800',
     },
     errorBox: {
         marginTop: spacing.lg,

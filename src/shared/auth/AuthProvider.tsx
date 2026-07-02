@@ -458,10 +458,11 @@ export function AuthProvider({children}: PropsWithChildren) {
 
     const removeDogProfile = useCallback(async (dogId: string) => {
         if (!profile) {
+            const nextErrorMessage = 'Profilo utente mancante.';
             setStatus('error');
             setMessage('Prima crea o carica il profilo utente BauBook.');
-            setErrorMessage('Profilo utente mancante.');
-            return;
+            setErrorMessage(nextErrorMessage);
+            throw new Error(nextErrorMessage);
         }
 
         try {
