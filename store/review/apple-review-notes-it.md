@@ -20,7 +20,7 @@ Some live community actions require a signed-in account. If needed, use temporar
 
 email/userid: dev@baubook.me
 
-Password: 12345678
+Password: 12345678Aa
 
 After closed beta, user password requirements will be updated to a more secure format managed centrally by BauBook admins.
 

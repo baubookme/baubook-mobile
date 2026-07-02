@@ -402,7 +402,7 @@ export function DogProfileScreen() {
                     {firstDog ? (
                         <View style={styles.profileActionStart}>
                             <AppButton
-                                label={`Rimuovi ${firstDog.name}`}
+                                label={`Rimuovi 🐶`}
                                 variant="ghost"
                                 disabled={auth.isDemoMode || isRemovingDog}
                                 onPress={handleRemoveDog}
@@ -435,7 +435,7 @@ export function DogProfileScreen() {
                     <View style={styles.removeConfirmBox}>
                         <Text style={styles.removeConfirmTitle}>Rimuovere {firstDog.name}?</Text>
                         <Text style={styles.removeConfirmText}>
-                            Il profilo cane verrà disattivato, il tuo account BauBook resterà attivo.
+                            Il profilo 🐾 verrà disattivato, il tuo account BauBook resterà attivo.
                         </Text>
                         <View style={styles.removeConfirmActions}>
                             <AppButton
@@ -449,7 +449,7 @@ export function DogProfileScreen() {
                                 }}
                             />
                             <AppButton
-                                label={isRemovingDog ? 'Rimuovo...' : 'Conferma rimozione'}
+                                label={isRemovingDog ? 'Rimuovo...' : 'Conferma'}
                                 variant="danger"
                                 size="compact"
                                 disabled={isRemovingDog}
